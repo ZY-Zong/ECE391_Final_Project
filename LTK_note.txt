@@ -1,3 +1,11 @@
 2019.10.19
     start MP3
     try to be familiar with git branch
+    try to merge
+    begin mp3.1
+    Load the GDT
+        the GDT discription is in IA32 doc 3.5.1 (p 838) 
+        .quad is for a space of 64 bits value
+        realized that I just need to translate the CS into GDT 
+        OK...the GDT is already povoded
+        maybe the thing I need to do is to initialize all these in boot.S
