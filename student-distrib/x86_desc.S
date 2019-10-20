@@ -12,6 +12,10 @@
 .globl gdt_ptr
 .globl idt_desc_ptr, idt
 
+# mp3.1 page table 
+.globl page_directory
+.globl page_table
+
 .align 4
 
 
@@ -106,3 +110,26 @@ _idt:
     .endr
 
 idt_bottom:
+
+
+# mp3.1 paging: the space for PD and PT 
+
+# align to 4 kB 
+.align PAGE_SIZE_4KB
+
+page_directory:
+_page_directory:
+    .rept PAGE_SIZE_4KB
+    .long 0
+    .endr 
+
+
+
+.align PAGE_SIZE_4KB
+
+page_table:
+page_table_0:
+    .rept PAGE_SIZE_4KB
+    .long 0
+    .endr 
+

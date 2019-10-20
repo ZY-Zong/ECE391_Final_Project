@@ -2,9 +2,11 @@
 # vim:ts=4 noexpandtab
 
 #define ASM     1
+#define ENABLE_PAGING 0
 
 #include "multiboot.h"
 #include "x86_desc.h"
+#include "paging.h"
 
 .text
 
@@ -25,6 +27,31 @@ _start:
 
 continue:
     # Load the GDT
+
+
+    #if ENABLE_PAGING
+        # enable paging 
+        movl    cr0, %eax
+        /*
+        * paging flag: bit 31 of CR0
+        * protection enable: bit 0 of CR0
+        */ 
+        orl     $0x80000001, %eax  
+        movl    %eax, cr0;   
+        
+        # set cr3 (PDBR)
+        movl    $page_directory, %eax 
+        movl    %eax, cr3
+
+        # fill the PD and PT 
+        call    init_paging     
+
+        # check whether the init success 
+        cmpl    $0, %eax 
+        jne     paging_init_fail
+
+    #endif /* ENABLE_PAGING */
+
 
     # Load CS with the new descriptor value
     ljmp    $KERNEL_CS, $keep_going
@@ -54,3 +81,12 @@ keep_going:
 halt:
     hlt
     jmp     halt
+
+
+#if ENABLE_PAGING
+    
+    paging_init_fail:
+        # TODO: report the exception 
+
+#endif /* ENABLE_PAGING */
+

@@ -22,6 +22,9 @@
 /* Number of vectors in the interrupt descriptor table (IDT) */
 #define NUM_VEC     256
 
+/* const */
+#define PAGE_SIZE_4KB
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers
@@ -123,6 +126,11 @@ extern uint32_t ldt;
 extern uint32_t tss_size;
 extern seg_desc_t tss_desc_ptr;
 extern tss_t tss;
+
+// mp3.1 paging 
+extern uint32_t page_directory;
+extern uint32_t page_table;
+
 
 /* Sets runtime-settable parameters in the GDT entry for the LDT */
 #define SET_LDT_PARAMS(str, addr, lim)                          \

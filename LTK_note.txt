@@ -12,3 +12,23 @@
 
 2019.10.20
     deal with paging 
+        basic idea: translate linear address into physical address 
+        CR3(PDBR) holds the base of PD, which is changed when new program is executed
+        the doc says set the mapping according to the order of the program 
+        need to do:
+            initialize the paging (kernel) when OS boot 
+            set a new page when new program run
+        3.6.1 paging option: (the ones needed)
+            paging flag: bit 31 of CR0 
+            page size extension flag: bit 4 of CR4
+        in cp1, I only need to 
+            set first 0-4MB into 4kb pages 
+                map VRAM corrected, and set others as not present
+            set 4MB-4GB into 4MB pages 
+                map virtual memory 4-8MB to physical memory 4-8MB 
+                set others as not present 
+        just use one page directory and one mode 
+        but set the PS bit in the PDE for a 4MB page 
+        figuring out where ot store PD and PT 
+            maybe in x86_desc.S 
+            align to 4kB?
