@@ -10,6 +10,7 @@
 .globl gdt_desc, ldt_desc, tss_desc
 .globl tss, tss_desc_ptr, ldt, ldt_desc_ptr
 .globl gdt_ptr
+.globl gdt_desc_ptr
 .globl idt_desc_ptr, idt
 
 .align 4
@@ -85,10 +86,11 @@ ldt_desc_ptr:
 gdt_bottom:
 
     .align 4
+
 # Data structure used to load GDT
 # Low 2 bytes are (size - 1)
 # High 4 bytes are the pointer to GDT in x86_desc.S
-gdt_ptr:
+gdt_desc_ptr:
     .word 63
     .long _gdt
 
