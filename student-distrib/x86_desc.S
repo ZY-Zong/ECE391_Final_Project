@@ -84,6 +84,14 @@ ldt_desc_ptr:
 
 gdt_bottom:
 
+    .align 4
+# Data structure used to load GDT
+# Low 2 bytes are (size - 1)
+# High 4 bytes are the pointer to GDT in x86_desc.S
+gdt_ptr:
+    .word 63
+    .long _gdt
+
     .align 16
 ldt:
     .rept 4

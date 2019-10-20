@@ -15,6 +15,15 @@
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags, bit)   ((flags) & (1 << (bit)))
 
+#define KEYBOARD_IRQ_NUM 1
+#define RTC_IRQ_NUM 8
+
+#define INTEL_DEFINED 0X20 // Number of vectors used by intel
+#define KEYBOARD_INDEX 0x21 // The vector number of keyboard
+#define RTC_INDEX 0x28 // The vector number of RTC
+#define SYSTEM_CALL_INDEX 0x80 // The vector number of system calls
+void idt_init();
+
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
 void entry(unsigned long magic, unsigned long addr) {
@@ -138,11 +147,13 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the PIC */
     i8259_init();
-
+    enable_irq(KEYBOARD_IRQ_NUM);
+    enable_irq(RTC_IRQ_NUM);
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
 
     /* Enable interrupts */
+    idt_init();
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
@@ -157,4 +168,48 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
+}
+
+/*
+ *************** Caution *****************:
+ * This version only initialize the idt table, leaving out the first 32 exceptions defined by Intel.
+ * Also, the interrupt handler pointer for keyboard and RTC is not set.
+ * System call pointer also is not set.
+ */
+/*
+ * idt_init
+ * This function is used to initialize IDT table and called in kernel.c.
+ * Uses subroutine provided in x86_desc.h.
+ * Input: None.
+ * Output: None.
+ * Side effect: Change the IDT table defined in x86_desc.S.
+ */
+extern void idt_init() {
+    int i;
+    // Initialize 0x00-0x1F exception handler defined by Intel.
+    for (i = 0; i < INTEL_DEFINED; i++) {
+        idt[i].seg_selector = KERNEL_CS;
+        idt[i].dpl = 0;
+    }
+    // Initialize 0x20-0xFF general purpose interrupt handlers
+    for (i = INTEL_DEFINED; i < NUM_VEC; i++) {
+        idt[i].seg_selector = KERNEL_CS;
+        idt[i].dpl = 0;
+    }
+    // Initialize keyboard
+    {
+        // After writing the keyboard handler, uncomment and fill in the pointer
+        // SET_IDT_ENTRY(idt[KEYBOARD_INDEX], );
+    }
+    // Initialize RTC
+    {
+        // After writing the RTC handler, uncomment and fill in the pointer
+        // SET_IDT_ENTRY(idt[RTC_INDEX], );
+    }
+    // Initialize system calls
+    {
+        // After writing the RTC handler, uncomment and fill in the pointer
+        // SET_IDT_ENTRY(idt[SYSTEM_CALL_INDEX], );
+        idt[SYSTEM_CALL_INDEX].dpl = 3;
+    }
 }

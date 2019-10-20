@@ -11,6 +11,14 @@
 /* Ports that each PIC sits on */
 #define MASTER_8259_PORT    0x20
 #define SLAVE_8259_PORT     0xA0
+#define MASTER_COMMAND (MASTER_8259_PORT)
+#define MASTER_DATA (MASTER_8259_PORT + 1)
+#define SLAVE_COMMAND (SLAVE_8259_PORT)
+#define SLAVE_DATA (SLAVE_8259_PORT + 1)
+
+#define SLAVE_OFFSET 8
+#define MASK_ALL_INTERRUPTS 0xFF
+#define MASK_ONE_BIT 0x1
 
 /* Initialization control words to init each PIC.
  * See the Intel manuals for details on the meaning
