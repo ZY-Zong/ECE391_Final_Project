@@ -9,3 +9,6 @@
         realized that I just need to translate the CS into GDT 
         OK...the GDT is already povoded
         maybe the thing I need to do is to initialize all these in boot.S
+
+2019.10.20
+    deal with paging 
