@@ -18,9 +18,9 @@ uint8_t slave_mask;  /* IRQs 8-15 */
  * Side effect: Initialize the both PICs.
  */
 void i8259_init(void) {
-    // Save the original mask on PIC
-    master_mask = inb(MASTER_DATA);
-    slave_mask = inb(SLAVE_DATA);
+
+    master_mask = 0;
+    slave_mask = 0;
 
     // Mask all interrupts on both PIC
     outb(MASK_ALL_INTERRUPTS, MASTER_DATA);
