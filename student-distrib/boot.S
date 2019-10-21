@@ -111,7 +111,7 @@ DEF_EXCEPTION_ENTRY 19, print_exception
 interrupt_entry_\irq:
     SAVE_ALL_REGS
     call \func
-    pushl $\n  # push irq number
+    pushl $\irq  # push irq number
     call send_eoi
     addl $4, %esp  # pop arg
     RESTORE_ALL_REGS
