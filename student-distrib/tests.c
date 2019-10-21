@@ -20,6 +20,29 @@ static inline void assertion_failure(){
 
 /* Checkpoint 1 tests */
 
+static unsigned int test1_password_state = 0;
+static unsigned int test1_rtc_counter = 0;
+
+/**
+ *
+ * @param c
+ */
+void test1_handle_typing(char c) {
+    if (test1_password_state == 0 && c == 'e') test1_password_state = 1;
+    else if (test1_password_state == 1 && c == 'c') test1_password_state = 2;
+    else if (test1_password_state == 1 && c == 'e') test1_password_state = 3;
+    else if (test1_password_state == 1 && c == '3') test1_password_state = 4;
+}
+
+void test1_handle_rtc() {
+
+}
+
+void test1() {
+    printf("\nEnter ece391 to start test\n");
+
+}
+
 /* IDT Test - Example
  * 
  * Asserts that first 10 IDT entries are not NULL
@@ -29,7 +52,7 @@ static inline void assertion_failure(){
  * Coverage: Load IDT, IDT definition
  * Files: x86_desc.h/S
  */
-int idt_test(){
+int idt_test() {
 	TEST_HEADER;
 
 	int i;
@@ -45,7 +68,51 @@ int idt_test(){
 	return result;
 }
 
-// add more tests here
+/* Divide Zero Test
+ *
+ * Try to divide 0
+ * Inputs: None
+ * Outputs: None
+ * Side Effects: Cause Divide Error
+ * Coverage: Divide Error exception
+ * Files: boot.S, kernel.C
+ */
+void divide_zero_test() {
+    TEST_HEADER;
+
+    // Set i to 0, but avoid compile warnings
+    unsigned long i = 42;
+    i -= i;
+
+    // Divide 0
+    unsigned long j = 42 / i;
+
+    // To avoid compiler warnings. Should not get here
+    printf("j = %u", j);
+}
+
+/* Deference NULL Test
+ *
+ * Try to dereference NULL
+ * Inputs: None
+ * Outputs: None
+ * Side Effects: Cause Page Fault if paging is turning on
+ * Coverage: Page Fault exception
+ * Files: boot.S, kernel.C
+ */
+void dereference_null_test() {
+    TEST_HEADER;
+
+    // Set i to 0, but avoid compile warnings
+    unsigned long i = 42;
+    i -= i;
+
+    // Dereference NULL
+    unsigned long j = *((unsigned long *)i);
+
+    // To avoid compiler warnings. Should not get here
+    printf("j = %u", j);
+}
 
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */

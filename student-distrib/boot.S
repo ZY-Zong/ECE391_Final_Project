@@ -58,77 +58,80 @@ halt:
     hlt
     jmp     halt
 
-// TODO: add function document
+
+/**
+ * enable_paging
+ * This function is used to setting up page directory and page table for kernel. Called in kernel.c.
+ * Input: None.
+ * Output: None.
+ * Side effect: Enable paging.
+ * Note: Use C calling convension
+ */
 .globl enable_paging
 enable_paging:
 
-    enter $0, $0
 
     # EAX and ECX are caller saved
+    # Other callee-saved registers are not used
 
-    # mp3.1 paging: the space for PD and PT
-    # Get the address of the table
-    movl    $kernel_page_table_0, %eax  # get the address of label 0
-    andl    $0xFFFFF000, %eax   # get high 20 bits, not needed since it is 4kB align. do anyway
-    movl    kernel_page_directory, %ecx     # index 0 of PD
+    enter $0, $0
+
+    # Write the table for first 4K into entry 0 of page directory
+    movl    $kernel_page_table_0, %eax   # get the address of label 0
+    # andl    $0xFFFFF000, %eax          # get high 20 bits, not needed since it is 4kB align.
+    movl    kernel_page_directory, %ecx  # index 0 of PD
     orl     %eax, %ecx
     movl    %ecx, kernel_page_directory
 
-    # Enable paging
+    # Enable paging by setting registers
 
-    # set cr3 (PDBR)
-    /*
-     * the high 20 bits of cr3 is the base address
-     */
+    # set CR3 (PDBR). The high 20 bits of cr3 is the base address
     movl    $kernel_page_directory, %eax    # get the address of the PD
-
-    # get high 20 bits
-    andl    $0xFFFFF000, %eax   # not necessary since it is 4kB align, but do anyway
-    # store it in cr3
+    # andl    $0xFFFFF000, %eax             # get high 20 bits, not necessary since it is 4kB align
     movl    %cr3, %ecx
     orl     %eax, %ecx
     movl    %ecx, %cr3
 
-
-    # set cr4 (bit4: PSE)
+    # set CR4. Bit 4: PSE
     movl    %cr4, %eax
     orl     $0x10, %eax
     movl    %eax, %cr4
 
-    /*
-    * paging flag: bit 31 of CR0
-    * protection enable: bit 0 of CR0
-    */
+    # Set CR0. Bit 31: paging flag, bit 0: protection enabled
     movl    %cr0, %eax
-    orl     $0x80000000, %eax
+    orl     $0x80000001, %eax
     movl    %eax, %cr0
-
-    # fill the PD and PT
-    # call    init_paging     already done in version 1.1
 
     leave
     ret
 
 
-#define SAVE_ALL_REGS \
-	pushf;      \
-	pushl %ebp; \
-	pushl %edi; \
-	pushl %esi; \
-	pushl %edx; \
-	pushl %ecx; \
-	pushl %ebx; \
-	pushl %eax;
+# Macros for low-level IDT entries
 
-#define RESTORE_ALL_REGS \
-	popl %eax; \
-	popl %ebx; \
-	popl %ecx; \
-	popl %edx; \
-	popl %esi; \
-	popl %edi; \
-	popl %ebp; \
-	popf;
+.macro SAVE_ALL_REGS
+	pushf
+	pushl %ebp
+	pushl %edi
+	pushl %esi
+	pushl %edx
+	pushl %ecx
+	pushl %ebx
+	pushl %eax
+.endm
+
+.macro RESTORE_ALL_REGS
+	popl %eax
+	popl %ebx
+	popl %ecx
+	popl %edx
+	popl %esi
+	popl %edi
+	popl %ebp
+	popf
+.endm
+
+
+# Exception low-level entries
 
 .macro DEF_EXCEPTION_ENTRY n, func
 .globl exception_entry_\n
@@ -162,6 +165,9 @@ DEF_EXCEPTION_ENTRY 17, print_exception
 DEF_EXCEPTION_ENTRY 18, print_exception
 DEF_EXCEPTION_ENTRY 19, print_exception
 
+
+# Interrupt low-level entries
+
 .macro DEF_INTERRUPT_ENTRY irq, func
 .globl interrupt_entry_\irq
 interrupt_entry_\irq:
@@ -176,5 +182,14 @@ interrupt_entry_\irq:
 
 DEF_INTERRUPT_ENTRY 1, keyboard_interrupt_handler
 DEF_INTERRUPT_ENTRY 8, rtc_interrupt_handler
+
+
+# System call low-level entry
+.globl system_call_entry
+system_call_entry:
+    SAVE_ALL_REGS
+    call print_system_call
+    RESTORE_ALL_REGS
+    iret  # return from interrupt context
 
 

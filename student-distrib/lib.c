@@ -12,6 +12,17 @@ static int screen_x;
 static int screen_y;
 static char* video_mem = (char *)VIDEO;
 
+/**
+ * Reset input point to the upper left corner of the screen
+ * @input: None
+ * @output: None
+ * @return: None
+ */
+void reset_cursor() {
+    screen_x = 0;
+    screen_y = 0;
+}
+
 /* void clear(void);
  * Inputs: void
  * Return Value: none

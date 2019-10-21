@@ -34,6 +34,11 @@ static const char scan_code_table[128] = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
 };
 
+#define KEYBOARD_F1_SCANCODE 0x3B
+#define KEYBOARD_F2_SCANCODE 0x3C
+#define KEYBOARD_F3_SCANCODE 0x3D
+#define KEYBOARD_SCANCODE_PRESSED 0x80
+
 /** RTC related constants */
 #define RTC_IRQ_NUM   8
 
@@ -48,67 +53,45 @@ static const char scan_code_table[128] = {
 
 #define RTC_DEFAULT_FREQUENCY   1024
 
-
+/** IDT related constants */
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
 #define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard
 #define IDT_ENTRY_RTC            0x28  // the vector number of RTC
 #define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
 
+/** Function declaration */
 void idt_init();
-
 void rtc_init();
-
 void keyboard_interrupt_handler();
-
 void rtc_interrupt_handler();
-
 void rtc_restart_interrupt();
 
+// TODO: move these declaration to a separate header file
+// Defined in boot.S
 extern void exception_entry_0();
-
 extern void exception_entry_1();
-
 extern void exception_entry_2();
-
 extern void exception_entry_3();
-
 extern void exception_entry_4();
-
 extern void exception_entry_5();
-
 extern void exception_entry_6();
-
 extern void exception_entry_7();
-
 extern void exception_entry_8();
-
 extern void exception_entry_9();
-
 extern void exception_entry_10();
-
 extern void exception_entry_11();
-
 extern void exception_entry_12();
-
 extern void exception_entry_13();
-
 extern void exception_entry_14();
-
-// 15 is reserved by Intel
 extern void exception_entry_16();
-
 extern void exception_entry_17();
-
 extern void exception_entry_18();
-
 extern void exception_entry_19();
-
 extern void interrupt_entry_1();
-
 extern void interrupt_entry_8();
+extern void system_call_entry();
 
-
-extern void enable_paging();
+extern void enable_paging();  // in boot.S
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -245,8 +228,8 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the RTC */
     rtc_init();
-    enable_irq(RTC_IRQ_NUM);
-    rtc_restart_interrupt();
+    enable_irq(RTC_IRQ_NUM);  // enable IRQ after setting up RTC
+    rtc_restart_interrupt();  // in case that an interrupt happens after rtc_init() and before enable_irq
 
     /* Enable interrupts */
     idt_init();
@@ -266,13 +249,6 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
 }
-
-/*
- *************** Caution *****************:
- * This version only initialize the idt table, leaving out the first 32 exceptions defined by Intel.
- * Also, the interrupt handler pointer for keyboard and RTC is not set.
- * System call pointer also is not set.
- */
 
 /*
  * idt_init
@@ -312,6 +288,7 @@ extern void idt_init() {
 
     }
 
+    // Setup exception handlers (defined in boot.S)
     SET_IDT_ENTRY(idt[0], exception_entry_0);
     SET_IDT_ENTRY(idt[1], exception_entry_1);
     SET_IDT_ENTRY(idt[2], exception_entry_2);
@@ -333,19 +310,17 @@ extern void idt_init() {
     SET_IDT_ENTRY(idt[18], exception_entry_18);
     SET_IDT_ENTRY(idt[19], exception_entry_19);
 
-    // Set keyboard handler
+    // Set keyboard handler (defined in boot.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
     idt[IDT_ENTRY_KEYBOARD].present = 1;
 
-    // Set RTC handler
+    // Set RTC handler (defined in boot.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], interrupt_entry_8);
     idt[IDT_ENTRY_RTC].present = 1;
 
-    // Initialize system calls
-    // TODO: After writing the RTC handler, uncomment and fill in the pointer
-//    SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], irq_entry_80);
+    // Set system calls handler (defined in boot.S)
+    SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], system_call_entry);
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
-//    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
 
     // Load IDT into IDTR
     asm volatile ("lidt idt_desc_ptr");
@@ -364,31 +339,25 @@ void keyboard_interrupt_handler() {
 
     cli();
     {
-        /* Get scan code from port 0x60 */
+        // Get scan code from port 0x60
         uint8_t scancode = inb(KEYBOARD_PORT);
 
-
-        if (scancode == 0x3B) {
+        // TODO: eliminate these function for demo of checkpoint 1
+        if (scancode == KEYBOARD_F1_SCANCODE) {  // F1
             clear();
 #ifdef RUN_TESTS
-        } else if (scancode == 0x3C) {
-            // Try to divide 0!
-            scancode /= 0;
-        } else if (scancode == 0x3D) {
-            // Try to dereference NULL!
-            scancode = NULL;
-            scancode = *((uint8_t *) scancode);
+        } else if (scancode == KEYBOARD_F2_SCANCODE) {  // F2
+            divide_zero_test();
+        } else if (scancode == KEYBOARD_F3_SCANCODE) {  // F3
+            dereference_null_test();
 #endif
-        } else if (scancode < 0x80) {
-            if (scan_code_table[scancode] != 0) {
-                /* Output the char to the console */
-                putc(scan_code_table[scancode]);
+        } else if (scancode < KEYBOARD_SCANCODE_PRESSED) {  // key press
+            if (scan_code_table[scancode] != 0) {  // printable character
+                putc(scan_code_table[scancode]);  // output the char to the console
             }
         }
     }
     sti();
-
-//    send_eoi(KEYBOARD_IRQ_NUM);
 }
 
 /*
@@ -401,7 +370,7 @@ void keyboard_interrupt_handler() {
  *   SIDE EFFECTS: Frequency is set to be default 1024 Hz
  */
 void rtc_init() {
-    /* Turn on IRQ 8, default frequency is 1024 Hz */
+    // Turn on IRQ 8, default frequency is 1024 Hz
 
     cli();  // disable interrupts
     {
@@ -419,8 +388,7 @@ void rtc_init() {
  * rtc_interrupt_handler
  *   REFERENCE: https://wiki.osdev.org/RTC
  *   DESCRIPTION: Handle the RTC interrupt. Note that Status Register C will contain a bitmask
- *                telling which interrupt happened. If register C is not read after an IRQ 8,
- *                then the interrupt will not happen again.
+ *                telling which interrupt happened.
  *   INPUTS: none
  *   OUTPUTS: none
  *   RETURN VALUE: none
@@ -429,8 +397,9 @@ void rtc_init() {
 void rtc_interrupt_handler() {
 
     static unsigned int counter = 0;
-    if (++counter >= 5000) {
-        printf("------------------------ Receive 5000 RTC interrupts ------------------------\n");
+    if (++counter >= TEST_RTC_ECHO_COUNTER) {
+        printf("------------------------ Receive %u RTC interrupts ------------------------\n",
+                TEST_RTC_ECHO_COUNTER);
         counter = 0;
     }
 
@@ -438,7 +407,15 @@ void rtc_interrupt_handler() {
     rtc_restart_interrupt();
 }
 
-// TODO: add function document
+/*
+ * rtc_restart_interrupt
+ *   REFERENCE: https://wiki.osdev.org/RTC
+ *   DESCRIPTION: Read register C after an IRQ 8, or interrupt will not happen again.
+ *   INPUTS: none
+ *   OUTPUTS: none
+ *   RETURN VALUE: none
+ *   SIDE EFFECTS: none
+ */
 void rtc_restart_interrupt() {
     outb(RTC_STATUS_REGISTER_C, RTC_REGISTER_PORT);    // select register C
     inb(RTC_RW_DATA_PORT);  // just throw away contents
@@ -456,7 +433,7 @@ void print_exception(uint32_t vec_num) {
     clear();
     printf("EXCEPTION %u OCCUR!\n", vec_num);
     printf("------------------------ BLUE SCREEN ------------------------");
-    while (1) {}  // put kernel into infinite loop
+    while (1) {}   // put kernel into infinite loop
 }
 
 /*
@@ -469,16 +446,16 @@ void print_exception(uint32_t vec_num) {
  */
 void print_system_call() {
     long eax_val, ebx_val, ecx_val, edx_val; // Variables used to store the registers.
-    asm volatile ("                 \n\
-            movl    %%eax, %0      \n\
-            movl    %%ebx, %1      \n\
-            movl    %%ecx, %2      \n\
-            movl    %%edx, %3      \n\
+    asm volatile ("                \n \
+            movl    %%eax, %0      \n \
+            movl    %%ebx, %1      \n \
+            movl    %%ecx, %2      \n \
+            movl    %%edx, %3      \n \
             "
     : "=r"(eax_val), "=r"(ebx_val), "=r"(ecx_val), "=r"(edx_val)
     :
     : "memory", "cc"
     );
-    printf("---------------System Call---------------\nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
+    printf("--------------- System Call ---------------\nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
            eax_val, ebx_val, ecx_val, edx_val);
 }
