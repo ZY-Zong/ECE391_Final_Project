@@ -2,9 +2,11 @@
 # vim:ts=4 noexpandtab
 
 #define ASM     1
+#define ENABLE_PAGING 0
 
 #include "multiboot.h"
 #include "x86_desc.h"
+#include "paging.h"
 
 .text
 
@@ -27,6 +29,44 @@ _start:
 continue:
     # Load the GDT
     lgdt    gdt_desc_ptr
+
+    #if ENABLE_PAGING
+        # enable paging
+        /*
+        * paging flag: bit 31 of CR0
+        * protection enable: bit 0 of CR0
+        */
+        movl    %cr0, %eax
+        orl     $0x80000001, %eax
+        movl    %eax, %cr0;
+
+        # set cr3 (PDBR)
+        /*
+         * the high 20 bits of cr3 is the base address
+         */
+        movl    $kernel_page_directory, %eax    # get the address of the PD
+        # get high 20 bits
+        andl    $0xFFFFF000, %eax   # not necessary since it is 4kB align, but do anyway
+        # store it in cr3
+        movl    %cr3, %ecx
+        orl     %eax, %ecx
+        movl    %ecx, %cr3
+
+        # set cr4 (bit4: PSE)
+        movl    %cr4, %eax
+        orl     $0x10, %eax
+        movl    %eax, %cr4
+
+        # fill the PD and PT
+        # call    init_paging     already done in version 1.1
+
+        # check whether the init success, not needed in version 1.1
+        #cmpl    $0, %eax
+        #jne     paging_init_fail
+
+    #endif /* ENABLE_PAGING */
+
+
     # Load CS with the new descriptor value
     ljmp    $KERNEL_CS, $keep_going
 
@@ -55,6 +95,14 @@ keep_going:
 halt:
     hlt
     jmp     halt
+
+# #if ENABLE_PAGING
+
+    #paging_init_fail:
+        # report the exception
+        # not needed in verison 1.1
+
+# #endif /* ENABLE_PAGING */
 
 #define SAVE_ALL_REGS \
 	pushl %ebp; \
