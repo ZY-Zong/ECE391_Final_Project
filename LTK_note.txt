@@ -32,3 +32,8 @@
         figuring out where ot store PD and PT 
             maybe in x86_desc.S 
             align to 4kB?
+        4kB: 12 bits 
+        bit 7 of PDE is for PS (0 for 4kB, 1 for 4MB)
+        PDE detail def see 3.7.6
+        need to be careful about all the flags in PDE and PTE 
+        this version may work, may init them in x86_desc.S for optimize

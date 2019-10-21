@@ -13,7 +13,7 @@
 #include "x86_desc.h" 
 
 static int _program_executed=0;
-
+int i; // loop counter 
 
 /*
  * init paging()
@@ -26,7 +26,31 @@ static int _program_executed=0;
  * the PD and PT will be changed 
  */
 int init_paging(){
-    
+    /* originally: 
+     *  all bit 0 is 0: not present 
+     *  all bit 2 is 0: supervisor
+     */
+
+    // set PD 
+    // 0-4MB (index 0) enrty: map to a PT, each page is 4kB
+    page_directory[0] |= ((unsigned)page_table_0 & 0xFFFFF000)  << 12 ;    // high 20 bits: PT pointer 
+    page_directory[0] |= 0x1; // bit 0: present 
+    page_directory[0] |= (0x1 << 1); // bit 1: both R and W 
+
+    // 4-8MB (index 1) entry: map to a 4MB page at physical memory 4-8MB
+    // in this case high 10 bits of PDE represent 10 most significant bit of physical address 
+    page_directory[1] |= 0x1 << 22 ; // at 1*4MB 
+    page_directory[1] |= 0x1; // bit 0: present
+    page_directory[1] |= (0x1 << 1); // bit 1: both R and W 
+    page_directory[1] |= (0x1 << 7); // bit 7: PS 
+
+    // others: since originally filled with 0, they are viewed as not persent 
+
+    // set PT 
+    // except the video memory, others are marked as not present 
+    page_table_0[0xB8]=0xB8 << 12; // video memory is at 0xB8000
+    page_table_0[0xB8] |= 0x1;    // bit 0: present
+    page_table_0[0xB8] |= (0x1 << 1); // bit 1: both R and W 
     
     return 0;
 }

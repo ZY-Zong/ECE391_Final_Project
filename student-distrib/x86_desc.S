@@ -15,6 +15,7 @@
 # mp3.1 page table 
 .globl page_directory
 .globl page_table
+.globl page_table_0
 
 .align 4
 
@@ -115,21 +116,21 @@ idt_bottom:
 # mp3.1 paging: the space for PD and PT 
 
 # align to 4 kB 
-.align PAGE_SIZE_4KB
+.align PAGE_SIZE_4K
 
 page_directory:
 _page_directory:
-    .rept PAGE_SIZE_4KB
+    .rept PAGE_SIZE_K
     .long 0
     .endr 
 
 
 
-.align PAGE_SIZE_4KB
+.align PAGE_SIZE_4K
 
 page_table:
 page_table_0:
-    .rept PAGE_SIZE_4KB
+    .rept PAGE_SIZE_K
     .long 0
     .endr 
 

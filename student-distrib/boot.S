@@ -31,17 +31,27 @@ continue:
 
     #if ENABLE_PAGING
         # enable paging 
-        movl    cr0, %eax
         /*
         * paging flag: bit 31 of CR0
         * protection enable: bit 0 of CR0
-        */ 
+        */   
+        movl    %cr0, %eax
         orl     $0x80000001, %eax  
-        movl    %eax, cr0;   
+        movl    %eax, %cr0;   
         
         # set cr3 (PDBR)
         movl    $page_directory, %eax 
-        movl    %eax, cr3
+        /* the high 20 bits of cr3 is the base address */
+        # left shift %eax by 12
+        movl    $12, %ecx 
+        shll    %cl, %eax 
+        # store it in cr3 
+        movl    %eax, %cr3
+        
+        # set cr4 (bit4: PSE)
+        movl    %cr4, %eax 
+        orl     $0x10, %eax 
+        movl    %eax, %cr4 
 
         # fill the PD and PT 
         call    init_paging     

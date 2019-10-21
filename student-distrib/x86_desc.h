@@ -23,7 +23,9 @@
 #define NUM_VEC     256
 
 /* const */
-#define PAGE_SIZE_4KB
+#define SIZE_K          1024
+#define SIZE_4K         4096
+#define ADDRESS_4MB     0x400000 
 
 #ifndef ASM
 
@@ -128,8 +130,9 @@ extern seg_desc_t tss_desc_ptr;
 extern tss_t tss;
 
 // mp3.1 paging 
-extern uint32_t page_directory;
-extern uint32_t page_table;
+extern uint32_t* page_directory;
+extern uint32_t* page_table;
+extern uint32_t* page_table_0;
 
 
 /* Sets runtime-settable parameters in the GDT entry for the LDT */
