@@ -434,3 +434,27 @@ void print_exception(uint32_t vec_num) {
     printf("------------------------ BLUE SCREEN ------------------------");
     while(1) {}  // put kernel into infinite loop
 }
+
+/*
+ * print_system_call
+ * DESCRIPTION: This function is used to print out %EAX, %EBX, %ECX, %EDX
+ *              to present system calls temporarily.
+ * Input: None.
+ * Output: None.
+ * Side effect: Print the %EAX, %EBX, %ECX, %EDX value to screen.
+ */
+void print_system_call() {
+    long eax_val, ebx_val, ecx_val, edx_val; // Variables used to store the registers.
+    asm volatile ("                 \n\
+            movl    %%eax, %0      \n\
+            movl    %%ebx, %1      \n\
+            movl    %%ecx, %2      \n\
+            movl    %%edx, %3      \n\
+            "
+    : "=r"(eax_val), "=r"(ebx_val), "=r"(ecx_val), "=r"(edx_val)
+    :
+    : "memory", "cc"
+    );
+    printf("---------------System Call---------------\nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
+            eax_val, ebx_val, ecx_val, edx_val);
+}
