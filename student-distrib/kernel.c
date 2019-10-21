@@ -344,22 +344,23 @@ void keyboard_interrupt_handler() {
         /* Get scan code from port 0x60 */
         uint8_t scancode = inb(KEYBOARD_PORT);
 
-        if (scancode == 0x3B) {
-            clear();
+        if (scan_code_table[scancode]!= 0) {
+            if (scancode == 0x3B) {
+                clear();
 #ifdef RUN_TESTS
-        } else if (scancode == 0x3C) {
-            // Try to divide 0!
-            scancode /= 0;
-        } else if (scancode == 0x3D) {
-            // Try to dereference NULL!
-            scancode = NULL;
-            scancode = *((uint8_t *) scancode);
+            } else if (scancode == 0x3C) {
+                // Try to divide 0!
+                scancode /= 0;
+            } else if (scancode == 0x3D) {
+                // Try to dereference NULL!
+                scancode = NULL;
+                scancode = *((uint8_t *) scancode);
 #endif
-        } else if (scancode < 0x80) {
-            /* Output the char to the console */
-            putc(scan_code_table[scancode]);
+            } else if (scancode < 0x80) {
+                /* Output the char to the console */
+                putc(scan_code_table[scancode]);
+            }
         }
-
     }
     sti();
 
