@@ -58,6 +58,7 @@ void idt_init();
 void rtc_init();
 void keyboard_interrupt_handler();
 void rtc_interrupt_handler();
+void rtc_restart_interrupt();
 
 extern void exception_entry_0();
 extern void exception_entry_1();
@@ -222,6 +223,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the RTC */
     rtc_init();
     enable_irq(RTC_IRQ_NUM);
+    rtc_restart_interrupt();
 
     /* Enable interrupts */
     idt_init();
@@ -346,8 +348,12 @@ void keyboard_interrupt_handler() {
             clear();
 #ifdef RUN_TESTS
         } else if (scancode == 0x3C) {
-            // Try to dereference NULL!
+            // Try to divide 0!
             scancode /= 0;
+        } else if (scancode == 0x3D) {
+            // Try to dereference NULL!
+            scancode = NULL;
+            scancode = *((uint8_t *) scancode);
 #endif
         } else if (scancode < 0x80) {
             /* Output the char to the console */
@@ -396,13 +402,21 @@ void rtc_init() {
  *   SIDE EFFECTS: none
  */
 void rtc_interrupt_handler() {
+
+    static unsigned int counter = 0;
+    if (++counter >= 5000) {
+        printf("------------------------ Receive 5000 RTC interrupts ------------------------\n");
+        counter = 0;
+    }
+
     /* Get another interrupt */
+    rtc_restart_interrupt();
+}
+
+// TODO: add function document
+void rtc_restart_interrupt() {
     outb(RTC_STATUS_REGISTER_C, RTC_REGISTER_PORT);    // select register C
-    inb(RTC_RW_DATA_PORT); // just throw away contents
-
-    printf("Receive an RTC interrupt");
-
-//    send_eoi(RTC_IRQ_NUM);
+    inb(RTC_RW_DATA_PORT);  // just throw away contents
 }
 
 /*

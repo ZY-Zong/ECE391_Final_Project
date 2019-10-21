@@ -58,7 +58,12 @@ void enable_irq(uint32_t irq_num) {
         irq_num -= SLAVE_OFFSET;
         cur_mask = (inb(SLAVE_DATA)) & (~(MASK_ONE_BIT << irq_num));
         outb(cur_mask, SLAVE_DATA);
+
+        // Unmask the port on master for slave
+        cur_mask = (inb(MASTER_DATA)) & (~(MASK_ONE_BIT << 2));
+        outb(cur_mask, MASTER_DATA);
     } else {
+
         // Unmask master
         cur_mask = (inb(MASTER_DATA)) & (~(MASK_ONE_BIT << irq_num));
         outb(cur_mask, MASTER_DATA);

@@ -111,6 +111,7 @@ enable_paging:
 
 
 #define SAVE_ALL_REGS \
+	pushf;      \
 	pushl %ebp; \
 	pushl %edi; \
 	pushl %esi; \
@@ -126,7 +127,8 @@ enable_paging:
 	popl %edx; \
 	popl %esi; \
 	popl %edi; \
-	popl %ebp;
+	popl %ebp; \
+	popf;
 
 .macro DEF_EXCEPTION_ENTRY n, func
 .globl exception_entry_\n
