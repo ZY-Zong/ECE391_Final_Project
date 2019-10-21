@@ -19,8 +19,9 @@ uint8_t slave_mask;  /* IRQs 8-15 */
  */
 void i8259_init(void) {
 
-    master_mask = 0;
-    slave_mask = 0;
+    // Disable all interrupts
+    master_mask = 0xFF;
+    slave_mask = 0xFF;
 
     // Mask all interrupts on both PIC
     outb(MASK_ALL_INTERRUPTS, MASTER_DATA);

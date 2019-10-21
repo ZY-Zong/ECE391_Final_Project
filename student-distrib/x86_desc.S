@@ -35,6 +35,14 @@ _tss:
     .endr
 tss_bottom:
 
+# Data structure used to load GDT
+# Low 2 bytes are (size - 1)
+# High 4 bytes are the pointer to GDT in x86_desc.S
+    .align 4
+gdt_desc_ptr:
+    .word gdt_bottom - gdt - 1
+    .long gdt
+
     .align  16
 gdt:
 _gdt:
@@ -85,15 +93,6 @@ ldt_desc_ptr:
 
 gdt_bottom:
 
-    .align 4
-
-# Data structure used to load GDT
-# Low 2 bytes are (size - 1)
-# High 4 bytes are the pointer to GDT in x86_desc.S
-gdt_desc_ptr:
-    .word 63
-    .long _gdt
-
     .align 16
 ldt:
     .rept 4
@@ -101,7 +100,7 @@ ldt:
     .endr
 ldt_bottom:
 
-.align 4
+    .align 4
     .word 0 # Padding
 idt_desc_ptr:
     .word idt_bottom - idt - 1

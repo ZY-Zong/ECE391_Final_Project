@@ -55,12 +55,13 @@ static const char scan_code_table[128] = {
 #define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
 
 void idt_init();
-
 void rtc_init();
-
 void keyboard_interrupt_handler();
-
 void rtc_interrupt_handler();
+
+extern uint32_t irq_entry_21;
+extern uint32_t irq_entry_28;
+extern uint32_t irq_entry_80;
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -202,14 +203,15 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
-    printf("Enabling Interrupts\n");
-    sti();
+    /*printf("Enabling Interrupts\n");
+    sti();*/
 
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
 #endif
     /* Execute the first program ("shell") ... */
+    while(1) {}
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
@@ -245,14 +247,14 @@ extern void idt_init() {
         idt[i].dpl = 0;
     }
     // Set keyboard handler
-    SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], keyboard_interrupt_handler);
+    SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], irq_entry_21);
 
     // Set RTC handler
-    SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], rtc_interrupt_handler);
+    SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], irq_entry_28);
 
     // Initialize system calls
     // TODO: After writing the RTC handler, uncomment and fill in the pointer
-    // SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], );
+    SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], irq_entry_80);
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
 }
 
@@ -277,10 +279,6 @@ void keyboard_interrupt_handler() {
 
     }
     sti();
-
-    /* Send EOI */
-    // TODO: use a function to handle all EOF
-    send_eoi(KEYBOARD_IRQ_NUM);
 }
 
 /*
@@ -319,13 +317,9 @@ void rtc_init() {
  *   SIDE EFFECTS: none
  */
 void rtc_interrupt_handler() {
-
     /* Get another interrupt */
     outb(RTC_STATUS_REGISTER_C, RTC_REGISTER_PORT);    // select register C
     inb(RTC_RW_DATA_PORT); // just throw away contents
 
     printf("Receive an RTC interrupt");
-
-    /* Send EOI */
-    send_eoi(RTC_IRQ_NUM);
 }
