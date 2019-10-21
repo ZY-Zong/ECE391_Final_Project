@@ -329,3 +329,14 @@ void rtc_interrupt_handler() {
     /* Send EOI */
     send_eoi(RTC_IRQ_NUM);
 }
+/*
+ * print_exception
+ * DESCRIPTION: This function is used to print out the given interrupt number
+ *              in the interrupt descriptor table.
+ * Input: vec_num - vector number of the interrupt/exception
+ * Output: None.
+ * Side effect: Print the interrupt/exception message to screen.
+ */
+void print_exception(uint32_t vec_num) {
+    printf("Interrupt Descriptor Table Vector: %lu\n", vec_num);
+}
