@@ -24,7 +24,7 @@
  */
 static const char scan_code_table[128] = {
         0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0,      /* 0x00 - 0x0E */
-        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'o', 'p', '[', ']', '\n',           /* 0x0F - 0x1C */
+        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',           /* 0x0F - 0x1C */
         0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',           /* 0x1D - 0x29 */
         0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0,          /* 0x2A - 0x37 */
         0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
@@ -38,9 +38,9 @@ static const char scan_code_table[128] = {
 #define RTC_IRQ_NUM   8
 
 /* RTC Status Registers */
-#define RTC_STATUS_REGISTER_A   0x0A
-#define RTC_STATUS_REGISTER_B   0x0B
-#define RTC_STATUS_REGISTER_C   0x0C
+#define RTC_STATUS_REGISTER_A   0x8A
+#define RTC_STATUS_REGISTER_B   0x8B
+#define RTC_STATUS_REGISTER_C   0x8C
 
 /* 2 IO ports used for the RTC and CMOS */
 #define RTC_REGISTER_PORT       0x70
@@ -59,9 +59,29 @@ void rtc_init();
 void keyboard_interrupt_handler();
 void rtc_interrupt_handler();
 
-extern uint32_t irq_entry_21;
-extern uint32_t irq_entry_28;
-extern uint32_t irq_entry_80;
+extern void exception_entry_0();
+extern void exception_entry_1();
+extern void exception_entry_2();
+extern void exception_entry_3();
+extern void exception_entry_4();
+extern void exception_entry_5();
+extern void exception_entry_6();
+extern void exception_entry_7();
+extern void exception_entry_8();
+extern void exception_entry_9();
+extern void exception_entry_10();
+extern void exception_entry_11();
+extern void exception_entry_12();
+extern void exception_entry_13();
+extern void exception_entry_14();
+// 15 is reserved by Intel
+extern void exception_entry_16();
+extern void exception_entry_17();
+extern void exception_entry_18();
+extern void exception_entry_19();
+
+extern void interrupt_entry_1();
+extern void interrupt_entry_8();
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -203,15 +223,14 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
-    /*printf("Enabling Interrupts\n");
-    sti();*/
+    printf("Enabling Interrupts\n");
+    sti();
 
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
 #endif
     /* Execute the first program ("shell") ... */
-    while(1) {}
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
@@ -261,19 +280,44 @@ extern void idt_init() {
         idt[i].reserved4 = 0;
 
     }
+
+    SET_IDT_ENTRY(idt[0], exception_entry_0);
+    SET_IDT_ENTRY(idt[1], exception_entry_1);
+    SET_IDT_ENTRY(idt[2], exception_entry_2);
+    SET_IDT_ENTRY(idt[3], exception_entry_3);
+    SET_IDT_ENTRY(idt[4], exception_entry_4);
+    SET_IDT_ENTRY(idt[5], exception_entry_5);
+    SET_IDT_ENTRY(idt[6], exception_entry_6);
+    SET_IDT_ENTRY(idt[7], exception_entry_7);
+    SET_IDT_ENTRY(idt[8], exception_entry_8);
+    SET_IDT_ENTRY(idt[9], exception_entry_9);
+    SET_IDT_ENTRY(idt[10], exception_entry_10);
+    SET_IDT_ENTRY(idt[11], exception_entry_11);
+    SET_IDT_ENTRY(idt[12], exception_entry_12);
+    SET_IDT_ENTRY(idt[13], exception_entry_13);
+    SET_IDT_ENTRY(idt[14], exception_entry_14);
+    // 15 is reserved by Intel
+    SET_IDT_ENTRY(idt[16], exception_entry_16);
+    SET_IDT_ENTRY(idt[17], exception_entry_17);
+    SET_IDT_ENTRY(idt[18], exception_entry_18);
+    SET_IDT_ENTRY(idt[19], exception_entry_19);
+
     // Set keyboard handler
-    SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], irq_entry_21);
+    SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
     idt[IDT_ENTRY_KEYBOARD].present = 1;
 
     // Set RTC handler
-    SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], irq_entry_28);
+    SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], interrupt_entry_8);
     idt[IDT_ENTRY_RTC].present = 1;
 
     // Initialize system calls
     // TODO: After writing the RTC handler, uncomment and fill in the pointer
-    SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], irq_entry_80);
+//    SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], irq_entry_80);
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
-    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
+//    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
+
+    // Load IDT into IDTR
+    asm volatile ("lidt idt_desc_ptr");
 }
 
 /*
@@ -292,11 +336,17 @@ void keyboard_interrupt_handler() {
         /* Get scan code from port 0x60 */
         uint8_t scancode = inb(KEYBOARD_PORT);
 
-        /* Output the char to the console */
-        putc(scan_code_table[scancode]);
+        if (scancode == 0x3B) {
+            clear();
+        } else if (scancode < 0x80) {
+            /* Output the char to the console */
+            putc(scan_code_table[scancode]);
+        }
 
     }
     sti();
+
+//    send_eoi(KEYBOARD_IRQ_NUM);
 }
 
 /*
@@ -340,7 +390,10 @@ void rtc_interrupt_handler() {
     inb(RTC_RW_DATA_PORT); // just throw away contents
 
     printf("Receive an RTC interrupt");
+
+//    send_eoi(RTC_IRQ_NUM);
 }
+
 /*
  * print_exception
  * DESCRIPTION: This function is used to print out the given interrupt number

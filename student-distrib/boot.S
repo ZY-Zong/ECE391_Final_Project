@@ -74,31 +74,51 @@ halt:
 	popl %edi; \
 	popl %ebp;
 
-.macro IRQ_ENTRY n, func
-.globl irq_entry_\n
-irq_entry_\n:
+.macro DEF_EXCEPTION_ENTRY n, func
+.globl exception_entry_\n
+exception_entry_\n:
     SAVE_ALL_REGS
     pushl $\n  # push irq number
     call \func
+    addl $4, %esp  # pop arg
+    RESTORE_ALL_REGS
+    iret  # return from interrupt context
+.endm
+
+DEF_EXCEPTION_ENTRY 0, print_exception  # Divide Error Exception
+DEF_EXCEPTION_ENTRY 1, print_exception
+DEF_EXCEPTION_ENTRY 2, print_exception
+DEF_EXCEPTION_ENTRY 3, print_exception
+DEF_EXCEPTION_ENTRY 4, print_exception
+DEF_EXCEPTION_ENTRY 5, print_exception
+DEF_EXCEPTION_ENTRY 6, print_exception
+DEF_EXCEPTION_ENTRY 7, print_exception
+DEF_EXCEPTION_ENTRY 8, print_exception
+DEF_EXCEPTION_ENTRY 9, print_exception
+DEF_EXCEPTION_ENTRY 10, print_exception
+DEF_EXCEPTION_ENTRY 11, print_exception
+DEF_EXCEPTION_ENTRY 12, print_exception
+DEF_EXCEPTION_ENTRY 13, print_exception
+DEF_EXCEPTION_ENTRY 14, print_exception
+# 15 is reserved by Intel
+DEF_EXCEPTION_ENTRY 16, print_exception
+DEF_EXCEPTION_ENTRY 17, print_exception
+DEF_EXCEPTION_ENTRY 18, print_exception
+DEF_EXCEPTION_ENTRY 19, print_exception
+
+.macro DEF_INTERRUPT_ENTRY irq, func
+.globl interrupt_entry_\irq
+interrupt_entry_\irq:
+    SAVE_ALL_REGS
+    call \func
+    pushl $\n  # push irq number
     call send_eoi
     addl $4, %esp  # pop arg
     RESTORE_ALL_REGS
     iret  # return from interrupt context
 .endm
 
-IRQ_ENTRY 0, print_exception  # Divide Error Exception
-IRQ_ENTRY 1, print_exception
-IRQ_ENTRY 2, print_exception
-IRQ_ENTRY 3, print_exception
-IRQ_ENTRY 4, print_exception
-IRQ_ENTRY 5, print_exception
-IRQ_ENTRY 6, print_exception
-IRQ_ENTRY 7, print_exception
-IRQ_ENTRY 8, print_exception
-IRQ_ENTRY 9, print_exception
-IRQ_ENTRY 10, print_exception
+DEF_INTERRUPT_ENTRY 1, keyboard_interrupt_handler
+DEF_INTERRUPT_ENTRY 8, rtc_interrupt_handler
 
-IRQ_ENTRY 21, keyboard_interrupt_handler
-IRQ_ENTRY 28, rtc_interrupt_handler
-IRQ_ENTRY 80, print_exception
 
