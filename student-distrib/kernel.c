@@ -238,22 +238,40 @@ extern void idt_init() {
     for (i = 0; i < IDT_ENTRY_INTEL; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
+        idt[i].size = 1;
+        idt[i].present = 1;
+        idt[i].reserved0 = 0;
+        idt[i].reserved1 = 1;
+        idt[i].reserved2 = 1;
+        idt[i].reserved3 = 1;
+        idt[i].reserved4 = 0;
     }
     // Initialize 0x20 - 0xFF general purpose interrupt handlers
     for (i = IDT_ENTRY_INTEL; i < NUM_VEC; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
+        idt[i].size = 1;
+        idt[i].present = 0;
+        idt[i].reserved0 = 0;
+        idt[i].reserved1 = 1;
+        idt[i].reserved2 = 1;
+        idt[i].reserved3 = 0;
+        idt[i].reserved4 = 0;
+
     }
     // Set keyboard handler
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], keyboard_interrupt_handler);
+    idt[IDT_ENTRY_KEYBOARD].present = 1;
 
     // Set RTC handler
     SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], rtc_interrupt_handler);
+    idt[IDT_ENTRY_RTC].present = 1;
 
     // Initialize system calls
     // TODO: After writing the RTC handler, uncomment and fill in the pointer
     // SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], );
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
+    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
 }
 
 /*
