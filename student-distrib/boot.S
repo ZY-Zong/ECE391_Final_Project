@@ -2,11 +2,10 @@
 # vim:ts=4 noexpandtab
 
 #define ASM     1
-#define ENABLE_PAGING 0
+#define ENABLE_PAGING   1
 
 #include "multiboot.h"
 #include "x86_desc.h"
-#include "paging.h"
 
 .text
 
@@ -29,43 +28,6 @@ _start:
 continue:
     # Load the GDT
     lgdt    gdt_desc_ptr
-
-    #if ENABLE_PAGING
-        # enable paging
-        /*
-        * paging flag: bit 31 of CR0
-        * protection enable: bit 0 of CR0
-        */
-        movl    %cr0, %eax
-        orl     $0x80000001, %eax
-        movl    %eax, %cr0;
-
-        # set cr3 (PDBR)
-        /*
-         * the high 20 bits of cr3 is the base address
-         */
-        movl    $kernel_page_directory, %eax    # get the address of the PD
-        # get high 20 bits
-        andl    $0xFFFFF000, %eax   # not necessary since it is 4kB align, but do anyway
-        # store it in cr3
-        movl    %cr3, %ecx
-        orl     %eax, %ecx
-        movl    %ecx, %cr3
-
-        # set cr4 (bit4: PSE)
-        movl    %cr4, %eax
-        orl     $0x10, %eax
-        movl    %eax, %cr4
-
-        # fill the PD and PT
-        # call    init_paging     already done in version 1.1
-
-        # check whether the init success, not needed in version 1.1
-        #cmpl    $0, %eax
-        #jne     paging_init_fail
-
-    #endif /* ENABLE_PAGING */
-
 
     # Load CS with the new descriptor value
     ljmp    $KERNEL_CS, $keep_going
@@ -96,13 +58,57 @@ halt:
     hlt
     jmp     halt
 
-# #if ENABLE_PAGING
+// TODO: add function document
+.globl enable_paging
+enable_paging:
 
-    #paging_init_fail:
-        # report the exception
-        # not needed in verison 1.1
+    enter $0, $0
 
-# #endif /* ENABLE_PAGING */
+    # EAX and ECX are caller saved
+
+    # mp3.1 paging: the space for PD and PT
+    # Get the address of the table
+    movl    $kernel_page_table_0, %eax  # get the address of label 0
+    andl    $0xFFFFF000, %eax   # get high 20 bits, not needed since it is 4kB align. do anyway
+    movl    kernel_page_directory, %ecx     # index 0 of PD
+    orl     %eax, %ecx
+    movl    %ecx, kernel_page_directory
+
+    # Enable paging
+
+    # set cr3 (PDBR)
+    /*
+     * the high 20 bits of cr3 is the base address
+     */
+    movl    $kernel_page_directory, %eax    # get the address of the PD
+
+    # get high 20 bits
+    andl    $0xFFFFF000, %eax   # not necessary since it is 4kB align, but do anyway
+    # store it in cr3
+    movl    %cr3, %ecx
+    orl     %eax, %ecx
+    movl    %ecx, %cr3
+
+
+    # set cr4 (bit4: PSE)
+    movl    %cr4, %eax
+    orl     $0x10, %eax
+    movl    %eax, %cr4
+
+    /*
+    * paging flag: bit 31 of CR0
+    * protection enable: bit 0 of CR0
+    */
+    movl    %cr0, %eax
+    orl     $0x80000000, %eax
+    movl    %eax, %cr0
+
+    # fill the PD and PT
+    # call    init_paging     already done in version 1.1
+
+    leave
+    ret
+
 
 #define SAVE_ALL_REGS \
 	pushl %ebp; \

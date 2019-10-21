@@ -83,6 +83,9 @@ extern void exception_entry_19();
 extern void interrupt_entry_1();
 extern void interrupt_entry_8();
 
+
+extern void enable_paging();
+
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
 void entry(unsigned long magic, unsigned long addr) {
@@ -203,6 +206,9 @@ void entry(unsigned long magic, unsigned long addr) {
         tss.esp0 = 0x800000;
         ltr(KERNEL_TSS);
     }
+
+    /* Enable paging */
+    enable_paging();
 
     /* Init the PIC */
     i8259_init();

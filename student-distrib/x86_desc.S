@@ -122,16 +122,8 @@ _idt:
 idt_bottom:
 
 
-# mp3.1 paging: the space for PD and PT
-# get the address of the table
-    movl    $kernel_page_table_0, %eax  # get the address of label 0
-    andl    $0xFFFFF000, %eax   # get high 20 bits, not needed since it is 4kB align. do anyway
-    movl    kernel_page_directory, %ecx     # index 0 of PD
-    orl     %eax, %ecx
-    movl    %ecx, kernel_page_directory
-
 # align to 4 kB
-.align PAGE_SIZE_4K
+.align SIZE_4K
 
 kernel_page_directory:
 
@@ -150,7 +142,7 @@ kernel_page_directory:
 
 
 
-.align PAGE_SIZE_4K
+.align SIZE_4K
 
 kernel_page_table:
 kernel_page_table_0:
