@@ -78,7 +78,7 @@ halt:
 .globl exception_entry_\n
 exception_entry_\n:
     SAVE_ALL_REGS
-    pushl $\n  # push irq number
+    pushl $\n  # push exception number
     call \func
     addl $4, %esp  # pop arg
     RESTORE_ALL_REGS

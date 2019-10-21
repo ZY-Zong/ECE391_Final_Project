@@ -9,7 +9,7 @@
 #include "debug.h"
 #include "tests.h"
 
-//#define RUN_TESTS
+#define RUN_TESTS
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -24,14 +24,14 @@
  */
 static const char scan_code_table[128] = {
         0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0,      /* 0x00 - 0x0E */
-        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',           /* 0x0F - 0x1C */
+        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',      /* 0x0F - 0x1C */
         0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',           /* 0x1D - 0x29 */
         0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0,          /* 0x2A - 0x37 */
         0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                     /* 0x54 - 0x80 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
 };
 
 /** RTC related constants */
@@ -338,6 +338,11 @@ void keyboard_interrupt_handler() {
 
         if (scancode == 0x3B) {
             clear();
+#ifdef RUN_TESTS
+        } else if (scancode == 0x3C) {
+            // Try to dereference NULL!
+            scancode /= 0;
+#endif
         } else if (scancode < 0x80) {
             /* Output the char to the console */
             putc(scan_code_table[scancode]);
@@ -403,5 +408,8 @@ void rtc_interrupt_handler() {
  * Side effect: Print the interrupt/exception message to screen.
  */
 void print_exception(uint32_t vec_num) {
-    printf("Interrupt Descriptor Table Vector: %lu\n", vec_num);
+    clear();
+    printf("EXCEPTION %u OCCUR!\n", vec_num);
+    printf("------------------------ BLUE SCREEN ------------------------");
+    while(1) {}  // put kernel into infinite loop
 }
