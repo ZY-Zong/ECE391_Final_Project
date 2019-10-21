@@ -55,33 +55,56 @@ static const char scan_code_table[128] = {
 #define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
 
 void idt_init();
+
 void rtc_init();
+
 void keyboard_interrupt_handler();
+
 void rtc_interrupt_handler();
+
 void rtc_restart_interrupt();
 
 extern void exception_entry_0();
+
 extern void exception_entry_1();
+
 extern void exception_entry_2();
+
 extern void exception_entry_3();
+
 extern void exception_entry_4();
+
 extern void exception_entry_5();
+
 extern void exception_entry_6();
+
 extern void exception_entry_7();
+
 extern void exception_entry_8();
+
 extern void exception_entry_9();
+
 extern void exception_entry_10();
+
 extern void exception_entry_11();
+
 extern void exception_entry_12();
+
 extern void exception_entry_13();
+
 extern void exception_entry_14();
+
 // 15 is reserved by Intel
 extern void exception_entry_16();
+
 extern void exception_entry_17();
+
 extern void exception_entry_18();
+
 extern void exception_entry_19();
 
 extern void interrupt_entry_1();
+
 extern void interrupt_entry_8();
 
 
@@ -344,19 +367,20 @@ void keyboard_interrupt_handler() {
         /* Get scan code from port 0x60 */
         uint8_t scancode = inb(KEYBOARD_PORT);
 
-        if (scan_code_table[scancode]!= 0) {
-            if (scancode == 0x3B) {
-                clear();
+
+        if (scancode == 0x3B) {
+            clear();
 #ifdef RUN_TESTS
-            } else if (scancode == 0x3C) {
-                // Try to divide 0!
-                scancode /= 0;
-            } else if (scancode == 0x3D) {
-                // Try to dereference NULL!
-                scancode = NULL;
-                scancode = *((uint8_t *) scancode);
+        } else if (scancode == 0x3C) {
+            // Try to divide 0!
+            scancode /= 0;
+        } else if (scancode == 0x3D) {
+            // Try to dereference NULL!
+            scancode = NULL;
+            scancode = *((uint8_t *) scancode);
 #endif
-            } else if (scancode < 0x80) {
+        } else if (scancode < 0x80) {
+            if (scan_code_table[scancode] != 0) {
                 /* Output the char to the console */
                 putc(scan_code_table[scancode]);
             }
@@ -432,7 +456,7 @@ void print_exception(uint32_t vec_num) {
     clear();
     printf("EXCEPTION %u OCCUR!\n", vec_num);
     printf("------------------------ BLUE SCREEN ------------------------");
-    while(1) {}  // put kernel into infinite loop
+    while (1) {}  // put kernel into infinite loop
 }
 
 /*
@@ -456,5 +480,5 @@ void print_system_call() {
     : "memory", "cc"
     );
     printf("---------------System Call---------------\nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
-            eax_val, ebx_val, ecx_val, edx_val);
+           eax_val, ebx_val, ecx_val, edx_val);
 }
