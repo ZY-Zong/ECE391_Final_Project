@@ -20,12 +20,13 @@ static inline void assertion_failure(){
 
 /* Checkpoint 1 tests */
 
+/* Counters for test */
 static unsigned long test1_password_state = 0;
 static unsigned long test1_rtc_counter = 0;
 
 /**
- *
- * @param c
+ * Helper function for keyboard test
+ * @param c  character inputed
  */
 void test1_handle_typing(char c) {
     if (test1_password_state == 0 && c == 'e') test1_password_state = 1;
@@ -36,9 +37,12 @@ void test1_handle_typing(char c) {
     else if (test1_password_state == 5 && c == '1') test1_password_state = 6;
 }
 
+/**
+ * Helper function for RTC test
+ */
 void test1_handle_rtc() {
     test1_rtc_counter++;
-    if (test1_rtc_counter > 100000) test1_rtc_counter = 0;
+    if (test1_rtc_counter > 100000) test1_rtc_counter = 0;  // avoid overflow
 }
 
 /* IDT Test - Example
@@ -184,6 +188,10 @@ int dereference_null_test() {
     return FAIL;
 }
 
+/**
+ * Test keyboard input "ece391". Return PASS after receiving the input.
+ * @return PASS or FAIL
+ */
 int keyboard_test() {
     TEST_HEADER;
 
@@ -202,6 +210,10 @@ int keyboard_test() {
     return PASS;
 }
 
+/**
+ * Test RTC. Return PASS after receiving 1024 RTC interrupts.
+ * @return PASS or FAIL
+ */
 int rtc_test() {
     TEST_HEADER;
 
@@ -223,6 +235,9 @@ int rtc_test() {
     return PASS;
 }
 
+/**
+ * Test for MP1
+ */
 void test1() {
 
     // Clear screen
