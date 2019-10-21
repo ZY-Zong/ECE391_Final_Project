@@ -83,6 +83,7 @@ enable_paging:
     orl     %eax, %ecx
     movl    %ecx, kernel_page_directory
 
+
     # Enable paging by setting registers
 
     # set CR3 (PDBR). The high 20 bits of cr3 is the base address

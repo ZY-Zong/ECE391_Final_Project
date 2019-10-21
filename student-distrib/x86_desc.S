@@ -122,40 +122,34 @@ _idt:
 idt_bottom:
 
 
-# align to 4 kB
-.align SIZE_4K
-
+.align SIZE_4K  # Align to 4 kB
 kernel_page_directory:
 
-    # index 0: 0~4MB, map to a page table, set above
+    # Index 0: 0-4MB, map to a page table, set above
     .long   0x00000003  # the 3 is for present and W/R flag
 
-    # index 1: 4~8MB, map to physical memory 4-8MB
+    # Index 1: 4-8MB, map to physical memory 4-8MB
     .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 1MB place
 
-    # index 2~1023: not presented
-
-    # TODO: fix magic number
-    .rept 1022  # 1024-2
+    # Index 2-1023: not presented
+    .rept KERNEL_PAGE_DIRECTORY_SIZE - 2  # 1024 - 2
     .long 0
     .endr
 
 
-
-.align SIZE_4K
-
+.align SIZE_4K  # Align to 4 kB
 kernel_page_table:
 kernel_page_table_0:
-    # fill index 0~0xB7
-    .rept 184   # 0xB8
+    # Fill index 0-0xB7
+    .rept VIDEO_MEMORY_START_PAGE   # 0xB8
     .long 0
     .endr
 
     # 0xB8: video memory
     .long   0x000B8003  # the 3 is for present and W/R flag
 
-    # fill the rest to 1024
-    .rept 839   # 1024 - 0xB8 -1
+    # Fill the rest to 1024
+    .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1
     .long 0
     .endr
 

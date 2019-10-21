@@ -323,7 +323,7 @@ extern void idt_init() {
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
 
     // Load IDT into IDTR
-    asm volatile ("lidt idt_desc_ptr");
+    lidt(idt_desc_ptr);
 }
 
 /*
@@ -355,6 +355,9 @@ void keyboard_interrupt_handler() {
             if (scan_code_table[scancode] != 0) {  // printable character
                 putc(scan_code_table[scancode]);  // output the char to the console
             }
+#ifdef RUN_TESTS
+            test1_handle_typing(scan_code_table[scancode]);
+#endif
         }
     }
     sti();
@@ -402,6 +405,9 @@ void rtc_interrupt_handler() {
                 TEST_RTC_ECHO_COUNTER);
         counter = 0;
     }
+#ifdef RUN_TESTS
+    test1_handle_rtc();
+#endif
 
     /* Get another interrupt */
     rtc_restart_interrupt();
@@ -431,6 +437,7 @@ void rtc_restart_interrupt() {
  */
 void print_exception(uint32_t vec_num) {
     clear();
+    reset_cursor();
     printf("EXCEPTION %u OCCUR!\n", vec_num);
     printf("------------------------ BLUE SCREEN ------------------------");
     while (1) {}   // put kernel into infinite loop

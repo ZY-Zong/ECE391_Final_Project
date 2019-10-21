@@ -27,6 +27,10 @@
 #define SIZE_4K         4096
 #define ADDRESS_4MB     0x400000
 
+#define KERNEL_PAGE_DIRECTORY_SIZE    1024
+#define KERNEL_PAGE_TABLE_SIZE    1024
+#define VIDEO_MEMORY_START_PAGE    0xB8
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers
@@ -129,10 +133,17 @@ extern uint32_t tss_size;
 extern seg_desc_t tss_desc_ptr;
 extern tss_t tss;
 
-// mp3.1 paging
-extern uint32_t* kernel_page_directory;
-extern uint32_t* kernel_page_table;
-extern uint32_t* kernel_page_table_0;
+/** Paging */
+
+typedef struct __attribute__((packed)) {
+    uint32_t entry[KERNEL_PAGE_DIRECTORY_SIZE];
+} kernel_page_directory_t;
+extern kernel_page_directory_t kernel_page_directory;
+
+typedef struct __attribute__((packed)) {
+    uint32_t entry[KERNEL_PAGE_TABLE_SIZE];
+} kernel_page_table_t;
+extern kernel_page_table_t kernel_page_table_0;
 
 
 /* Sets runtime-settable parameters in the GDT entry for the LDT */

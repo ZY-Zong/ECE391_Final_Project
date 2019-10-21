@@ -4,9 +4,11 @@
 // Echo interval of RTC for test
 #define TEST_RTC_ECHO_COUNTER    5000
 
-void divide_zero_test();
+void test1_handle_typing(char c);
+void test1_handle_rtc();
 
-void dereference_null_test();
+int divide_zero_test();
+int dereference_null_test();
 
 // test launcher
 void launch_tests();
