@@ -130,9 +130,9 @@ extern seg_desc_t tss_desc_ptr;
 extern tss_t tss;
 
 // mp3.1 paging 
-extern uint32_t* page_directory;
-extern uint32_t* page_table;
-extern uint32_t* page_table_0;
+extern uint32_t* kernel_page_directory;
+extern uint32_t* kernel_page_table;
+extern uint32_t* kernel_page_table_0;
 
 
 /* Sets runtime-settable parameters in the GDT entry for the LDT */

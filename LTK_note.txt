@@ -37,3 +37,5 @@
         PDE detail def see 3.7.6
         need to be careful about all the flags in PDE and PTE 
         this version may work, may init them in x86_desc.S for optimize
+        change the init into static 
+        done 

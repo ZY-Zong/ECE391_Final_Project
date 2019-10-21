@@ -13,9 +13,9 @@
 .globl idt_desc_ptr, idt
 
 # mp3.1 page table 
-.globl page_directory
-.globl page_table
-.globl page_table_0
+.globl kernel_page_directory
+.globl kernel_page_table
+.globl kernel_page_table_0
 
 .align 4
 
@@ -114,13 +114,28 @@ idt_bottom:
 
 
 # mp3.1 paging: the space for PD and PT 
+# get the address of the table 
+    movl    $kernel_page_table_0, %eax  # get the address of label 0
+    andl    $0xFFFFF000, %eax   # get high 20 bits, not needed since it is 4kB align. do anyway
+    movl    kernel_page_directory, %ecx     # index 0 of PD 
+    orl     %eax, %ecx 
+    movl    %ecx, kernel_page_directory
 
 # align to 4 kB 
 .align PAGE_SIZE_4K
 
-page_directory:
-_page_directory:
-    .rept PAGE_SIZE_K
+kernel_page_directory:
+
+    # index 0: 0~4MB, map to a page table, set above 
+    .long   0x00000003  # the 3 is for present and W/R flag 
+
+    # index 1: 4~8MB, map to physical memory 4-8MB
+    .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 1MB place
+
+    # index 2~1023: not presented 
+    
+    # TODO: fix magic number 
+    .rept 1022  # 1024-2
     .long 0
     .endr 
 
@@ -128,9 +143,18 @@ _page_directory:
 
 .align PAGE_SIZE_4K
 
-page_table:
-page_table_0:
-    .rept PAGE_SIZE_K
+kernel_page_table:
+kernel_page_table_0:
+    # fill index 0~0xB7
+    .rept 184   # 0xB8
+    .long 0
+    .endr 
+
+    # 0xB8: video memory 
+    .long   0x000B8003  # the 3 is for present and W/R flag 
+
+    # fill the rest to 1024
+    .rept 839   # 1024 - 0xB8 -1
     .long 0
     .endr 
 

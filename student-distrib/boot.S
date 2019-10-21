@@ -40,13 +40,16 @@ continue:
         movl    %eax, %cr0;   
         
         # set cr3 (PDBR)
-        movl    $page_directory, %eax 
-        /* the high 20 bits of cr3 is the base address */
-        # left shift %eax by 12
-        movl    $12, %ecx 
-        shll    %cl, %eax 
+        /* 
+         * the high 20 bits of cr3 is the base address
+         */
+        movl    $kernel_page_directory, %eax    # get the address of the PD 
+        # get high 20 bits 
+        andl    $0xFFFFF000, %eax   # not necessary since it is 4kB align, but do anyway
         # store it in cr3 
-        movl    %eax, %cr3
+        movl    %cr3, %ecx 
+        orl     %eax, %ecx
+        movl    %ecx, %cr3
         
         # set cr4 (bit4: PSE)
         movl    %cr4, %eax 
@@ -54,11 +57,11 @@ continue:
         movl    %eax, %cr4 
 
         # fill the PD and PT 
-        call    init_paging     
+        # call    init_paging     already done in version 1.1
 
-        # check whether the init success 
-        cmpl    $0, %eax 
-        jne     paging_init_fail
+        # check whether the init success, not needed in version 1.1
+        #cmpl    $0, %eax 
+        #jne     paging_init_fail
 
     #endif /* ENABLE_PAGING */
 
@@ -93,10 +96,11 @@ halt:
     jmp     halt
 
 
-#if ENABLE_PAGING
+# #if ENABLE_PAGING
     
-    paging_init_fail:
-        # TODO: report the exception 
+    #paging_init_fail:
+        # report the exception 
+        # not needed in verison 1.1 
 
-#endif /* ENABLE_PAGING */
+# #endif /* ENABLE_PAGING */
 
