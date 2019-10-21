@@ -240,22 +240,40 @@ extern void idt_init() {
     for (i = 0; i < IDT_ENTRY_INTEL; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
+        idt[i].size = 1;
+        idt[i].present = 1;
+        idt[i].reserved0 = 0;
+        idt[i].reserved1 = 1;
+        idt[i].reserved2 = 1;
+        idt[i].reserved3 = 1;
+        idt[i].reserved4 = 0;
     }
     // Initialize 0x20 - 0xFF general purpose interrupt handlers
     for (i = IDT_ENTRY_INTEL; i < NUM_VEC; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
+        idt[i].size = 1;
+        idt[i].present = 0;
+        idt[i].reserved0 = 0;
+        idt[i].reserved1 = 1;
+        idt[i].reserved2 = 1;
+        idt[i].reserved3 = 0;
+        idt[i].reserved4 = 0;
+
     }
     // Set keyboard handler
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], irq_entry_21);
+    idt[IDT_ENTRY_KEYBOARD].present = 1;
 
     // Set RTC handler
     SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], irq_entry_28);
+    idt[IDT_ENTRY_RTC].present = 1;
 
     // Initialize system calls
     // TODO: After writing the RTC handler, uncomment and fill in the pointer
     SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], irq_entry_80);
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
+    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
 }
 
 /*
@@ -322,4 +340,15 @@ void rtc_interrupt_handler() {
     inb(RTC_RW_DATA_PORT); // just throw away contents
 
     printf("Receive an RTC interrupt");
+}
+/*
+ * print_exception
+ * DESCRIPTION: This function is used to print out the given interrupt number
+ *              in the interrupt descriptor table.
+ * Input: vec_num - vector number of the interrupt/exception
+ * Output: None.
+ * Side effect: Print the interrupt/exception message to screen.
+ */
+void print_exception(uint32_t vec_num) {
+    printf("Interrupt Descriptor Table Vector: %lu\n", vec_num);
 }
