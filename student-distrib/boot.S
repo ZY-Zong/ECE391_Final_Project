@@ -2,7 +2,6 @@
 # vim:ts=4 noexpandtab
 
 #define ASM     1
-#define ENABLE_PAGING   1
 
 #include "multiboot.h"
 #include "x86_desc.h"
@@ -106,91 +105,5 @@ enable_paging:
     leave
     ret
 
-
-# Macros for low-level IDT entries
-
-.macro SAVE_ALL_REGS
-	pushf
-	pushl %ebp
-	pushl %edi
-	pushl %esi
-	pushl %edx
-	pushl %ecx
-	pushl %ebx
-	pushl %eax
-.endm
-
-.macro RESTORE_ALL_REGS
-	popl %eax
-	popl %ebx
-	popl %ecx
-	popl %edx
-	popl %esi
-	popl %edi
-	popl %ebp
-	popf
-.endm
-
-
-# Exception low-level entries
-
-.macro DEF_EXCEPTION_ENTRY n, func
-.globl exception_entry_\n
-exception_entry_\n:
-    SAVE_ALL_REGS
-    pushl $\n  # push exception number
-    call \func
-    addl $4, %esp  # pop arg
-    RESTORE_ALL_REGS
-    iret  # return from interrupt context
-.endm
-
-DEF_EXCEPTION_ENTRY 0, print_exception  # Divide Error Exception
-DEF_EXCEPTION_ENTRY 1, print_exception
-DEF_EXCEPTION_ENTRY 2, print_exception
-DEF_EXCEPTION_ENTRY 3, print_exception
-DEF_EXCEPTION_ENTRY 4, print_exception
-DEF_EXCEPTION_ENTRY 5, print_exception
-DEF_EXCEPTION_ENTRY 6, print_exception
-DEF_EXCEPTION_ENTRY 7, print_exception
-DEF_EXCEPTION_ENTRY 8, print_exception
-DEF_EXCEPTION_ENTRY 9, print_exception
-DEF_EXCEPTION_ENTRY 10, print_exception
-DEF_EXCEPTION_ENTRY 11, print_exception
-DEF_EXCEPTION_ENTRY 12, print_exception
-DEF_EXCEPTION_ENTRY 13, print_exception
-DEF_EXCEPTION_ENTRY 14, print_exception
-# 15 is reserved by Intel
-DEF_EXCEPTION_ENTRY 16, print_exception
-DEF_EXCEPTION_ENTRY 17, print_exception
-DEF_EXCEPTION_ENTRY 18, print_exception
-DEF_EXCEPTION_ENTRY 19, print_exception
-
-
-# Interrupt low-level entries
-
-.macro DEF_INTERRUPT_ENTRY irq, func
-.globl interrupt_entry_\irq
-interrupt_entry_\irq:
-    SAVE_ALL_REGS
-    call \func
-    pushl $\irq  # push irq number
-    call send_eoi
-    addl $4, %esp  # pop arg
-    RESTORE_ALL_REGS
-    iret  # return from interrupt context
-.endm
-
-DEF_INTERRUPT_ENTRY 1, keyboard_interrupt_handler
-DEF_INTERRUPT_ENTRY 8, rtc_interrupt_handler
-
-
-# System call low-level entry
-.globl system_call_entry
-system_call_entry:
-    SAVE_ALL_REGS
-    call print_system_call
-    RESTORE_ALL_REGS
-    iret  # return from interrupt context
 
 

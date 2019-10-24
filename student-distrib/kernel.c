@@ -8,6 +8,7 @@
 #include "i8259.h"
 #include "debug.h"
 #include "tests.h"
+#include "idt_handler.h"
 
 #define RUN_TESTS
 
@@ -65,31 +66,6 @@ void rtc_init();
 void keyboard_interrupt_handler();
 void rtc_interrupt_handler();
 void rtc_restart_interrupt();
-
-// TODO: move these declaration to a separate header file
-// Defined in boot.S
-extern void exception_entry_0();
-extern void exception_entry_1();
-extern void exception_entry_2();
-extern void exception_entry_3();
-extern void exception_entry_4();
-extern void exception_entry_5();
-extern void exception_entry_6();
-extern void exception_entry_7();
-extern void exception_entry_8();
-extern void exception_entry_9();
-extern void exception_entry_10();
-extern void exception_entry_11();
-extern void exception_entry_12();
-extern void exception_entry_13();
-extern void exception_entry_14();
-extern void exception_entry_16();
-extern void exception_entry_17();
-extern void exception_entry_18();
-extern void exception_entry_19();
-extern void interrupt_entry_1();
-extern void interrupt_entry_8();
-extern void system_call_entry();
 
 extern void enable_paging();  // in boot.S
 
