@@ -41,7 +41,6 @@
 /** Function declaration */
 void idt_init();
 void rtc_init();
-void keyboard_interrupt_handler();
 void rtc_interrupt_handler();
 void rtc_restart_interrupt();
 
@@ -178,6 +177,7 @@ void entry(unsigned long magic, unsigned long addr) {
      * PIC, any other initialization stuff... */
 
     /* Init the keyboard */
+    keyboard_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
     /* Init the RTC */

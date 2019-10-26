@@ -182,6 +182,25 @@ void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
         screen_y++;
         screen_x = 0;
+    } else if ('\b' == c) {
+        // If user types backspace
+        if (0 == screen_x) {
+            screen_x == NUM_COLS - 1;
+            if (0 == screen_y) { // At the top left corner of the screen
+                screen_x = 0;
+                return;
+            } else { // Originally at the start of a new line, now at the end of last line
+                screen_y--;
+                *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = 0x20;
+                *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+                return;
+            }
+        } else { // Normal cases
+            screen_x--;
+        }
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = 0x20;
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
