@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.10)
 
 project(UnnamedOS)
 
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR i386)
+
 file(GLOB_RECURSE ALL_C_FILES *.c)
 file(GLOB_RECURSE ALL_S_FILES *.S)
 file(GLOB_RECURSE ALL_HEADER_FILES *.h)

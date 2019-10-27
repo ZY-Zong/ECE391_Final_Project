@@ -17,25 +17,10 @@ static inline void assertion_failure(){
 	asm volatile("int $15");
 }
 
-
 /* Checkpoint 1 tests */
 
 /* Counters for test */
-static unsigned long test1_password_state = 0;
 static unsigned long test1_rtc_counter = 0;
-
-/**
- * Helper function for keyboard test
- * @param c  character inputed
- */
-void test1_handle_typing(char c) {
-    if (test1_password_state == 0 && c == 'e') test1_password_state = 1;
-    else if (test1_password_state == 1 && c == 'c') test1_password_state = 2;
-    else if (test1_password_state == 2 && c == 'e') test1_password_state = 3;
-    else if (test1_password_state == 3 && c == '3') test1_password_state = 4;
-    else if (test1_password_state == 4 && c == '9') test1_password_state = 5;
-    else if (test1_password_state == 5 && c == '1') test1_password_state = 6;
-}
 
 /**
  * Helper function for RTC test
@@ -45,14 +30,9 @@ void test1_handle_rtc() {
     if (test1_rtc_counter > 100000) test1_rtc_counter = 0;  // avoid overflow
 }
 
-/* IDT Test - Example
- * 
+/**
  * Asserts that first 10 IDT entries are not NULL
- * Inputs: None
- * Outputs: PASS/FAIL
- * Side Effects: None
- * Coverage: Load IDT, IDT definition
- * Files: x86_desc.h/S
+ * @return PASS/FAIL
  */
 int idt_test() {
 	TEST_HEADER;
@@ -87,7 +67,7 @@ int paging_structure_test() {
     :
     : "memory", "cc");
     if ((kernel_page_directory_t *) tmp != &kernel_page_directory) {
-        printf("CR3 not correct");
+        printf(PRINT_ERR"CR3 not correct");
         result = FAIL;
     }
 
@@ -97,55 +77,53 @@ int paging_structure_test() {
     :
     : "memory", "cc");
     if ((tmp & 0x80000000) == 0) {
-        printf("Paging is not enabled");
+        printf(PRINT_ERR"Paging is not enabled");
         result = FAIL;
     }
 
     // Check kernel page directory
     if ((kernel_page_table_t*) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
-        printf("Paging directory entry 0 is not correct");
+        printf(PRINT_ERR"Paging directory entry 0 is not correct");
         result = FAIL;
     }
     if ((kernel_page_directory.entry[1] & 0x00400000) != 0x00400000) {
-        printf("Paging directory entry 1 is not correct");
+        printf(PRINT_ERR"Paging directory entry 1 is not correct");
         result = FAIL;
     }
 
     // Check kernel page table 0
     for (i = 0; i < VIDEO_MEMORY_START_PAGE; ++i){
         if (kernel_page_table_0.entry[i] != 0){
-            printf("Paging table entry %d is not correct", i);
+            printf(PRINT_ERR"Paging table entry %d is not correct", i);
             result = FAIL;
         }
     }
+
+    // Check video memory configuration
     if ((kernel_page_table_0.entry[VIDEO_MEMORY_START_PAGE] & 0x000B8003) != 0x000B8003){
         printf("Paging table entry for video memory is not correct");
         result = FAIL;
     }
     for (i = VIDEO_MEMORY_START_PAGE + 1; i < KERNEL_PAGE_TABLE_SIZE; ++i){
         if (kernel_page_table_0.entry[i] != 0){
-            printf("Paging table entry %d is not correct", i);
+            printf(PRINT_ERR"Paging table entry %d is not correct", i);
             result = FAIL;
         }
     }
 
+    // Try to dereference some variables
     int* i_ptr = &i;
     if (*i_ptr != i) {
-        printf("Dereference i error");
+        printf(PRINT_ERR"Dereference i error");
         result = FAIL;
     }
 
     return result;
 }
 
-/* Divide Zero Test
- *
- * Try to divide 0
- * Inputs: None
- * Outputs: None
- * Side Effects: Cause Divide Error
- * Coverage: Divide Error exception
- * Files: boot.S, kernel.C
+/**
+ * Try to divide 0. Cause Divide Error exception.
+ * @return Should not return. Is so, FAIL
  */
 int divide_zero_test() {
     TEST_HEADER;
@@ -163,14 +141,9 @@ int divide_zero_test() {
     return FAIL;
 }
 
-/* Deference NULL Test
- *
- * Try to dereference NULL
- * Inputs: None
- * Outputs: None
- * Side Effects: Cause Page Fault if paging is turning on
- * Coverage: Page Fault exception
- * Files: boot.S, kernel.C
+/**
+ * Try to dereference Null. Cause Page Fault if paging is turning on.
+ * @return Should not return. Is so, FAIL
  */
 int dereference_null_test() {
     TEST_HEADER;
@@ -186,28 +159,6 @@ int dereference_null_test() {
     printf("j = %u", j);
 
     return FAIL;
-}
-
-/**
- * Test keyboard input "ece391". Return PASS after receiving the input.
- * @return PASS or FAIL
- */
-int keyboard_test() {
-    TEST_HEADER;
-
-    unsigned long tmp;
-    printf("\nEnter ece391 to start test\n");
-    while(1) {
-        cli(); {
-            tmp = test1_password_state;
-        }
-        sti();
-        if (tmp == 6) {
-            break;
-        }
-    }
-
-    return PASS;
 }
 
 /**
@@ -244,7 +195,6 @@ void test1() {
     clear();
     reset_cursor();
 
-    TEST_OUTPUT("keyboard_test", keyboard_test());
     TEST_OUTPUT("idt_test", idt_test());
     TEST_OUTPUT("rtc_test", rtc_test());
     TEST_OUTPUT("paging_structure_test", paging_structure_test());
