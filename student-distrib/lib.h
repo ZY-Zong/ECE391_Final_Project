@@ -7,15 +7,16 @@
 
 #include "types.h"
 
-long read(unsigned int fd, char *buf, size_t count);
-long write(unsigned int fd, const char *buf, size_t count);
-long open(const char *filename, int flags);  // no support for mode argument
-long close(unsigned int fd);
-
-#define O_RDONLY        0x0000          /* open for reading only */
-#define O_WRONLY        0x0001          /* open for writing only */
-#define O_RDWR          0x0002          /* open for reading and writing */
-#define O_ACCMODE       0x0003          /* mask for above modes */
+//int32_t halt(uint8_t status);
+//int32_t execute(const uint8_t* command);
+int32_t read(int32_t fd, void* buf, int32_t nbytes);
+int32_t write(int32_t fd, const void* buf, int32_t nbytes);
+int32_t open(const uint8_t* filename);
+int32_t close(int32_t fd);
+//int32_t getargs(uint8_t* buf, int32_t nbytes);
+//int32_t vidmap(uint8_t** screen_start);
+//int32_t set_handler(int32_t signum, void* handler_address);
+//int32_t sigreturn (void);
 
 /* For potential future usage */
 #define PRINT_ERR
