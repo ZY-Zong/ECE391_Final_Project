@@ -1,7 +1,6 @@
 /* rtc.h - kernel file for rtc
 */
 
-#include <opencl-c.h>
 #include "rtc.h"
 #include "lib.h"
 #include "i8259.h"

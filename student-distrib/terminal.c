@@ -1,8 +1,51 @@
 //
 // Created by qig2 on 10/26/2019.
 //
-#include "lib.h"
 #include "terminal.h"
+
+#define KEYBOARD_PORT   0x60    /* keyboard scancode port */
+#define KEYBOARD_BUF_SIZE 128
+#define KEYBOARD_FLAG_SIZE 128
+#define CTRL_PRESS 0x1D
+#define CTRL_RELEASE 0x9D
+#define LEFT_SHIFT_PRESS 0x2A
+#define LEFT_SHIFT_RELEASE 0xAA
+#define RIGHT_SHIFT_PRESS 0x36
+#define RIGHT_SHIFT_RELEASE 0xB6
+
+/* Keys that correspond to scan codes, using scan code set 1 for "US QWERTY" keyboard
+ * REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
+ * TODO: Not handled keys: Esc, Tab, right ctrl, Caps.
+ */
+static const char scan_code_table[128] = {
+        0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',      /* 0x00 - 0x0E */
+        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',      /* 0x0F - 0x1C */
+        0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',           /* 0x1D - 0x29 */
+        0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0,          /* 0x2A - 0x37 */
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
+};
+static const char shift_scan_code_table[128] = {
+        0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',      /* 0x00 - 0x0E */
+        0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',      /* 0x0F - 0x1C */
+        0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '\"', '~',           /* 0x1D - 0x29 */
+        0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, 0,          /* 0x2A - 0x37 */
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
+};
+
+// Array to record what keys has been pressed currently
+static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
+
+// Keyboard buffer of size 128 and a counter to store the current position in the buffer
+static char keyboard_buf[KEYBOARD_BUF_SIZE];
+static uint8_t keyboard_buf_counter;
 
 /*
  * keyboard_interrupt
@@ -21,15 +64,8 @@ void keyboard_interrupt_handler() {
         // Get scan code from port 0x60
         uint8_t scancode = inb(KEYBOARD_PORT);
 
-        // TODO: eliminate these function for demo of checkpoint 1
         if (scancode == KEYBOARD_F1_SCANCODE) {  // F1
             clear();
-#ifdef RUN_TESTS
-            } else if (scancode == KEYBOARD_F2_SCANCODE) {  // F2
-            divide_zero_test();
-        } else if (scancode == KEYBOARD_F3_SCANCODE) {  // F3
-            dereference_null_test();
-#endif
         } else if (scancode < KEYBOARD_SCANCODE_PRESSED) {  // key press
             if (scan_code_table[scancode] != 0) {  // printable character
                 handle_scan_code(scancode);  // output the char to the console
@@ -38,6 +74,7 @@ void keyboard_interrupt_handler() {
     }
     sti();
 }
+
 /*
  * handle_scan_code
  * Description: This function handles scancode from the keyboard
@@ -99,6 +136,7 @@ void keyboard_init() {
     }
     keyboard_buf_counter = 0;
 }
+
 /*
  * terminal_open
  * Description: This function initializes key_flag and keyboard_buf.
@@ -106,7 +144,7 @@ void keyboard_init() {
  * Output: 0 (Success).
  * Side Effect: Modify terminal's static variables.
  */
-int terminal_open(const char __user *filename, int flags, int mode) {
+int32_t terminal_open(const uint8_t* filename) {
     return 0;
 }
 
@@ -117,9 +155,10 @@ int terminal_open(const char __user *filename, int flags, int mode) {
  * Output: 0 (Success).
  * Side Effect: Modify terminal's static variables.
  */
-int terminal_close(unsigned int fd) {
+int32_t terminal_close(int32_t fd) {
     return 0;
 }
+
 /*
  * terminal_read
  * Description: This function copies keyboard buffer to user buffer.
@@ -128,23 +167,23 @@ int terminal_close(unsigned int fd) {
  * Output: Returns the number of bytes read.
  * Side Effect: Modify both keyboard's static variables.
  */
-int terminal_read(unsigned int fd, char __user *buf, size_t count) {
-    int i; // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
-    int min; // the minimum of count and keyboard_buf_size
-    int j; // counter
+int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
+    int i;  // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
+    int min;  // the minimum of count and keyboard_buf_size
+    int j;  // counter
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
         // Calculate the number of bytes needed to copy from keyboard to the user buffer.
         // Which is the minimum of count and keyboard_buf_size.
-        if (count >= keyboard_buf_counter) {
+        if (nbytes >= keyboard_buf_counter) {
             min = keyboard_buf_counter;
         } else {
-            min = count;
+            min = nbytes;
         }
         // Copy the number of bytes required from keyboard to the user buffer
         for (i = 0; (i < min) && ('\n' != keyboard_buf[i]); i++) {
-            buf[i] = keyboard_buf[i];
+            ((char *) buf)[i] = keyboard_buf[i];
         }
         // Reset the keyboard buffer
         if (i == keyboard_buf_counter) {
@@ -168,13 +207,13 @@ int terminal_read(unsigned int fd, char __user *buf, size_t count) {
  * Output: Returns the number of bytes printed.
  * Side Effect: None.
  */
-int terminal_write(unsigned int fd, const char __user *buf, size_t count) {
+int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes) {
     int i;
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
-        for (i = 0; i < count; i++) {
-            putc(buf[i]);
+        for (i = 0; i < nbytes; i++) {
+            putc(((uint8_t *) buf)[i]);
         }
     }
     sti();
