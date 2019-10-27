@@ -35,6 +35,8 @@
  * to declare the interrupt finished */
 #define EOI                 0x60
 
+volatile int rtc_interrupt_occured;
+
 /* Externally-visible functions */
 
 /* Initialize both PICs */
