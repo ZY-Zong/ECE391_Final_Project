@@ -67,11 +67,28 @@
             It seems that there is only one module 
             just pass the first module, 
                 if it is wrong, just need to change this 
-        see how ls behave 
-            may need to change some of the syscall for file system ?
-        look at how file system works 
-        begin to write the functions
-            init_file_system()
-                need to store the system with global variable 
-            file_open()
-                what is initialize?
+    see how ls behave 
+        may need to change some of the syscall for file system ?
+    look at how file system works 
+    begin to write the functions
+        init_file_system()
+            need to store the system with global variable 
+        file_open()
+            what is initialize?
+            maybe not needed in this case 
+            if it do the job of init_file_system(), what will dir_open() do..
+            I think all of them do nothing in the our OS 
+        add public function header
+        fill in all the headers tomorrow
+
+2019.10.27
+    countinue with the functions 
+        open close may be used in cp3, for fd 
+        init_file_system()
+            save inodes pointer and data block pointer 
+        public functions 
+            read_data()
+                need to be careful about boundary 
+        file and directory functions 
+            ... don't know why I need them
+                maybe for the funture use 
