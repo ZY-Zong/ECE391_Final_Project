@@ -21,15 +21,8 @@ void keyboard_interrupt_handler() {
         // Get scan code from port 0x60
         uint8_t scancode = inb(KEYBOARD_PORT);
 
-        // TODO: eliminate these function for demo of checkpoint 1
         if (scancode == KEYBOARD_F1_SCANCODE) {  // F1
             clear();
-#ifdef RUN_TESTS
-            } else if (scancode == KEYBOARD_F2_SCANCODE) {  // F2
-            divide_zero_test();
-        } else if (scancode == KEYBOARD_F3_SCANCODE) {  // F3
-            dereference_null_test();
-#endif
         } else if (scancode < KEYBOARD_SCANCODE_PRESSED) {  // key press
             if (scan_code_table[scancode] != 0) {  // printable character
                 handle_scan_code(scancode);  // output the char to the console
@@ -38,6 +31,7 @@ void keyboard_interrupt_handler() {
     }
     sti();
 }
+
 /*
  * handle_scan_code
  * Description: This function handles scancode from the keyboard
@@ -99,6 +93,7 @@ void keyboard_init() {
     }
     keyboard_buf_counter = 0;
 }
+
 /*
  * terminal_open
  * Description: This function initializes key_flag and keyboard_buf.
@@ -106,7 +101,7 @@ void keyboard_init() {
  * Output: 0 (Success).
  * Side Effect: Modify terminal's static variables.
  */
-int terminal_open(const char __user *filename, int flags, int mode) {
+int32_t terminal_open(const uint8_t* filename) {
     return 0;
 }
 
@@ -117,9 +112,10 @@ int terminal_open(const char __user *filename, int flags, int mode) {
  * Output: 0 (Success).
  * Side Effect: Modify terminal's static variables.
  */
-int terminal_close(unsigned int fd) {
+int32_t terminal_close(int32_t fd) {
     return 0;
 }
+
 /*
  * terminal_read
  * Description: This function copies keyboard buffer to user buffer.
@@ -128,19 +124,19 @@ int terminal_close(unsigned int fd) {
  * Output: Returns the number of bytes read.
  * Side Effect: Modify both keyboard's static variables.
  */
-int terminal_read(unsigned int fd, char __user *buf, size_t count) {
-    int i; // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
-    int min; // the minimum of count and keyboard_buf_size
-    int j; // counter
+int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
+    int i;  // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
+    int min;  // the minimum of count and keyboard_buf_size
+    int j;  // counter
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
         // Calculate the number of bytes needed to copy from keyboard to the user buffer.
         // Which is the minimum of count and keyboard_buf_size.
-        if (count >= keyboard_buf_counter) {
+        if (nbytes >= keyboard_buf_counter) {
             min = keyboard_buf_counter;
         } else {
-            min = count;
+            min = nbytes;
         }
         // Copy the number of bytes required from keyboard to the user buffer
         for (i = 0; (i < min) && ('\n' != keyboard_buf[i]); i++) {
@@ -168,13 +164,13 @@ int terminal_read(unsigned int fd, char __user *buf, size_t count) {
  * Output: Returns the number of bytes printed.
  * Side Effect: None.
  */
-int terminal_write(unsigned int fd, const char __user *buf, size_t count) {
+int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes) {
     int i;
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
-        for (i = 0; i < count; i++) {
-            putc(buf[i]);
+        for (i = 0; i < nbytes; i++) {
+            putc(((uint8_t *) buf)[i]);
         }
     }
     sti();

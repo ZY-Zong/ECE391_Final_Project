@@ -51,12 +51,10 @@ static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
 static char keyboard_buf[KEYBOARD_BUF_SIZE];
 static uint8_t keyboard_buf_counter;
 
-
-// System call interfaces for terminal
-int terminal_open(const char __user *filename, int flags, int mode);
-int terminal_close(unsigned int fd);
-int terminal_read(unsigned int fd, char __user *buf, size_t count);
-int terminal_write(unsigned int fd, const char __user *buf, size_t count);
+int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes);
+int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes);
+int32_t terminal_open(const uint8_t* filename);
+int32_t terminal_close(int32_t fd);
 
 // Declaration of keyboard related functions
 void keyboard_init();
