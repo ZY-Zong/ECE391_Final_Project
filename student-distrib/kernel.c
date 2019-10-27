@@ -9,6 +9,7 @@
 #include "debug.h"
 #include "tests.h"
 #include "idt_handler.h"
+#include "rtc.h"
 
 #define RUN_TESTS
 
@@ -40,19 +41,6 @@ static const char scan_code_table[128] = {
 #define KEYBOARD_F3_SCANCODE 0x3D
 #define KEYBOARD_SCANCODE_PRESSED 0x80
 
-/** RTC related constants */
-#define RTC_IRQ_NUM   8
-
-/* RTC Status Registers */
-#define RTC_STATUS_REGISTER_A   0x8A
-#define RTC_STATUS_REGISTER_B   0x8B
-#define RTC_STATUS_REGISTER_C   0x8C
-
-/* 2 IO ports used for the RTC and CMOS */
-#define RTC_REGISTER_PORT       0x70
-#define RTC_RW_DATA_PORT        0x71
-
-#define RTC_DEFAULT_FREQUENCY   1024
 
 /** IDT related constants */
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
@@ -62,10 +50,7 @@ static const char scan_code_table[128] = {
 
 /** Function declaration */
 void idt_init();
-void rtc_init();
 void keyboard_interrupt_handler();
-void rtc_interrupt_handler();
-void rtc_restart_interrupt();
 
 extern void enable_paging();  // in boot.S
 
@@ -337,70 +322,6 @@ void keyboard_interrupt_handler() {
         }
     }
     sti();
-}
-
-/*
- * rtc_init
- *   REFERENCE: https://wiki.osdev.org/RTC
- *   DESCRIPTION: Initialize the real time clock
- *   INPUTS: none
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: Frequency is set to be default 1024 Hz
- */
-void rtc_init() {
-    // Turn on IRQ 8, default frequency is 1024 Hz
-
-    cli();  // disable interrupts
-    {
-        outb(RTC_STATUS_REGISTER_B, RTC_REGISTER_PORT);  // select register B and disable NMI
-        char prev = inb(RTC_RW_DATA_PORT);    // read the current value of register B
-        outb(RTC_STATUS_REGISTER_B,
-             RTC_REGISTER_PORT);     // set the index again (a read will reset the index to register D)
-        outb (prev | 0x40,
-              RTC_RW_DATA_PORT);     // write the previous value ORed with 0x40. This turns on bit 6 of register B
-    }
-    sti();
-}
-
-/*
- * rtc_interrupt_handler
- *   REFERENCE: https://wiki.osdev.org/RTC
- *   DESCRIPTION: Handle the RTC interrupt. Note that Status Register C will contain a bitmask
- *                telling which interrupt happened.
- *   INPUTS: none
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: none
- */
-void rtc_interrupt_handler() {
-
-    static unsigned int counter = 0;
-    if (++counter >= TEST_RTC_ECHO_COUNTER) {
-        printf("------------------------ Receive %u RTC interrupts ------------------------\n",
-                TEST_RTC_ECHO_COUNTER);
-        counter = 0;
-    }
-#ifdef RUN_TESTS
-    test1_handle_rtc();
-#endif
-
-    /* Get another interrupt */
-    rtc_restart_interrupt();
-}
-
-/*
- * rtc_restart_interrupt
- *   REFERENCE: https://wiki.osdev.org/RTC
- *   DESCRIPTION: Read register C after an IRQ 8, or interrupt will not happen again.
- *   INPUTS: none
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: none
- */
-void rtc_restart_interrupt() {
-    outb(RTC_STATUS_REGISTER_C, RTC_REGISTER_PORT);    // select register C
-    inb(RTC_RW_DATA_PORT);  // just throw away contents
 }
 
 /*
