@@ -1,8 +1,7 @@
 /* idt_handler.S - Low-level handlers for exceptions, interrupts and system calls
 */
 
-
-# TODO: order to be determine to allow better performance of system calls
+#include "idt_handler.h"
 
 .macro SAVE_ALL_REGS  # save all register onto the stack
 	pushf
@@ -105,7 +104,36 @@ INTERRUPT_ENTRY 8, rtc_interrupt_handler
 .globl system_call_entry
 system_call_entry:
     # TODO: make use of arguments of system call
-    SAVE_ALL_REGS
-    call print_system_call
-    RESTORE_ALL_REGS
+    pushf
+    pushl %ebp
+    pushl %edi
+    pushl %esi
+    pushl %edx
+    pushl %ecx
+    pushl %ebx
+    # if EAX > SYSTEM_CALL_TABLE_SIZE, call sys_not_implemented
+    cmpl %eax, $SYSTEM_CALL_TABLE_SIZE
+    jae system_call_entry_invalid
+    # if EAX valid, call corresponding system call
+    call *system_call_table(%eax)
+    jmp system_call_entry_done
+system_call_entry_invalid:
+    call sys_not_implemented
+system_call_entry_done:
+    popl %ebx
+    popl %ecx
+    popl %edx
+    popl %esi
+    popl %edi
+    popl %ebp
+    popf
     iret  # return from interrupt context
+
+system_call_table:
+    .long sys_not_implemented  # 0
+    .long sys_not_implemented
+    .long sys_not_implemented
+    .long sys_read
+    .long sys_write
+    .long sys_open             # 5
+    .long sys_close

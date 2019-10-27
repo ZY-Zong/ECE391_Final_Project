@@ -180,15 +180,58 @@ int32_t puts(int8_t* s) {
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
-        screen_y++;
         screen_x = 0;
+        screen_y++;
+        if (NUM_ROWS == screen_y) {
+            scroll_up();
+        }
+    } else if ('\b' == c) {
+        // If user types backspace
+        if (0 == screen_x) {
+            if (0 == screen_y) { // At the top left corner of the screen
+                return;
+            } else { // Originally at the start of a new line, now at the end of last line
+                screen_x == NUM_COLS - 1;
+                screen_y--;
+            }
+        } else { // Normal cases for backspace
+            screen_x--;
+        }
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = 0x20;
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
+        // Normal cases for a character
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
         screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
+        if (NUM_COLS == screen_x) {
+            // We need a new line
+            screen_x %= NUM_COLS;
+            screen_y++;
+            if (NUM_ROWS == screen_y) {
+                scroll_up();
+            }
+        }
     }
+}
+/**
+ * scroll_up
+ * This function is called whenever the cursor moves to NUM_ROWS row (which should not happen).
+ * Then we move the screen one line up so that we can continuously type words.
+ * Side Effect: Discard the top most line of the screen.
+ */
+void scroll_up() {
+    int x,y;
+    for (y = 0; y < NUM_ROWS - 1; y++) {
+        for (x = 0; x < NUM_COLS; x++) {
+            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
+            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+        }
+    }
+    // Reset the cursor to the column 0, row (NUM_ROWS - 1)
+    screen_y = NUM_ROWS - 1;
+    screen_x = 0;
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
@@ -484,4 +527,37 @@ void test_interrupts(void) {
     for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
         video_mem[i << 1]++;
     }
+}
+
+long read(unsigned int fd, char *buf, size_t count) {
+    long ret;
+    asm volatile ("INT 0x80"
+        : "=a" (ret)
+        : "a" (0x03), "b" (fd), "c" (buf), "d" (count)
+        : "memory", "cc");
+    return ret;
+}
+long write(unsigned int fd, const char *buf, size_t count) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x04), "b" (fd), "c" (buf), "d" (count)
+    : "memory", "cc");
+    return ret;
+}
+long open(const char *filename, int flags) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x05), "b" (filename), "c" (flags), "d" (0)
+    : "memory", "cc");
+    return ret;
+}
+long close(unsigned int fd) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x06), "b" (fd)
+    : "memory", "cc");
+    return ret;
 }

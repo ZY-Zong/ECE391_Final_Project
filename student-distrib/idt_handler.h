@@ -4,6 +4,10 @@
 #ifndef _IDT_HANDLER_H
 #define _IDT_HANDLER_H
 
+#define SYSTEM_CALL_TABLE_SIZE   7
+
+#ifndef ASM
+
 // Defined in idt_handler.S
 extern void exception_entry_0();
 extern void exception_entry_1();
@@ -31,5 +35,7 @@ extern void interrupt_entry_8();
 
 // Defined in idt_handler.S
 extern void system_call_entry();
+
+#endif // ASM
 
 #endif // _IDT_HANDLER_H

@@ -10,6 +10,7 @@
 #include "tests.h"
 #include "idt_handler.h"
 #include "file_system.h"
+#include "terminal.h"
 
 #define RUN_TESTS
 
@@ -17,29 +18,6 @@
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags, bit)   ((flags) & (1 << (bit)))
 
-/** Keyboard related constants */
-#define KEYBOARD_IRQ_NUM   1
-#define KEYBOARD_PORT   0x60    /* keyboard scancode port */
-
-/* Keys that correspond to scan codes, using scan code set 1 for "US QWERTY" keyboard
- * REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
- */
-static const char scan_code_table[128] = {
-        0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0,      /* 0x00 - 0x0E */
-        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',      /* 0x0F - 0x1C */
-        0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',           /* 0x1D - 0x29 */
-        0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0,          /* 0x2A - 0x37 */
-        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
-};
-
-#define KEYBOARD_F1_SCANCODE 0x3B
-#define KEYBOARD_F2_SCANCODE 0x3C
-#define KEYBOARD_F3_SCANCODE 0x3D
-#define KEYBOARD_SCANCODE_PRESSED 0x80
 
 /** RTC related constants */
 #define RTC_IRQ_NUM   8
@@ -64,7 +42,6 @@ static const char scan_code_table[128] = {
 /** Function declaration */
 void idt_init();
 void rtc_init();
-void keyboard_interrupt_handler();
 void rtc_interrupt_handler();
 void rtc_restart_interrupt();
 
@@ -201,6 +178,7 @@ void entry(unsigned long magic, unsigned long addr) {
      * PIC, any other initialization stuff... */
 
     /* Init the keyboard */
+    keyboard_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
     /* Init the RTC */
@@ -217,7 +195,7 @@ void entry(unsigned long magic, unsigned long addr) {
     } else {
          init_file_system((module_t *)mbi->mods_addr);
     }
-    
+
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
@@ -312,43 +290,6 @@ extern void idt_init() {
 }
 
 /*
- * keyboard_interrupt
- *   REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
- *   DESCRIPTION: Handle the keyboard interrupts
- *   INPUTS: scan code from port 0x60
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: interrupt if necessary
- */
-void keyboard_interrupt_handler() {
-
-    cli();
-    {
-        // Get scan code from port 0x60
-        uint8_t scancode = inb(KEYBOARD_PORT);
-
-        // TODO: eliminate these function for demo of checkpoint 1
-        if (scancode == KEYBOARD_F1_SCANCODE) {  // F1
-            clear();
-#ifdef RUN_TESTS
-        } else if (scancode == KEYBOARD_F2_SCANCODE) {  // F2
-            divide_zero_test();
-        } else if (scancode == KEYBOARD_F3_SCANCODE) {  // F3
-            dereference_null_test();
-#endif
-        } else if (scancode < KEYBOARD_SCANCODE_PRESSED) {  // key press
-            if (scan_code_table[scancode] != 0) {  // printable character
-                putc(scan_code_table[scancode]);  // output the char to the console
-            }
-#ifdef RUN_TESTS
-            test1_handle_typing(scan_code_table[scancode]);
-#endif
-        }
-    }
-    sti();
-}
-
-/*
  * rtc_init
  *   REFERENCE: https://wiki.osdev.org/RTC
  *   DESCRIPTION: Initialize the real time clock
@@ -390,9 +331,6 @@ void rtc_interrupt_handler() {
                 TEST_RTC_ECHO_COUNTER);
         counter = 0;
     }
-#ifdef RUN_TESTS
-    test1_handle_rtc();
-#endif
 
     /* Get another interrupt */
     rtc_restart_interrupt();
