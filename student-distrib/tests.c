@@ -168,17 +168,18 @@ long rtc_test() {
     unsigned long freq;
     long ret;
 
-    unsigned long valid_freq[] = {4, 16, 128, 1024};
-    unsigned long invalid_freq[] = {3, 42, 8192};
+    const unsigned long valid_freq[] = {2, 4, 16, 128, 1024};
+    const unsigned long test_count = 10;
+    const unsigned long invalid_freq[] = {3, 42, 8192};
 
-    fd = open("/dev/rtc", O_RDWR);
+    fd = open("rtc");
 
     // Read from 2 Hz RTC
     printf("Waiting for 2Hz RTC...");
     if (0 == (ret = read(fd, NULL, 0))) {
-        printf("Done");
+        printf("Done\n");
     } else {
-        printf("Fail with return code %d", ret);
+        printf("Fail with return code %d\n", ret);
         result = FAIL;
     }
 
@@ -188,20 +189,29 @@ long rtc_test() {
         freq = valid_freq[i];
         printf("Setting RTC to %uHz...", freq);
         if (4 == (ret = write(fd, (char *) (&freq), 4))) {
-            printf("Done");
+            printf("Done\n");
         } else {
-            printf("Fail with return code %d", ret);
+            printf("Fail with return code %d\n", ret);
             result = FAIL;
         }
 
         // Read RTC
-        printf("Waiting for %uHz RTC...", freq);
-        if (0 == (ret = read(fd, NULL, 0))) {
-            printf("Done");
+        printf("Waiting for %uHz RTC", freq);
+        unsigned long j;
+        for (j = 0; j < test_count; j++) {
+            if (0 == (ret = read(fd, NULL, 0))) {
+                printf(".");
+            } else {
+                break;
+            }
+        }
+        if (j == test_count) {
+            printf("Done\n");
         } else {
-            printf("Fail with return code %d", ret);
+            printf("Fail with return code %d\n", ret);
             result = FAIL;
         }
+
     }
 
     // Set and read RTC for invalid frequencies
@@ -210,9 +220,9 @@ long rtc_test() {
         freq = invalid_freq[i];
         printf("Try setting RTC to %uHz...", freq);
         if (-1 == (ret = write(fd, (char *) (&freq), 4))) {
-            printf("Correct");
+            printf("Correct\n");
         } else {
-            printf("Incorrect return code %d", ret);
+            printf("Incorrect return code %d\n", ret);
             result = FAIL;
         }
     }
@@ -240,10 +250,11 @@ long terminal_test() {
     for (unsigned long i = 1; i <= 3; i++) {
         printf("Reading from terminal (%u/3) ...\n", i);
         if (-1 == (ret = read(FD_STDIN, buf, 255))) {
-            printf("Fail");
+            printf("Fail\n");
             result = FAIL;
         } else {
-            printf("... Done with size %d", ret);
+            buf[ret] = '\0';
+            printf("... Done with size %d\n, the content is:\n%s\n", ret, buf);
         }
     }
 
@@ -257,9 +268,9 @@ long terminal_test() {
     for (unsigned long i = 0; i < sizeof(valid_write_size); i++) {
         printf("Writing to terminal of size %u ...\n", valid_write_size[i]);
         if (valid_write_size[i] == (ret = write(FD_STDOUT, buf, valid_write_size[i]))) {
-            printf("... Done");
+            printf("... Done\n");
         } else {
-            printf("... Fail with return %d", ret);
+            printf("... Fail with return %d\n", ret);
             result = FAIL;
         }
     }
@@ -268,9 +279,9 @@ long terminal_test() {
     for (unsigned long i = 0; i < sizeof(invalid_write_size); i++) {
         printf("Try writing to terminal of size %u ...\n", invalid_write_size[i]);
         if (128 == (ret = write(FD_STDOUT, buf, invalid_write_size[i]))) {
-            printf("... Correct");
+            printf("... Correct\n");
         } else {
-            printf("... Incorrect with return %d", ret);
+            printf("... Incorrect with return %d\n", ret);
             result = FAIL;
         }
     }
@@ -297,7 +308,7 @@ long fs_test() {
 
     // Read root directory
 
-    if (-1 == (fd = open(".", O_RDONLY))) {
+    if (-1 == (fd = open("."))) {
         printf("Failed to open \".\"\n");
         return FAIL;
     }
@@ -325,7 +336,7 @@ long fs_test() {
 
         printf("Read %s (%u/%u)\n", test_file[i], i, sizeof(test_file));
 
-        if (-1 == (fd = open(".", O_RDONLY))) {
+        if (-1 == (fd = open((const uint8_t *) test_file[i]))) {
             printf("Failed to open %s\n", test_file[i]);
             return FAIL;
         }

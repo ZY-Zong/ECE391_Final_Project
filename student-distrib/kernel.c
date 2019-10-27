@@ -8,31 +8,15 @@
 #include "i8259.h"
 #include "debug.h"
 #include "tests.h"
-#include "idt_handler.h"
+#include "idt.h"
 #include "file_system.h"
 #include "rtc.h"
 #include "terminal.h"
 
 #define RUN_TESTS
 
-/* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags, bit)   ((flags) & (1 << (bit)))
-
-
-
-/** IDT related constants */
-#define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
-#define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard
-#define IDT_ENTRY_RTC            0x28  // the vector number of RTC
-#define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
-
-/** Function declaration */
-void idt_init();
-void rtc_init();
-void rtc_interrupt_handler();
-void rtc_restart_interrupt();
-void keyboard_interrupt_handler();
 
 extern void enable_paging();  // in boot.S
 
@@ -200,120 +184,4 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
-}
-
-/*
- * idt_init
- * This function is used to initialize IDT table and called in kernel.c.
- * Uses subroutine provided in x86_desc.h.
- * Input: None.
- * Output: None.
- * Side effect: Change the IDT table defined in x86_desc.S.
- */
-extern void idt_init() {
-
-    int i;
-
-    // Initialize 0x00 - 0x1F exception handler defined by Intel.
-    for (i = 0; i < IDT_ENTRY_INTEL; i++) {
-        idt[i].seg_selector = KERNEL_CS;
-        idt[i].dpl = 0;
-        idt[i].size = 1;
-        idt[i].present = 1;
-        idt[i].reserved0 = 0;
-        idt[i].reserved1 = 1;
-        idt[i].reserved2 = 1;
-        idt[i].reserved3 = 1;
-        idt[i].reserved4 = 0;
-    }
-    // Initialize 0x20 - 0xFF general purpose interrupt handlers
-    for (i = IDT_ENTRY_INTEL; i < NUM_VEC; i++) {
-        idt[i].seg_selector = KERNEL_CS;
-        idt[i].dpl = 0;
-        idt[i].size = 1;
-        idt[i].present = 0;
-        idt[i].reserved0 = 0;
-        idt[i].reserved1 = 1;
-        idt[i].reserved2 = 1;
-        idt[i].reserved3 = 0;
-        idt[i].reserved4 = 0;
-
-    }
-
-    // Setup exception handlers (defined in boot.S)
-    SET_IDT_ENTRY(idt[0], exception_entry_0);
-    SET_IDT_ENTRY(idt[1], exception_entry_1);
-    SET_IDT_ENTRY(idt[2], exception_entry_2);
-    SET_IDT_ENTRY(idt[3], exception_entry_3);
-    SET_IDT_ENTRY(idt[4], exception_entry_4);
-    SET_IDT_ENTRY(idt[5], exception_entry_5);
-    SET_IDT_ENTRY(idt[6], exception_entry_6);
-    SET_IDT_ENTRY(idt[7], exception_entry_7);
-    SET_IDT_ENTRY(idt[8], exception_entry_8);
-    SET_IDT_ENTRY(idt[9], exception_entry_9);
-    SET_IDT_ENTRY(idt[10], exception_entry_10);
-    SET_IDT_ENTRY(idt[11], exception_entry_11);
-    SET_IDT_ENTRY(idt[12], exception_entry_12);
-    SET_IDT_ENTRY(idt[13], exception_entry_13);
-    SET_IDT_ENTRY(idt[14], exception_entry_14);
-    // 15 is reserved by Intel
-    SET_IDT_ENTRY(idt[16], exception_entry_16);
-    SET_IDT_ENTRY(idt[17], exception_entry_17);
-    SET_IDT_ENTRY(idt[18], exception_entry_18);
-    SET_IDT_ENTRY(idt[19], exception_entry_19);
-
-    // Set keyboard handler (defined in boot.S)
-    SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
-    idt[IDT_ENTRY_KEYBOARD].present = 1;
-
-    // Set RTC handler (defined in boot.S)
-    SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], interrupt_entry_8);
-    idt[IDT_ENTRY_RTC].present = 1;
-
-    // Set system calls handler (defined in boot.S)
-    SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], system_call_entry);
-    idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
-
-    // Load IDT into IDTR
-    lidt(idt_desc_ptr);
-}
-
-/*
- * print_exception
- * DESCRIPTION: This function is used to print out the given interrupt number
- *              in the interrupt descriptor table.
- * Input: vec_num - vector number of the interrupt/exception
- * Output: None.
- * Side effect: Print the interrupt/exception message to screen.
- */
-void print_exception(uint32_t vec_num) {
-    clear();
-    reset_cursor();
-    printf("EXCEPTION %u OCCUR!\n", vec_num);
-    printf("------------------------ BLUE SCREEN ------------------------");
-    while (1) {}   // put kernel into infinite loop
-}
-
-/*
- * print_system_call
- * DESCRIPTION: This function is used to print out %EAX, %EBX, %ECX, %EDX
- *              to present system calls temporarily.
- * Input: None.
- * Output: None.
- * Side effect: Print the %EAX, %EBX, %ECX, %EDX value to screen.
- */
-void print_system_call() {
-    long eax_val, ebx_val, ecx_val, edx_val; // Variables used to store the registers.
-    asm volatile ("                \n \
-            movl    %%eax, %0      \n \
-            movl    %%ebx, %1      \n \
-            movl    %%ecx, %2      \n \
-            movl    %%edx, %3      \n \
-            "
-    : "=r"(eax_val), "=r"(ebx_val), "=r"(ecx_val), "=r"(edx_val)
-    :
-    : "memory", "cc"
-    );
-    printf("--------------- System Call ---------------\nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
-           eax_val, ebx_val, ecx_val, edx_val);
 }

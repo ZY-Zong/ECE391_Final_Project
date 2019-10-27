@@ -3,6 +3,7 @@
 //
 #include "lib.h"
 #include "terminal.h"
+
 /*
  * keyboard_interrupt
  *   REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes

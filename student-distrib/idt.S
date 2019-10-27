@@ -1,7 +1,9 @@
-/* idt_handler.S - Low-level handlers for exceptions, interrupts and system calls
+/* idt.S - Low-level handlers for exceptions, interrupts and system calls
 */
 
 #include "idt_handler.h"
+
+########## Common macros ##########
 
 .macro SAVE_ALL_REGS  # save all register onto the stack
 	pushf
@@ -103,7 +105,6 @@ INTERRUPT_ENTRY 8, rtc_interrupt_handler
 
 .globl system_call_entry
 system_call_entry:
-    # TODO: make use of arguments of system call
     pushf
     pushl %ebp
     pushl %edi

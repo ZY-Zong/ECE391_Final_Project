@@ -59,7 +59,7 @@ int terminal_read(unsigned int fd, char __user *buf, size_t count);
 int terminal_write(unsigned int fd, const char __user *buf, size_t count);
 
 // Declaration of keyboard related functions
-extern void keyboard_init();
+void keyboard_init();
 void keyboard_interrupt_handler();
 void handle_scan_code(uint8_t scan_code);
 
