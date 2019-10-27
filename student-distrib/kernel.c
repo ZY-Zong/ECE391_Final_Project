@@ -9,6 +9,7 @@
 #include "debug.h"
 #include "tests.h"
 #include "idt_handler.h"
+#include "file_system.h"
 #include "rtc.h"
 #include "terminal.h"
 
@@ -166,6 +167,7 @@ void entry(unsigned long magic, unsigned long addr) {
      * PIC, any other initialization stuff... */
 
     /* Init the keyboard */
+    keyboard_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
     /* Init the RTC */
@@ -175,6 +177,14 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Enable interrupts */
     idt_init();
+
+    /* init the file system */
+    if (mbi->mods_count == 0){
+        printf("WARNING: no file system loaded\n");
+    } else {
+         init_file_system((module_t *)mbi->mods_addr);
+    }
+
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close

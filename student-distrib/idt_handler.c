@@ -26,18 +26,18 @@ long sys_not_implemented() {
     return -ENOSYS;
 }
 
-asmlinkage long sys_read(unsigned int fd, char __user *buf, size_t count) {
+asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
 
 }
 
-asmlinkage long sys_write(unsigned int fd, const char __user *buf, size_t count) {
+asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
 
 }
 
-asmlinkage long sys_open(const char __user *filename, int flags, int mode) {
+asmlinkage int32_t sys_open(const uint8_t* filename) {
 
 }
 
-asmlinkage long sys_close(unsigned int fd) {
+asmlinkage int32_t sys_close(int32_t fd) {
 
 }

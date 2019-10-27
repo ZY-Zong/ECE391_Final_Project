@@ -39,3 +39,56 @@
         this version may work, may init them in x86_desc.S for optimize
         change the init into static 
         done 
+
+2019.10.25
+    cp2: file system 
+    figuring what to do 
+    look at kernel.c 
+
+2019.10.26
+    I am given a file system mp3.img and loaded at boot (entry())
+    looking at kernel.c to find the address 
+        guess: contian in addr that is passed into entry as para 
+        elf? a kind of executable file.
+            I think it is not related for my file system 
+        possible thing that is file system:
+            modules: there are mods_count of them 
+                the module is just a struct desicrbing the mod 
+                so it is fix size sizeof(module), thus can use pointer althematic to ++
+                however, the actual module in memory may have different size 
+                which is stored in struct module 
+                how do I know which is which....
+            mmap
+                %#x means add "0x" in front of the number 
+                it is just the memory range and loading anything 
+        the filesys_img may be loaded in one of the module 
+        figuring which module is the file system 
+            need to boot the OS and see 
+            It seems that there is only one module 
+            just pass the first module, 
+                if it is wrong, just need to change this 
+    see how ls behave 
+        may need to change some of the syscall for file system ?
+    look at how file system works 
+    begin to write the functions
+        init_file_system()
+            need to store the system with global variable 
+        file_open()
+            what is initialize?
+            maybe not needed in this case 
+            if it do the job of init_file_system(), what will dir_open() do..
+            I think all of them do nothing in the our OS 
+        add public function header
+        fill in all the headers tomorrow
+
+2019.10.27
+    countinue with the functions 
+        open close may be used in cp3, for fd 
+        init_file_system()
+            save inodes pointer and data block pointer 
+        public functions 
+            read_data()
+                need to be careful about boundary 
+        file and directory functions 
+            ... don't know why I need them
+                maybe for the funture use 

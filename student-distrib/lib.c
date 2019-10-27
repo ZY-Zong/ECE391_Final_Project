@@ -529,31 +529,34 @@ void test_interrupts(void) {
     }
 }
 
-long read(unsigned int fd, char *buf, size_t count) {
-    long ret;
-    asm volatile ("INT 0x80"
-        : "=a" (ret)
-        : "a" (0x03), "b" (fd), "c" (buf), "d" (count)
-        : "memory", "cc");
-    return ret;
-}
-long write(unsigned int fd, const char *buf, size_t count) {
+int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT 0x80"
     : "=a" (ret)
-    : "a" (0x04), "b" (fd), "c" (buf), "d" (count)
+    : "a" (0x03), "b" (fd), "c" (buf), "d" (nbytes)
     : "memory", "cc");
     return ret;
 }
-long open(const char *filename, int flags) {
+
+int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT 0x80"
     : "=a" (ret)
-    : "a" (0x05), "b" (filename), "c" (flags), "d" (0)
+    : "a" (0x04), "b" (fd), "c" (buf), "d" (nbytes)
     : "memory", "cc");
     return ret;
 }
-long close(unsigned int fd) {
+
+int32_t open(const uint8_t* filename) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x05), "b" (filename)
+    : "memory", "cc");
+    return ret;
+}
+
+int32_t close(int32_t fd) {
     long ret;
     asm volatile ("INT 0x80"
     : "=a" (ret)
