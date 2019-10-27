@@ -22,6 +22,8 @@ int is_power_of_two (int32_t input);
  *   SIDE EFFECTS: Frequency is set to be default 1024 Hz
  */
 void rtc_init() {
+    rtc_interrupt_occured = 0;
+
     // Turn on IRQ 8, default frequency is 1024 Hz
 
     cli();  // disable interrupts
@@ -95,14 +97,14 @@ void rtc_restart_interrupt() {
 /*
  * rtc_open
  *   DESCRIPTION:
- *   INPUTS: none
+ *   INPUTS: ignored
  *   OUTPUTS: none
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: none
  */
 int32_t rtc_open(const char *filename, int flags, int mode) {
     /* Set frequency to 2Hz when open */
-    rate = RTC_MAX_RATE;    // frequency = 32768 >> (rate - 1) => 2
+    rate = RTC_MAX_RATE;    // frequency = 32768 >> (rate - 1) => 2 Hz
 
     return 0;
 }
@@ -110,9 +112,7 @@ int32_t rtc_open(const char *filename, int flags, int mode) {
 /*
  * rtc_read
  *   DESCRIPTION: Read data from RTC
- *   INPUTS: fd
- *           buf
- *           count
+ *   INPUTS: ignored
  *   OUTPUTS: none
  *   RETURN VALUE: 0 if success
  *   SIDE EFFECTS: wait for the interrupt if it didn't happen
@@ -123,6 +123,7 @@ int32_t rtc_read(unsigned int fd, char *buf, size_t count) {
 
     /* Wait for the interrupt occur */
     while (!rtc_interrupt_occured) {}
+
     return 0;
 }
 
@@ -135,10 +136,10 @@ int32_t rtc_read(unsigned int fd, char *buf, size_t count) {
  *                 -1 if fail
  *   SIDE EFFECTS: none
  */
-int32_t rtc_write(unsigned int fd, const int32_t *buf, size_t count) {
+int32_t rtc_write(unsigned int fd, const char *buf, size_t count) {
     if (buf == NULL) {return -1;}
 
-    int32_t frequency = *buf;
+    int32_t frequency = (int32_t)(*buf);
     int power = is_power_of_two(frequency);
 
     /* If frequency to be set is not power of 2, fail */
@@ -148,7 +149,7 @@ int32_t rtc_write(unsigned int fd, const int32_t *buf, size_t count) {
     }
 
     int rate_t = (RTC_MAX_RATE - power) + 1; // frequency = 32768 >> (rate - 1)
-    if (rate_t < RTC_MIN_RATE) {return -1;} // RTC allows interrupt frequency up to 8192 Hz
+    if (rate_t < RTC_MIN_RATE) {return -1;} // RTC allows interrupt frequency up to 1024 Hz
 
     rate = rate_t;
     return 0;
@@ -168,7 +169,7 @@ int is_power_of_two (int32_t input) {
     unsigned int remainder = (unsigned int)input;
 
     while (remainder > 1) {
-
+        /* Not power of two */
         if ((remainder & 0x01) == 1) {
             return -1;
         }
@@ -182,7 +183,7 @@ int is_power_of_two (int32_t input) {
 /*
  * rtc_close
  *   DESCRIPTION: Close RTC file descriptor
- *   INPUTS: none
+ *   INPUTS: ignored
  *   OUTPUTS: none
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: none
