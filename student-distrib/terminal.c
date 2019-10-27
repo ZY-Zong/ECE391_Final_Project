@@ -131,7 +131,9 @@ int terminal_close(unsigned int fd) {
  * Side Effect: Modify both keyboard's static variables.
  */
 int terminal_read(unsigned int fd, char __user *buf, size_t count) {
-    int i, min;
+    int i; // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
+    int min; // the minimum of count and keyboard_buf_size
+    int j; // counter
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
@@ -143,23 +145,23 @@ int terminal_read(unsigned int fd, char __user *buf, size_t count) {
             min = count;
         }
         // Copy the number of bytes required from keyboard to the user buffer
-        for (i = 0; i < min; i++) {
+        for (i = 0; (i < min) && ('\n' != keyboard_buf[i]); i++) {
             buf[i] = keyboard_buf[i];
         }
         // Reset the keyboard buffer
-        if (min == keyboard_buf_counter) {
+        if (i == keyboard_buf_counter) {
             // If we read all the characters in the keyboard buffer, just clean up the keyboard buffer
             keyboard_buf_counter = 0; // cleans up the keyboard buffer
         } else {
             // If we just read part of the buffer, we need to retain the rest of unread characters.
-            for (i = min; i < keyboard_buf_counter; i++) {
-                keyboard_buf[i - min] = keyboard_buf[i];
+            for (j = i; j < keyboard_buf_counter; j++) {
+                keyboard_buf[j - i] = keyboard_buf[j];
             }
-            keyboard_buf_counter -= min;
+            keyboard_buf_counter -= i;
         }
     }
     sti();
-    return min;
+    return i;
 }
 /*
  * terminal_write
