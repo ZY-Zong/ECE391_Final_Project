@@ -172,7 +172,7 @@ long rtc_test() {
     const unsigned long test_count = 10;
     const unsigned long invalid_freq[] = {3, 42, 8192};
 
-    fd = open("rtc");
+    fd = open((uint8_t *) "rtc");
 
     // Read from 2 Hz RTC
     printf("Waiting for 2Hz RTC...");
@@ -307,12 +307,10 @@ long fs_test() {
     const char *test_file[] = {""};
 
     // Read root directory
-
-    if (-1 == (fd = open("."))) {
+    if (-1 == (fd = open((uint8_t *) "."))) {
         printf("Failed to open \".\"\n");
         return FAIL;
     }
-
     while (0 != (ret = read(fd, buf, buf_size - 1))) {
         if (-1 == ret) {
             printf("Failed to read \".\"\n");
@@ -324,6 +322,7 @@ long fs_test() {
             return FAIL;
         }
     }
+    // TODO: it's not correct to directly read the directory file
 
     close(fd);
 

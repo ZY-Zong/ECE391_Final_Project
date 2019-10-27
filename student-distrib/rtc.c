@@ -10,7 +10,7 @@ unsigned int TEST_RTC_ECHO_COUNTER;
 static int32_t rate;
 
 /* Helper function to check whether the input is power of two */
-int is_power_of_two (int32_t input);
+int is_power_of_two(int32_t input);
 
 /*
  * rtc_init
@@ -50,18 +50,9 @@ void rtc_init() {
  *   SIDE EFFECTS: none
  */
 void rtc_interrupt_handler() {
+
     /* Set flag to 1 */
     rtc_interrupt_occured = 1;
-
-    static unsigned int counter = 0;
-    if (++counter >= TEST_RTC_ECHO_COUNTER) {
-        printf("------------------------ Receive %u RTC interrupts ------------------------\n",
-               TEST_RTC_ECHO_COUNTER);
-        counter = 0;
-    }
-#ifdef RUN_TESTS
-    test1_handle_rtc();
-#endif
 
     rate &= 0x0F; // rate must be in the range [2,15]
 
@@ -102,7 +93,7 @@ void rtc_restart_interrupt() {
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: none
  */
-int32_t rtc_open(const char *filename, int flags, int mode) {
+int32_t rtc_open(const uint8_t* filename) {
     /* Set frequency to 2Hz when open */
     rate = RTC_MAX_RATE;    // frequency = 32768 >> (rate - 1) => 2 Hz
 
@@ -117,29 +108,31 @@ int32_t rtc_open(const char *filename, int flags, int mode) {
  *   RETURN VALUE: 0 if success
  *   SIDE EFFECTS: wait for the interrupt if it didn't happen
  */
-int32_t rtc_read(unsigned int fd, char *buf, size_t count) {
+int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes) {
+
     /* Set flag to 0 */
     rtc_interrupt_occured = 0;
 
     /* Wait for the interrupt occur */
+    // TODO: may need cli and sti
     while (!rtc_interrupt_occured) {}
 
     return 0;
 }
 
-/*
- * rtc_write
- *   DESCRIPTION: Write data to RTC
- *   INPUTS: buf -- pointer to an integer indicating the RTC rate
- *   OUTPUTS: none
- *   RETURN VALUE: 0 if success
- *                 -1 if fail
- *   SIDE EFFECTS: none
+/**
+ * Write data to RTC
+ * @param fd      Ignore
+ * @param buf     pointer to an integer indicating the RTC rate
+ * @param nbytes  Must be 4
+ * @return        0 on success, -1 on failure
  */
-int32_t rtc_write(unsigned int fd, const char *buf, size_t count) {
-    if (buf == NULL) {return -1;}
+int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes) {
 
-    int32_t frequency = (int32_t)(*buf);
+    if (buf == NULL) return -1;
+    if (nbytes != 4) return -1;
+
+    int32_t frequency =  *((int32_t *) buf);
     int power = is_power_of_two(frequency);
 
     /* If frequency to be set is not power of 2, fail */
@@ -148,8 +141,8 @@ int32_t rtc_write(unsigned int fd, const char *buf, size_t count) {
         return -1;
     }
 
-    int rate_t = (RTC_MAX_RATE - power) + 1; // frequency = 32768 >> (rate - 1)
-    if (rate_t < RTC_MIN_RATE) {return -1;} // RTC allows interrupt frequency up to 1024 Hz
+    int rate_t = (RTC_MAX_RATE - power) + 1;  // frequency = 32768 >> (rate - 1)
+    if (rate_t < RTC_MIN_RATE) { return -1; }  // RTC allows interrupt frequency up to 1024 Hz
 
     rate = rate_t;
     return 0;
@@ -164,9 +157,9 @@ int32_t rtc_write(unsigned int fd, const char *buf, size_t count) {
  *                 the value of the power otherwise
  *   SIDE EFFECTS: none
  */
-int is_power_of_two (int32_t input) {
+int is_power_of_two(int32_t input) {
     int power = 0;
-    unsigned int remainder = (unsigned int)input;
+    unsigned int remainder = (unsigned int) input;
 
     while (remainder > 1) {
         /* Not power of two */
@@ -175,7 +168,7 @@ int is_power_of_two (int32_t input) {
         }
 
         remainder = remainder >> 1;
-        power ++;
+        power++;
     }
     return power;
 }
@@ -188,7 +181,7 @@ int is_power_of_two (int32_t input) {
  *   RETURN VALUE: 0
  *   SIDE EFFECTS: none
  */
-int32_t rtc_close(unsigned int fd) {
+int32_t rtc_close(int32_t fd) {
     return 0;
 }
 

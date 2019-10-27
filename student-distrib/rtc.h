@@ -6,7 +6,6 @@
 
 #include "types.h"
 
-/** RTC related constants */
 #define RTC_IRQ_NUM   8
 #define RTC_DEFAULT_FREQUENCY   1024
 #define RTC_MAX_FREQUENCY   32768
@@ -32,10 +31,10 @@ void rtc_interrupt_handler();
 void rtc_restart_interrupt();
 
 /* RTC drivers */
-int32_t rtc_open(const char *filename, int flags, int mode);
-int32_t rtc_read(unsigned int fd, char *buf, size_t count);
-int32_t rtc_write(unsigned int fd, const char *buf, size_t count);
-int32_t rtc_close(unsigned int fd);
+int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes);
+int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes);
+int32_t rtc_open(const uint8_t* filename);
+int32_t rtc_close(int32_t fd);
 
 #endif // RTC_H
 
