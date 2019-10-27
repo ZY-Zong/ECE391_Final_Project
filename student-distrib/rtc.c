@@ -7,7 +7,6 @@
 #include "i8259.h"
 
 unsigned int TEST_RTC_ECHO_COUNTER;
-unsigned int rtc_counter = 0;
 static int32_t rate;
 
 /* Helper function to check whether the input is power of two */
@@ -49,7 +48,8 @@ void rtc_init() {
  *   SIDE EFFECTS: none
  */
 void rtc_interrupt_handler() {
-    rtc_counter++;
+    /* Set flag to 1 */
+    rtc_interrupt_occured = 1;
 
     static unsigned int counter = 0;
     if (++counter >= TEST_RTC_ECHO_COUNTER) {
@@ -63,6 +63,7 @@ void rtc_interrupt_handler() {
 
     rate &= 0x0F; // rate must be in the range [2,15]
 
+    /* Set the rate of periodic interrupt */
     cli(); // disable interrupts
     {
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT); // set index to register A, disable NMI
@@ -147,7 +148,7 @@ int32_t rtc_write(unsigned int fd, const int32_t *buf, size_t count) {
     }
 
     int rate_t = (RTC_MAX_RATE - power) + 1; // frequency = 32768 >> (rate - 1)
-    if (rate_t < 3) {return -1;} // RTC allows interrupt frequency up to 8192 Hz
+    if (rate_t < RTC_MIN_RATE) {return -1;} // RTC allows interrupt frequency up to 8192 Hz
 
     rate = rate_t;
     return 0;
@@ -180,10 +181,10 @@ int is_power_of_two (int32_t input) {
 
 /*
  * rtc_close
- *   DESCRIPTION: Close
+ *   DESCRIPTION: Close RTC file descriptor
  *   INPUTS: none
  *   OUTPUTS: none
- *   RETURN VALUE: none
+ *   RETURN VALUE: 0
  *   SIDE EFFECTS: none
  */
 int32_t rtc_close(unsigned int fd) {
