@@ -1,4 +1,4 @@
-/* idt.S - Kernel functions for exceptions, interrupts and system calls
+/* idt_asm.S - Kernel functions for exceptions, interrupts and system calls
 */
 
 #include "idt.h"
@@ -40,7 +40,7 @@ void idt_init() {
 
     }
 
-    // Setup exception handlers (defined in idt.S)
+    // Setup exception handlers (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[0], exception_entry_0);
     SET_IDT_ENTRY(idt[1], exception_entry_1);
     SET_IDT_ENTRY(idt[2], exception_entry_2);
@@ -62,7 +62,7 @@ void idt_init() {
     SET_IDT_ENTRY(idt[19], exception_entry_19);
     SET_IDT_ENTRY(idt[20], exception_entry_30);
 
-    // Set keyboard handler (defined in idt.S)
+    // Set keyboard handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
     idt[IDT_ENTRY_KEYBOARD].present = 1;
 
@@ -70,7 +70,7 @@ void idt_init() {
     SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], interrupt_entry_8);
     idt[IDT_ENTRY_RTC].present = 1;
 
-    // Set system calls handler (defined in idt.S)
+    // Set system calls handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], system_call_entry);
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
 
@@ -134,7 +134,7 @@ asmlinkage long sys_not_implemented() {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
-
+    return 0;
 }
 
 /**
@@ -146,7 +146,7 @@ asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
-
+    return 0;
 }
 
 /**
@@ -156,7 +156,7 @@ asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_open(const uint8_t* filename) {
-
+    return 0;
 }
 
 /**
@@ -166,5 +166,5 @@ asmlinkage int32_t sys_open(const uint8_t* filename) {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_close(int32_t fd) {
-
+    return 0;
 }

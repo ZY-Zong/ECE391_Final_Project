@@ -191,7 +191,7 @@ void putc(uint8_t c) {
             if (0 == screen_y) { // At the top left corner of the screen
                 return;
             } else { // Originally at the start of a new line, now at the end of last line
-                screen_x == NUM_COLS - 1;
+                screen_x = NUM_COLS - 1;
                 screen_y--;
             }
         } else { // Normal cases for backspace
@@ -531,7 +531,7 @@ void test_interrupts(void) {
 
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     long ret;
-    asm volatile ("INT 0x80"
+    asm volatile ("INT $0x80"
     : "=a" (ret)
     : "a" (0x03), "b" (fd), "c" (buf), "d" (nbytes)
     : "memory", "cc");
@@ -540,7 +540,7 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
 
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
     long ret;
-    asm volatile ("INT 0x80"
+    asm volatile ("INT $0x80"
     : "=a" (ret)
     : "a" (0x04), "b" (fd), "c" (buf), "d" (nbytes)
     : "memory", "cc");
@@ -549,7 +549,7 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
 
 int32_t open(const uint8_t* filename) {
     long ret;
-    asm volatile ("INT 0x80"
+    asm volatile ("INT $0x80"
     : "=a" (ret)
     : "a" (0x05), "b" (filename)
     : "memory", "cc");
@@ -558,7 +558,7 @@ int32_t open(const uint8_t* filename) {
 
 int32_t close(int32_t fd) {
     long ret;
-    asm volatile ("INT 0x80"
+    asm volatile ("INT $0x80"
     : "=a" (ret)
     : "a" (0x06), "b" (fd)
     : "memory", "cc");

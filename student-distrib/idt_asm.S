@@ -1,9 +1,10 @@
-/* idt.S - Low-level handlers for exceptions, interrupts and system calls
+/* idt_asm.S - Low-level handlers for exceptions, interrupts and system calls
 */
 
-#include "idt_handler.h"
+#define ASM     1
+#include "idt.h"
 
-########## Common macros ##########
+/* Common macros */
 
 .macro SAVE_ALL_REGS  # save all register onto the stack
 	pushf
@@ -28,7 +29,7 @@
 .endm
 
 
-########## Low-level handlers (entry points) for exceptions ##########
+/* Low-level handlers (entry points) for exceptions */
 
 # Macro for generating code of exception entries
 .macro EXCEPTION_ENTRY n, func
@@ -71,37 +72,37 @@ EXCEPTION_ENTRY_WITH_ERRCODE 11, print_exception
 EXCEPTION_ENTRY_WITH_ERRCODE 12, print_exception
 EXCEPTION_ENTRY_WITH_ERRCODE 13, print_exception
 EXCEPTION_ENTRY_WITH_ERRCODE 14, print_exception
-# 15 is reserved by Intel
+/* 15 is reserved by Intel */
 EXCEPTION_ENTRY 16, print_exception
 EXCEPTION_ENTRY_WITH_ERRCODE 17, print_exception
 EXCEPTION_ENTRY 18, print_exception
 EXCEPTION_ENTRY 19, print_exception
 EXCEPTION_ENTRY 20, print_exception
-# 21-29 are for interrupts
+/* 21-29 are for interrupts */
 EXCEPTION_ENTRY_WITH_ERRCODE 30, print_exception
 
 
-########## Low-level handlers (entry points) for interrupts ##########
+/* Low-level handlers (entry points) for interrupts */
 
-# Macro for generating code of interrupt entries
-#   EOI will be sent after return of interrupt function
+/* Macro for generating code of interrupt entries */
+/* EOI will be sent after return of interrupt function */
 .macro INTERRUPT_ENTRY irq, func
 .globl interrupt_entry_\irq
 interrupt_entry_\irq:
     SAVE_ALL_REGS
     call \func
-    pushl $\irq  # push irq number
-    call send_eoi  # defined in i8259.c/h
-    addl $4, %esp  # pop arg
+    pushl $\irq    /* push irq number */
+    call send_eoi  /* defined in i8259.c/h */
+    addl $4, %esp  /* pop arg */
     RESTORE_ALL_REGS
-    iret  # return from interrupt context
+    iret  /* return from interrupt context */
 .endm
 
 INTERRUPT_ENTRY 1, keyboard_interrupt_handler
 INTERRUPT_ENTRY 8, rtc_interrupt_handler
 
 
-########## Low-level handlers (entry points) for system calls ##########
+/* Low-level handlers (entry points) for system calls */
 
 .globl system_call_entry
 system_call_entry:
@@ -112,10 +113,10 @@ system_call_entry:
     pushl %edx
     pushl %ecx
     pushl %ebx
-    # if EAX > SYSTEM_CALL_TABLE_SIZE, call sys_not_implemented
-    cmpl %eax, $SYSTEM_CALL_TABLE_SIZE
-    jae system_call_entry_invalid
-    # if EAX valid, call corresponding system call
+    /* if EAX > SYSTEM_CALL_TABLE_SIZE, call sys_not_implemented */
+    cmpl $SYSTEM_CALL_TABLE_SIZE, %eax
+    jbe system_call_entry_invalid
+    /* if EAX valid, call corresponding system call */
     call *system_call_table(%eax)
     jmp system_call_entry_done
 system_call_entry_invalid:
@@ -128,13 +129,13 @@ system_call_entry_done:
     popl %edi
     popl %ebp
     popf
-    iret  # return from interrupt context
+    iret  /* return from interrupt context */
 
 system_call_table:
-    .long sys_not_implemented  # 0
+    .long sys_not_implemented  /* 0 */
     .long sys_not_implemented
     .long sys_not_implemented
     .long sys_read
     .long sys_write
-    .long sys_open             # 5
+    .long sys_open             /* 5 */
     .long sys_close

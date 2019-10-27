@@ -1,8 +1,51 @@
 //
 // Created by qig2 on 10/26/2019.
 //
-#include "lib.h"
 #include "terminal.h"
+
+#define KEYBOARD_PORT   0x60    /* keyboard scancode port */
+#define KEYBOARD_BUF_SIZE 128
+#define KEYBOARD_FLAG_SIZE 128
+#define CTRL_PRESS 0x1D
+#define CTRL_RELEASE 0x9D
+#define LEFT_SHIFT_PRESS 0x2A
+#define LEFT_SHIFT_RELEASE 0xAA
+#define RIGHT_SHIFT_PRESS 0x36
+#define RIGHT_SHIFT_RELEASE 0xB6
+
+/* Keys that correspond to scan codes, using scan code set 1 for "US QWERTY" keyboard
+ * REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
+ * TODO: Not handled keys: Esc, Tab, right ctrl, Caps.
+ */
+static const char scan_code_table[128] = {
+        0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',      /* 0x00 - 0x0E */
+        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',      /* 0x0F - 0x1C */
+        0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',           /* 0x1D - 0x29 */
+        0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0,          /* 0x2A - 0x37 */
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
+};
+static const char shift_scan_code_table[128] = {
+        0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',      /* 0x00 - 0x0E */
+        0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',      /* 0x0F - 0x1C */
+        0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '\"', '~',           /* 0x1D - 0x29 */
+        0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, 0,          /* 0x2A - 0x37 */
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
+};
+
+// Array to record what keys has been pressed currently
+static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
+
+// Keyboard buffer of size 128 and a counter to store the current position in the buffer
+static char keyboard_buf[KEYBOARD_BUF_SIZE];
+static uint8_t keyboard_buf_counter;
 
 /*
  * keyboard_interrupt
@@ -140,7 +183,7 @@ int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes) {
         }
         // Copy the number of bytes required from keyboard to the user buffer
         for (i = 0; (i < min) && ('\n' != keyboard_buf[i]); i++) {
-            buf[i] = keyboard_buf[i];
+            ((char *) buf)[i] = keyboard_buf[i];
         }
         // Reset the keyboard buffer
         if (i == keyboard_buf_counter) {

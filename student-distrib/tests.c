@@ -172,6 +172,9 @@ long rtc_test() {
     const unsigned long test_count = 10;
     const unsigned long invalid_freq[] = {3, 42, 8192};
 
+    unsigned long i;
+    unsigned long j;
+
     fd = open((uint8_t *) "rtc");
 
     // Read from 2 Hz RTC
@@ -184,7 +187,7 @@ long rtc_test() {
     }
 
     // Set and read RTC for valid frequencies
-    for (unsigned long i = 0; i < sizeof(valid_freq); i++) {
+    for (i = 0; i < sizeof(valid_freq); i++) {
         // Set RTC
         freq = valid_freq[i];
         printf("Setting RTC to %uHz...", freq);
@@ -197,7 +200,6 @@ long rtc_test() {
 
         // Read RTC
         printf("Waiting for %uHz RTC", freq);
-        unsigned long j;
         for (j = 0; j < test_count; j++) {
             if (0 == (ret = read(fd, NULL, 0))) {
                 printf(".");
@@ -215,7 +217,7 @@ long rtc_test() {
     }
 
     // Set and read RTC for invalid frequencies
-    for (unsigned long i = 0; i < sizeof(invalid_freq); i++) {
+    for (i = 0; i < sizeof(invalid_freq); i++) {
         // Set RTC
         freq = invalid_freq[i];
         printf("Try setting RTC to %uHz...", freq);
@@ -242,12 +244,13 @@ long terminal_test() {
     long result = PASS;
     char buf[256];
     unsigned long ret;
+    unsigned long i;
 
     size_t valid_write_size[] = {16, 128};
     size_t invalid_write_size[] = {200};
 
     // Test reading
-    for (unsigned long i = 1; i <= 3; i++) {
+    for (i = 1; i <= 3; i++) {
         printf("Reading from terminal (%u/3) ...\n", i);
         if (-1 == (ret = read(FD_STDIN, buf, 255))) {
             printf("Fail\n");
@@ -259,13 +262,13 @@ long terminal_test() {
     }
 
     // Fill buf[] with characters
-    for (unsigned long i = 0; i < 255; i++) {
+    for (i = 0; i < 255; i++) {
         buf[i] = '-';
     }
     buf[255] = '\0';
 
     // Test valid write
-    for (unsigned long i = 0; i < sizeof(valid_write_size); i++) {
+    for (i = 0; i < sizeof(valid_write_size); i++) {
         printf("Writing to terminal of size %u ...\n", valid_write_size[i]);
         if (valid_write_size[i] == (ret = write(FD_STDOUT, buf, valid_write_size[i]))) {
             printf("... Done\n");
@@ -276,7 +279,7 @@ long terminal_test() {
     }
 
     // Test invalid write
-    for (unsigned long i = 0; i < sizeof(invalid_write_size); i++) {
+    for (i = 0; i < sizeof(invalid_write_size); i++) {
         printf("Try writing to terminal of size %u ...\n", invalid_write_size[i]);
         if (128 == (ret = write(FD_STDOUT, buf, invalid_write_size[i]))) {
             printf("... Correct\n");
@@ -296,15 +299,15 @@ long terminal_test() {
 long fs_test() {
     TEST_HEADER;
 
-    long result = PASS;
-
     unsigned long fd;
     const size_t buf_size = 23;
     char buf[buf_size];
     unsigned long ret;
 
     // TODO: add some test files
-    const char *test_file[] = {""};
+    const char *test_file[] = {};
+
+    unsigned long i;
 
     // Read root directory
     if (-1 == (fd = open((uint8_t *) "."))) {
@@ -327,7 +330,7 @@ long fs_test() {
     close(fd);
 
     // Test reading files
-    for (unsigned long i = 0; i < sizeof(test_file); i++) {
+    for (i = 0; i < sizeof(test_file); i++) {
 
         // TODO: replace with API of terminal driver
         clear();
