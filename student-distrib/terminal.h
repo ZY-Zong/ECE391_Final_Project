@@ -4,6 +4,7 @@
 
 #ifndef TERMINAL_H
 #define TERMINAL_H
+#include "linkage.h"
 /** Keyboard related constants */
 #define KEYBOARD_IRQ_NUM   1
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
@@ -50,15 +51,12 @@ static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
 static char keyboard_buf[KEYBOARD_BUF_SIZE];
 static uint8_t keyboard_buf_counter;
 
-// Keyboard buffer of size 128 and a counter to store the current position in the buffer
-static char terminal_buf[KEYBOARD_BUF_SIZE];
-static uint8_t terminal_buf_counter;
 
 // System call interfaces for terminal
-int terminal_open();
-int terminal_close();
-int terminal_read();
-int terminal_write();
+int terminal_open(const char __user *filename, int flags, int mode);
+int terminal_close(unsigned int fd);
+int terminal_read(unsigned int fd, char __user *buf, size_t count);
+int terminal_write(unsigned int fd, const char __user *buf, size_t count);
 
 // Declaration of keyboard related functions
 extern void keyboard_init();

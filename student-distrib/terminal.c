@@ -47,6 +47,7 @@ void keyboard_interrupt_handler() {
  * Input: scan_code - scan code from the keyboard
  * Output: None.
  * Side Effect: Modify the keyboard buffer.
+ * Assumption: If the keyboard buffer is full, just discard any keystroke from the keyboard.
  */
 void handle_scan_code(uint8_t scan_code) {
     if (scan_code >= KEYBOARD_SCANCODE_PRESSED) {
@@ -64,14 +65,18 @@ void handle_scan_code(uint8_t scan_code) {
         // If shift is pressed
         if ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS])) {
             if (0 != shift_scan_code_table[scan_code]) {
-                keyboard_buf[keyboard_buf_counter] = shift_scan_code_table[scan_code];
-                keyboard_buf_counter++;
+                if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                    keyboard_buf[keyboard_buf_counter] = shift_scan_code_table[scan_code];
+                    keyboard_buf_counter++;
+                }
             }
         } else {
             // If shift is not pressed
             if (0 != scan_code_table[scan_code]) {
-                keyboard_buf[keyboard_buf_counter] = scan_code_table[scan_code];
-                keyboard_buf_counter++;
+                if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                    keyboard_buf[keyboard_buf_counter] = scan_code_table[scan_code];
+                    keyboard_buf_counter++;
+                }
             }
         }
     }
@@ -103,13 +108,7 @@ void keyboard_init() {
  * Output: 0 (Success).
  * Side Effect: Modify terminal's static variables.
  */
-int terminal_open() {
-    int i;
-    // Initialize the terminal buffer
-    for (i = 0; i < KEYBOARD_BUF_SIZE; i++) {
-        terminal_buf[i] = 0;
-    }
-    terminal_buf_counter = 0;
+int terminal_open(const char __user *filename, int flags, int mode) {
     return 0;
 }
 
@@ -120,50 +119,63 @@ int terminal_open() {
  * Output: 0 (Success).
  * Side Effect: Modify terminal's static variables.
  */
-int terminal_close() {
-    // Reset the terminal buffer
-    terminal_buf_counter = 0;
+int terminal_close(unsigned int fd) {
     return 0;
 }
 /*
  * terminal_read
- * Description: This function copies keyboard buffer to terminal buffer.
- *              It also cleans up the keyboard buffer.
+ * Description: This function copies keyboard buffer to user buffer.
+ *              It also resets the keyboard buffer.
  * Input: None.
  * Output: Returns the number of bytes read.
- * Side Effect: Modify both keyboard and terminal's static variables.
+ * Side Effect: Modify both keyboard's static variables.
  */
-int terminal_read() {
-    int i;
+int terminal_read(unsigned int fd, char __user *buf, size_t count) {
+    int i, min;
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
-        terminal_buf_counter = keyboard_buf_counter;
-        for (i = 0; i < terminal_buf_counter; i++) {
-            terminal_buf[i] = keyboard_buf[i];
+        // Calculate the number of bytes needed to copy from keyboard to the user buffer.
+        // Which is the minimum of count and keyboard_buf_size.
+        if (count >= keyboard_buf_counter) {
+            min = keyboard_buf_counter;
+        } else {
+            min = count;
         }
-        keyboard_buf_counter = 0; // cleans up the keyboard buffer
+        // Copy the number of bytes required from keyboard to the user buffer
+        for (i = 0; i < min; i++) {
+            buf[i] = keyboard_buf[i];
+        }
+        // Reset the keyboard buffer
+        if (min == keyboard_buf_counter) {
+            // If we read all the characters in the keyboard buffer, just clean up the keyboard buffer
+            keyboard_buf_counter = 0; // cleans up the keyboard buffer
+        } else {
+            // If we just read part of the buffer, we need to retain the rest of unread characters.
+            for (i = min; i < keyboard_buf_counter; i++) {
+                keyboard_buf[i - min] = keyboard_buf[i];
+            }
+            keyboard_buf_counter -= min;
+        }
     }
     sti();
-    return i;
+    return min;
 }
 /*
  * terminal_write
- * Description: This function print the terminal buffer to the screen.
- *              It also cleans up the terminal buffer.
+ * Description: This function print the user buffer to the screen.
  * Input: None.
  * Output: Returns the number of bytes printed.
- * Side Effect: Reset terminal's buffer.
+ * Side Effect: None.
  */
-int terminal_write() {
+int terminal_write(unsigned int fd, const char __user *buf, size_t count) {
     int i;
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {
-        for (i = 0; i < terminal_buf_counter; i++) {
-            putc(terminal_buf[i]);
+        for (i = 0; i < count; i++) {
+            putc(buf[i]);
         }
-        terminal_buf_counter = 0; // cleans up the terminal buffer
     }
     sti();
     return i;
