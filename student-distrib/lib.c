@@ -528,3 +528,36 @@ void test_interrupts(void) {
         video_mem[i << 1]++;
     }
 }
+
+long read(unsigned int fd, char *buf, size_t count) {
+    long ret;
+    asm volatile ("INT 0x80"
+        : "=a" (ret)
+        : "a" (0x03), "b" (fd), "c" (buf), "d" (count)
+        : "memory", "cc");
+    return ret;
+}
+long write(unsigned int fd, const char *buf, size_t count) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x04), "b" (fd), "c" (buf), "d" (count)
+    : "memory", "cc");
+    return ret;
+}
+long open(const char *filename, int flags) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x05), "b" (filename), "c" (flags), "d" (0)
+    : "memory", "cc");
+    return ret;
+}
+long close(unsigned int fd) {
+    long ret;
+    asm volatile ("INT 0x80"
+    : "=a" (ret)
+    : "a" (0x06), "b" (fd)
+    : "memory", "cc");
+    return ret;
+}

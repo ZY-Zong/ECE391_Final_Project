@@ -2,59 +2,51 @@
 #include "x86_desc.h"
 #include "lib.h"
 
+#define FD_STDIN     0
+#define FD_STDOUT    1
+
 #define PASS 1
 #define FAIL 0
 
 /* format these macros as you see fit */
-#define TEST_HEADER 	\
-	printf("[TEST %s] Running %s at %s:%d\n", __FUNCTION__, __FUNCTION__, __FILE__, __LINE__)
-#define TEST_OUTPUT(name, result)	\
-	printf("[TEST %s] Result = %s\n", name, (result) ? "PASS" : "FAIL")
+#define TEST_HEADER    \
+    printf("[TEST %s] Running %s at %s:%d\n", __FUNCTION__, __FUNCTION__, __FILE__, __LINE__)
+#define TEST_OUTPUT(name, result)    \
+    printf("[TEST %s] Result = %s\n", name, (result) ? "PASS" : "FAIL")
 
-static inline void assertion_failure(){
-	/* Use exception #15 for assertions, otherwise
-	   reserved by Intel */
-	asm volatile("int $15");
+static inline void assertion_failure() {
+    /* Use exception #15 for assertions, otherwise
+       reserved by Intel */
+    asm volatile("int $15");
 }
 
 /* Checkpoint 1 tests */
-
-/* Counters for test */
-static unsigned long test1_rtc_counter = 0;
-
-/**
- * Helper function for RTC test
- */
-void test1_handle_rtc() {
-    test1_rtc_counter++;
-    if (test1_rtc_counter > 100000) test1_rtc_counter = 0;  // avoid overflow
-}
 
 /**
  * Asserts that first 10 IDT entries are not NULL
  * @return PASS/FAIL
  */
-int idt_test() {
-	TEST_HEADER;
+long idt_test() {
+    TEST_HEADER;
 
-	int i;
-	int result = PASS;
-	for (i = 0; i < 10; ++i){
-		if ((idt[i].offset_15_00 == NULL) && 
-			(idt[i].offset_31_16 == NULL)){
-			assertion_failure();
-			result = FAIL;
-		}
-	}
+    long i;
+    long result = PASS;
+    for (i = 0; i < 10; ++i) {
+        if ((idt[i].offset_15_00 == NULL) &&
+            (idt[i].offset_31_16 == NULL)) {
+            assertion_failure();
+            result = FAIL;
+        }
+    }
 
-	return result;
+    return result;
 }
 
 /**
  * Test paging data structure
  * @return PASS or FAIL
  */
-int paging_structure_test() {
+int paging_test() {
     TEST_HEADER;
 
     int result = PASS;
@@ -82,7 +74,7 @@ int paging_structure_test() {
     }
 
     // Check kernel page directory
-    if ((kernel_page_table_t*) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
+    if ((kernel_page_table_t *) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
         printf(PRINT_ERR"Paging directory entry 0 is not correct");
         result = FAIL;
     }
@@ -92,27 +84,27 @@ int paging_structure_test() {
     }
 
     // Check kernel page table 0
-    for (i = 0; i < VIDEO_MEMORY_START_PAGE; ++i){
-        if (kernel_page_table_0.entry[i] != 0){
+    for (i = 0; i < VIDEO_MEMORY_START_PAGE; ++i) {
+        if (kernel_page_table_0.entry[i] != 0) {
             printf(PRINT_ERR"Paging table entry %d is not correct", i);
             result = FAIL;
         }
     }
 
     // Check video memory configuration
-    if ((kernel_page_table_0.entry[VIDEO_MEMORY_START_PAGE] & 0x000B8003) != 0x000B8003){
+    if ((kernel_page_table_0.entry[VIDEO_MEMORY_START_PAGE] & 0x000B8003) != 0x000B8003) {
         printf("Paging table entry for video memory is not correct");
         result = FAIL;
     }
-    for (i = VIDEO_MEMORY_START_PAGE + 1; i < KERNEL_PAGE_TABLE_SIZE; ++i){
-        if (kernel_page_table_0.entry[i] != 0){
+    for (i = VIDEO_MEMORY_START_PAGE + 1; i < KERNEL_PAGE_TABLE_SIZE; ++i) {
+        if (kernel_page_table_0.entry[i] != 0) {
             printf(PRINT_ERR"Paging table entry %d is not correct", i);
             result = FAIL;
         }
     }
 
     // Try to dereference some variables
-    int* i_ptr = &i;
+    int *i_ptr = &i;
     if (*i_ptr != i) {
         printf(PRINT_ERR"Dereference i error");
         result = FAIL;
@@ -125,7 +117,7 @@ int paging_structure_test() {
  * Try to divide 0. Cause Divide Error exception.
  * @return Should not return. Is so, FAIL
  */
-int divide_zero_test() {
+long divide_zero_test() {
     TEST_HEADER;
 
     // Set i to 0, but avoid compile warnings
@@ -145,7 +137,7 @@ int divide_zero_test() {
  * Try to dereference Null. Cause Page Fault if paging is turning on.
  * @return Should not return. Is so, FAIL
  */
-int dereference_null_test() {
+long dereference_null_test() {
     TEST_HEADER;
 
     // Set i to 0, but avoid compile warnings
@@ -153,7 +145,7 @@ int dereference_null_test() {
     i -= i;
 
     // Dereference NULL
-    unsigned long j = *((unsigned long *)i);
+    unsigned long j = *((unsigned long *) i);
 
     // To avoid compiler warnings. Should not get here
     printf("j = %u", j);
@@ -161,56 +153,224 @@ int dereference_null_test() {
     return FAIL;
 }
 
+/* Checkpoint 2 tests */
+
 /**
- * Test RTC. Return PASS after receiving 1024 RTC interrupts.
+ * Test RTC read/write.
  * @return PASS or FAIL
  */
-int rtc_test() {
+long rtc_test() {
     TEST_HEADER;
 
-    unsigned long tmp;
-    printf("Waiting for 1024 RTC interrupts...\n");
-    cli(); {
-        test1_rtc_counter = 0;
+    long result = PASS;
+
+    unsigned long fd;
+    unsigned long freq;
+    long ret;
+
+    unsigned long valid_freq[] = {4, 16, 128, 1024};
+    unsigned long invalid_freq[] = {3, 42, 8192};
+
+    fd = open("/dev/rtc", O_RDWR);
+
+    // Read from 2 Hz RTC
+    printf("Waiting for 2Hz RTC...");
+    if (0 == (ret = read(fd, NULL, 0))) {
+        printf("Done");
+    } else {
+        printf("Fail with return code %d", ret);
+        result = FAIL;
     }
-    sti();
-    while(1) {
-        cli(); {
-            tmp = test1_rtc_counter;
+
+    // Set and read RTC for valid frequencies
+    for (unsigned long i = 0; i < sizeof(valid_freq); i++) {
+        // Set RTC
+        freq = valid_freq[i];
+        printf("Setting RTC to %uHz...", freq);
+        if (4 == (ret = write(fd, (char *) (&freq), 4))) {
+            printf("Done");
+        } else {
+            printf("Fail with return code %d", ret);
+            result = FAIL;
         }
-        sti();
-        if (tmp > 1024) {
-            break;
+
+        // Read RTC
+        printf("Waiting for %uHz RTC...", freq);
+        if (0 == (ret = read(fd, NULL, 0))) {
+            printf("Done");
+        } else {
+            printf("Fail with return code %d", ret);
+            result = FAIL;
         }
     }
-    return PASS;
+
+    // Set and read RTC for invalid frequencies
+    for (unsigned long i = 0; i < sizeof(invalid_freq); i++) {
+        // Set RTC
+        freq = invalid_freq[i];
+        printf("Try setting RTC to %uHz...", freq);
+        if (-1 == (ret = write(fd, (char *) (&freq), 4))) {
+            printf("Correct");
+        } else {
+            printf("Incorrect return code %d", ret);
+            result = FAIL;
+        }
+    }
+
+    close(fd);
+
+    return result;
 }
 
 /**
- * Test for MP1
+ * Test terminal read/write. Required user interaction.
+ * @return PASS or FAIL
  */
-void test1() {
+long terminal_test() {
+    TEST_HEADER;
 
-    // Clear screen
-    clear();
-    reset_cursor();
+    long result = PASS;
+    char buf[256];
+    unsigned long ret;
 
-    TEST_OUTPUT("idt_test", idt_test());
-    TEST_OUTPUT("rtc_test", rtc_test());
-    TEST_OUTPUT("paging_structure_test", paging_structure_test());
+    size_t valid_write_size[] = {16, 128};
+    size_t invalid_write_size[] = {200};
 
-    printf("\nAll auto tests completed. Press F2 to divide 0 or F3 to dereference NULL.\n");
+    // Test reading
+    for (unsigned long i = 1; i <= 3; i++) {
+        printf("Reading from terminal (%u/3) ...\n", i);
+        if (-1 == (ret = read(FD_STDIN, buf, 255))) {
+            printf("Fail");
+            result = FAIL;
+        } else {
+            printf("... Done with size %d", ret);
+        }
+    }
+
+    // Fill buf[] with characters
+    for (unsigned long i = 0; i < 255; i++) {
+        buf[i] = '-';
+    }
+    buf[255] = '\0';
+
+    // Test valid write
+    for (unsigned long i = 0; i < sizeof(valid_write_size); i++) {
+        printf("Writing to terminal of size %u ...\n", valid_write_size[i]);
+        if (valid_write_size[i] == (ret = write(FD_STDOUT, buf, valid_write_size[i]))) {
+            printf("... Done");
+        } else {
+            printf("... Fail with return %d", ret);
+            result = FAIL;
+        }
+    }
+
+    // Test invalid write
+    for (unsigned long i = 0; i < sizeof(invalid_write_size); i++) {
+        printf("Try writing to terminal of size %u ...\n", invalid_write_size[i]);
+        if (128 == (ret = write(FD_STDOUT, buf, invalid_write_size[i]))) {
+            printf("... Correct");
+        } else {
+            printf("... Incorrect with return %d", ret);
+            result = FAIL;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Test file system
+ * @return PASS or FAIL
+ */
+long fs_test() {
+    TEST_HEADER;
+
+    long result = PASS;
+
+    unsigned long fd;
+    const size_t buf_size = 23;
+    char buf[buf_size];
+    unsigned long ret;
+
+    // TODO: add some test files
+    const char *test_file[] = {""};
+
+    // Read root directory
+
+    if (-1 == (fd = open(".", O_RDONLY))) {
+        printf("Failed to open \".\"\n");
+        return FAIL;
+    }
+
+    while (0 != (ret = read(fd, buf, buf_size - 1))) {
+        if (-1 == ret) {
+            printf("Failed to read \".\"\n");
+            return FAIL;
+        }
+        buf[ret] = '\n';
+        if (-1 == write(FD_STDOUT, buf, ret + 1)) {
+            printf("Failed to write to stdout\n");
+            return FAIL;
+        }
+    }
+
+    close(fd);
+
+    // Test reading files
+    for (unsigned long i = 0; i < sizeof(test_file); i++) {
+
+        // TODO: replace with API of terminal driver
+        clear();
+        reset_cursor();
+
+        printf("Read %s (%u/%u)\n", test_file[i], i, sizeof(test_file));
+
+        if (-1 == (fd = open(".", O_RDONLY))) {
+            printf("Failed to open %s\n", test_file[i]);
+            return FAIL;
+        }
+
+        while (0 != (ret = read(fd, buf, buf_size - 1))) {
+            if (-1 == ret) {
+                printf("Failed to read %s\n", test_file[i]);
+                close(fd);
+                return FAIL;
+            }
+            buf[ret] = '\n';
+            if (-1 == write(FD_STDOUT, buf, ret + 1)) {
+                printf("Failed to write to stdout\n");
+                close(fd);
+                return FAIL;
+            }
+        }
+
+        close(fd);
+
+        printf("Press enter to continue... %s\n", test_file[i]);
+        (void) read(FD_STDIN, buf, buf_size - 1);
+    }
+
+    return PASS;
 
 }
 
-/* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
 
 
 /* Test suite entry point */
-void launch_tests(){
-    test1();
-	// launch your tests here
+void launch_tests() {
+
+    // Clear screen
+    clear();
+    reset_cursor();
+
+    TEST_OUTPUT("idt_test", idt_test());
+    TEST_OUTPUT("paging_test", paging_test());
+    TEST_OUTPUT("rtc_test", rtc_test());
+    TEST_OUTPUT("terminal_test", terminal_test());
+    TEST_OUTPUT("fs_test", fs_test());
+
+    printf("\nTests complete. Press F2 to divide 0, F3 to dereference NULL.\n");
 }
