@@ -33,9 +33,6 @@ void keyboard_interrupt_handler() {
             if (scan_code_table[scancode] != 0) {  // printable character
                 handle_scan_code(scancode);  // output the char to the console
             }
-#ifdef RUN_TESTS
-            test1_handle_typing(scan_code_table[scancode]);
-#endif
         }
     }
     sti();

@@ -7,8 +7,8 @@
 void test1_handle_typing(char c);
 void test1_handle_rtc();
 
-int divide_zero_test();
-int dereference_null_test();
+long divide_zero_test();
+long dereference_null_test();
 
 // test launcher
 void launch_tests();

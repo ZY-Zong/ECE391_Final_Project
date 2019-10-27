@@ -322,9 +322,6 @@ void rtc_interrupt_handler() {
                 TEST_RTC_ECHO_COUNTER);
         counter = 0;
     }
-#ifdef RUN_TESTS
-    test1_handle_rtc();
-#endif
 
     /* Get another interrupt */
     rtc_restart_interrupt();
