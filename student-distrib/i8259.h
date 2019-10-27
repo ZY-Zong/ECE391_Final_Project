@@ -35,6 +35,7 @@
  * to declare the interrupt finished */
 #define EOI                 0x60
 
+/* Flag for RTC interrupt */
 volatile int rtc_interrupt_occured;
 
 /* Externally-visible functions */
