@@ -13,6 +13,7 @@
 #define RIGHT_SHIFT_PRESS 0x36
 #define RIGHT_SHIFT_RELEASE 0xB6
 #define BACKSPACE_SCAN_CODE 0x0E
+#define L_SCANCODE_PRESSED 0x26
 
 /* Keys that correspond to scan codes, using scan code set 1 for "US QWERTY" keyboard
  * REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
@@ -95,7 +96,7 @@ void handle_scan_code(uint8_t scan_code) {
         key_flags[scan_code] = 1;
 //        printf("(%x)", scan_code);
         // If Ctrl+L
-        if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[0x26]) {
+        if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[L_SCANCODE_PRESSED]) {
             clear(); // clear the screen
             reset_cursor(); // reset the cursor to up-left corner
             return;
@@ -196,15 +197,15 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     while (to_continue) {
         cli();
         {
+            // Perform full scan, in case key buffer changes in an unexpected way.
+            // For example, an backspace and an enter are pressed during two loops, we need to identify that enter.
             for (i = 0; (i < keyboard_buf_counter) && (i < nbytes); i++) {
                 if (keyboard_buf[i] == '\n') {
-                    //sti();
                     to_continue = 0;
                     break;  // exit for
                 }
             }
-            if (i == nbytes) {
-                //sti();
+            if (i == nbytes) {  // already fulfill buffer given by user, return immediately
                 to_continue = 0;
             }
         }
