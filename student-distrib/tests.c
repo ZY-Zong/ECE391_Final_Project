@@ -346,7 +346,7 @@ long fs_test() {
                 printf("buf didn't contain correct file name\n");
             }
             printf("\tfile type: %d\n", cur_file.file_type);
-            printf("\tfile size: %d\nB", get_file_size(cur_file.inode_num));
+            printf("\tfile size: %dB\n", get_file_size(cur_file.inode_num));
         }
     }
 
