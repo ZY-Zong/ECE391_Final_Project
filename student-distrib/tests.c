@@ -345,9 +345,13 @@ long fs_test() {
             if ( -1 == read_dentry_by_name((uint8_t*)buf, &cur_file)){
                 printf("buf didn't contain correct file name\n");
             }
-            printf(" file type: %d, file size: %dB\n", 
+            if (cur_file.file_type != 2 ){
+                printf(" file type: %d\n");
+            } else{
+                printf(" file type: %d, file size: %dB\n", 
                 cur_file.file_type, get_file_size(cur_file.inode_num));
-
+            }
+            
         }
     }
 
