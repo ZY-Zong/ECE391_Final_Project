@@ -130,5 +130,8 @@ int32_t local_rtc_close(int32_t fd);
 int32_t local_rtc_read(int32_t fd, void* buf, int32_t nbytes);
 int32_t local_rtc_write(int32_t fd, const void* buf, int32_t nbytes);
 
+// for test 
+int32_t get_file_size(uint32_t inode);
+
 
 #endif  // _FILE_SYSTEM_H

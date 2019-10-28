@@ -581,3 +581,13 @@ int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
 int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
     return rtc_write(fd, buf, nbytes);
 }
+
+
+int32_t get_file_size(uint32_t inode){
+    if (inode >= boot_block.inode_num){
+        printf("ERROR: get_file_size(): no such inode\n");
+        return -1;
+    }
+    return inodes[inode].length_in_bytes;
+}
+

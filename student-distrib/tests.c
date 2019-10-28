@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "x86_desc.h"
 #include "lib.h"
+#include "file_system.h"
 
 #define FD_STDIN     0
 #define FD_STDOUT    1
@@ -339,9 +340,15 @@ long fs_test() {
                 printf("Failed to write to stdout\n");
                 return FAIL;
             }
+            // Print out the file type and size  
+            dentry_t cur_file;
+            if ( -1 == read_dentry_by_name((uint8_t*)buf, &cur_file)){
+                printf("buf didn't contain correct file name\n");
+            }
+            printf("\tfile type: %d\n", cur_file.file_type);
+            printf("\tfile size: %d\nB", get_file_size(cur_file.inode_num));
         }
     }
-    // TODO: add type and size info
 
     close(fd);
 
