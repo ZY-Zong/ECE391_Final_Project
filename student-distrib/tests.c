@@ -345,8 +345,8 @@ long fs_test() {
             if ( -1 == read_dentry_by_name((uint8_t*)buf, &cur_file)){
                 printf("buf didn't contain correct file name\n");
             }
-            printf("\tfile type: %d\n", cur_file.file_type);
-            printf("\tfile size: %dB\n", get_file_size(cur_file.inode_num));
+            printf("     file type: %d\n", cur_file.file_type);
+            printf("     file size: %dB\n", get_file_size(cur_file.inode_num));
         }
     }
 
