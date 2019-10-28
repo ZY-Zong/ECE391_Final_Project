@@ -34,5 +34,12 @@ Exception after system call:
     Reason: Did not set present field of system call in the IDT.
 
 
+File system:
+    Bug 1:
+        Description: the initialization of the file system failed.
+        Reason: the initialization of file system requires a module load at boot, which is stored in somewhere in physical memory. However, if paging is turned on before that, that region of memory will be marked as un-present.
+        Way to Solve: init file system before turning on paging.
+        Difficulty to find: Median
+        Difficulty to solve: Very easy
 
 
