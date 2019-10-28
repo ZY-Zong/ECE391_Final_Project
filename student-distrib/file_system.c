@@ -27,7 +27,7 @@ static data_block_t *data_blocks = NULL;
 
 /**
  * Get free fd in opened_files[]
- * @return    Free fd, or MAX_OPEN_FILE if no available
+ * @return Free fd, or MAX_OPEN_FILE if no available
  */
 int32_t get_free_fd() {
     int fd;
@@ -40,7 +40,7 @@ int32_t get_free_fd() {
     return fd;
 }
 
-/*************************** abstract file system calls ***********************/
+/*************************** Abstract File System Calls ***********************/
 
 /**
  * Support system call: open
@@ -117,23 +117,13 @@ int32_t file_system_close(int32_t fd) {
     return ret;
 }
 
-/*
- * file_system_read()
- * support system call: read
- * call funtion corresponding to file type 
- * have different thing to read for different type of files 
- * read the things of file fd into buf 
- * INPUTS:
- * int32_t fd: the file 
- * void* buf: the output buffer 
- * int32_t nBytes: the number to Bytes to read 
- * RETURN:
- * the number of Bytes read and placed into buffer 
- * -1 for the bad fd
- * (note: 0 if offset reach the end of the file)
- * SIDE EFFECTS:
- * buf will be changed 
- * the file position filed of corresponding PCB will be changed
+/**
+ * Support system call: read(). Call function corresponding to file type
+ * @param fd        The file descriptor
+ * @param buf       The output buffer
+ * @param nbytes    The number to Bytes to read
+ * @return the number of Bytes read and placed into buffer , -1 for the bad fd,
+ *         0 if offset reach the end of the file
  */
 int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
     // check whether the file is opened 
@@ -145,19 +135,13 @@ int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
     return opened_files[fd].file_op_table_p->read(fd, buf, nbytes);
 }
 
-/*
- * file_system_write()
- * support system call: write 
- * call funtion corresponding to file type 
- * different file type have different thing to write 
- * note: this is a read only file system, if file type is dir/regular file, return -1
- * INPUTS:
- * int32_t fd: the file 
- * const void* buf: the things to write 
- * int32_t nBytes: the number of Bytes to write 
- * RETURN:
- * 0 for success 
- * -1 for fail
+/**
+ * Support system call: write(). Call function corresponding to file type.
+ * @param fd        The file descriptor
+ * @param buf       The things to write
+ * @param nbytes    The number of bytes to write
+ * @return 0 for success, -1 for fail
+ * @note This is a read only file system, if file type is dir/regular file, return -1
  */
 int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes) {
     // check whether the file is opened 
@@ -170,7 +154,7 @@ int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes) {
 }
 
 
-/***************************** public functions *********************************/
+/***************************** Public Functions *********************************/
 
 /**
  * Initialize the whole file system, usually called by kernel when init
@@ -263,19 +247,11 @@ int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry) {
     return -1;
 }
 
-/*
- * read_dentry_by_index()
- * find the directory entry in the file system with index: index 
- * and store it into *dentry
- * NOTE: in the file system boot block, the index start from 0
- * INPUTS:
- * uint32_t index: the index of the dentry 
- * dentry_t* dentry: pointer of output dentry 
- * RETURNS:
- * 0 for success 
- * -1 for no such index exist 
- * SIDE EFFECTS:
- * the *dentry will be changed
+/**
+ * Find the directory entry in the file system with index and store it into *dentry
+ * @param index     The index of the dentry
+ * @param dentry    Pointer of output dentry
+ * @return   0 for success, -1 for no such index exist
  */
 int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry) {
 
@@ -295,24 +271,15 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry) {
     return -1;
 }
 
-/*
- * read_data()
- * read length Bytes from the poition offset in the needed file 
- * the file has inode number: inode 
- * place the data read into the buffer 
- * IMPROTANT: the caller is responsible for produce enough space for the buffer 
- * INPUTS:
- * uint32_t inode: the inode number of the file to be read 
- * uint32_t offset: the position begin to be read in the file 
- * uint8_t* buf: the output buffer 
- * uint32_t length: the length to read 
- * RETURN:
- * the number of Bytes read and placed into buffer 
- * -1 for the bad inode / inode point to bad data block
- * (note: 0 if offset reach the end of the file)
- * SIDE EFFECTS:
- * the buf will be changed 
- * the offset will be changed 
+/**
+ * Read length of bytes starting from the position offset of the given file
+ * @param inode     The inode number of the file to be read
+ * @param offset    The position begin to be read in the file
+ * @param buf       The output buffer
+ * @param length    The length to read
+ * @return The number of Bytes read and placed into buffer, or
+ *         -1 for the bad inode / inode point to bad data block, 0 if offset reach the end of the file
+ * @note The caller is responsible for produce enough space for the buffer
  */
 int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length) {
 
@@ -362,16 +329,13 @@ int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length
 
 
 
-/**************************** file operatoins ****************************/
+/**************************** File Operations ****************************/
 
-/*
- * file_open()
- * get a PCB for the file and return its file descriptor number 
- *
- * INPUTS:
- * const uint8_t* filename: the name of the file to open 
- * RETURN:
- * the file descriptor (fd) of the file 
+
+/**
+ * Get a PCB for the file and return its file descriptor number
+ * @param filename    The name of the file to open
+ * @return The file descriptor (fd) of the file
  */
 int32_t file_open(const uint8_t *filename) {
 
@@ -393,32 +357,23 @@ int32_t file_open(const uint8_t *filename) {
     return fd;
 }
 
-/*
- * file_close()
- * should not be called becasue close is already handled by system call 
- * have this for consistancy
- * always report error and return -1
+/**
+ * Close a file
+ * @param fd    The descriptor of the file to be closed
+ * @return 0
  */
 int32_t file_close(int32_t fd) {
     (void) fd;  // avoid warning
     return 0;
 }
 
-/*
- * file_read()
- * read to the end of the file or the end of the buffer 
- * whichever occurs sonner 
- * INPUTS:
- * int32_t fd: the file to read
- * void* buf: the output buffer 
- * int32_t nBytes: the size of the buffer 
- * RETURN:
- * the number of Bytes read and placed into buffer 
- * -1 for the bad inode / inode point to bad data block
- * (note: 0 if offset reach the end of the file)
- * SIDE EFFECTS:
- * the buf will be changed 
- * the file position filed of corresponding PCB will be changed  
+/**
+ * Read to the end of the file or the end of the buffer whichever occurs sooner
+ * @param fd        The file to read
+ * @param buf       The output buffer
+ * @param nbytes    The size of the buffer
+ * @return the number of Bytes read and placed into buffer, or
+ *         -1 for the bad inode / inode point to bad data block, 0 if offset reach the end of the file
  */
 int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
 
@@ -436,9 +391,8 @@ int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
     return ret;
 }
 
-/*
- * file_write()
- * the file system is read only, always return -1 and report error 
+/**
+ * The file system is read only, always return -1 and report error
  */
 int32_t file_write(int32_t fd, const void *buf, int32_t nBytes) {
     // Params will not be used, avoid warning
@@ -454,14 +408,10 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nBytes) {
 
 /**************************** directory operatoins ****************************/
 
-/*
- * dir_open()
- * get a PCB for the dir and return its file descriptor number 
- *
- * INPUTS:
- * const uint8_t* filename: the name of the dir to open 
- * RETURN:
- * the file descriptor (fd) of the dir
+/**
+ * Get a PCB for the dir and return its file descriptor number
+ * @param filename    The name of the dir to open
+ * @return The file descriptor (fd) of the dir
  */
 int32_t dir_open(const uint8_t *filename) {
     (void) filename;  // no need to use, avoid warning
@@ -478,11 +428,10 @@ int32_t dir_open(const uint8_t *filename) {
     return fd;
 }
 
-/*
- * dir_close()
- * should not be called becasue close is already handled by system call 
- * have this for consistancy
- * always report error and return -1
+/**
+ * Close the dir
+ * @param fd    The file descriptor of dir to be closed
+ * @return 0
  */
 int32_t dir_close(int32_t fd) {
     (void) fd;  // avoid warning
@@ -491,11 +440,10 @@ int32_t dir_close(int32_t fd) {
 
 /*
  * dir_read()
- * read the dentries' name in current dir from index: PCB.file_position
- * report if reach the end 
+ * r
  * INPUTS: 
- * int32_t fd: the directory
- * void* buf: the output buffer 
+ * int32_t fd: t
+ * void* buf: t
  * int32_t nBytes: meaningless 
  * RETURN:
  * FILE_NAME_LENGTH if success 
@@ -504,9 +452,19 @@ int32_t dir_close(int32_t fd) {
  * the buf will be changed 
  * the file position filed of corresponding PCB will be changed  
  */
+/**
+ * Read the dentries' names in current dir from recorded file_position, report if reach the end
+ * @param fd        File descriptor to the directory
+ * @param buf       The output buffer
+ * @param nbytes    Maximal size of buf
+ * @return The bytes read, the small one of nbytes or FILE_NAME_LENGTH.
+ * @note To get the exact length of file name string, use strlen()
+ */
 int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
-    // since only one dir exist, just get from boot block 
-    // check if reach the end 
+
+    // Since only one dir exist, just get from boot block
+
+    // Check if reach the end
     if (opened_files[fd].file_position >= boot_block.dir_num) {
         printf("WARNING: dir_read(): already reach the end\n");
         return 0;
@@ -520,9 +478,12 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
     return buf_size;
 }
 
-/*
- * dir_write()
- * the file system is read only, always return -1 and report error 
+/**
+ * The file system is read only, always return -1 and report error
+ * @param fd
+ * @param buf
+ * @param nBytes
+ * @return -1
  */
 int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes) {
 
@@ -535,16 +496,11 @@ int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes) {
     return -1;
 }
 
-/******************************* extra support ***************************/
+/******************************* Extra Support ***************************/
 
-/*
- * local_rtc_open()
- * get a PCB for the RTC and return its file descriptor number 
- *
- * INPUTS:
- * const uint8_t* filename: the name of the RTC to open 
- * RETURN:
- * the file descriptor (fd) of the RTC 
+ * Get a PCB for the RTC and return its file descriptor number
+ * @param filename    The name of the RTC to open
+ * @return The file descriptor (fd) of the RTC
  */
 int32_t local_rtc_open(const uint8_t *filename) {
 
@@ -564,25 +520,42 @@ int32_t local_rtc_open(const uint8_t *filename) {
     return fd;
 }
 
-/*
- * local_rtc_close()
- * should not be called becasue close is already handled by system call 
- * have this for consistancy
- * always report error and return -1
+/**
+ * Relay close() to RTC driver
+ * @param fd    The file descriptor of RTC
+ * @return Return from rtc_close(fd)
  */
 int32_t local_rtc_close(int32_t fd) {
     return rtc_close(fd);
 }
 
+/**
+ * Relay read() to RTC driver
+ * @param fd        The file descriptor of RTC
+ * @param buf       The buffer to write to
+ * @param nbytes    The size of buf
+ * @return Return from rtc_read(fd, buf, nbytes)
+ */
 int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
     return rtc_read(fd, buf, nbytes);
 }
 
+/**
+ * Relay write() to RTC driver
+ * @param fd        The file descriptor of RTC
+ * @param buf       The buffer to write to
+ * @param nbytes    The size of buf
+ * @return Return from rtc_write(fd, buf, nbytes)
+ */
 int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
     return rtc_write(fd, buf, nbytes);
 }
 
-
+/**
+ * Get file size directly from inode
+ * @param inode    Inode index
+ * @return Length in bytes
+ */
 int32_t get_file_size(uint32_t inode){
     if (inode >= boot_block.inode_num){
         printf("ERROR: get_file_size(): no such inode\n");

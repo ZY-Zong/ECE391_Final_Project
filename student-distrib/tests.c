@@ -182,7 +182,7 @@ long rtc_test() {
     long ret;
 
     const unsigned long valid_freq[] = {2, 4, 16, 128, 1024};
-    const unsigned long base_test_count = 10;
+    const unsigned long base_test_count = 3;
     const unsigned long invalid_freq[] = {3, 42, 8192};
 
     unsigned long i;
