@@ -108,6 +108,10 @@ int32_t file_system_close(int32_t fd) {
         printf("ERROR: file_system_close(): no such fd!\n");
         return -1;
     }
+    if (opened_files[fd].flags == FD_NOT_IN_USE){
+        printf("WARNING: file_system_close(): file %d is not opened\n", fd);
+        return 0;
+    }
 
     ret = opened_files[fd].file_op_table_p->close(fd);
 
