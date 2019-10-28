@@ -46,7 +46,7 @@ static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
 
 // Keyboard buffer of size 128 and a counter to store the current position in the buffer
 static char keyboard_buf[KEYBOARD_BUF_SIZE];
-static uint8_t keyboard_buf_counter;
+static uint8_t keyboard_buf_counter = 0;
 //static uint8_t backspace_counter;
 
 /*
@@ -68,10 +68,8 @@ void keyboard_interrupt_handler() {
 
         if (scancode == KEYBOARD_F1_SCANCODE) {  // F1
             clear();
-        } else if (scancode < KEYBOARD_SCANCODE_PRESSED) {  // key press
-            if (scan_code_table[scancode] != 0) {  // printable character
-                handle_scan_code(scancode);  // output the char to the console
-            }
+        } else {
+            handle_scan_code(scancode);  // output the char to the console
         }
     }
     sti();
@@ -91,41 +89,42 @@ void handle_scan_code(uint8_t scan_code) {
     if (scan_code >= KEYBOARD_SCANCODE_PRESSED) {
         // If the scan_code is a release code, just reset the flags
         key_flags[scan_code - KEYBOARD_SCANCODE_PRESSED] = 0;
+//        printf("[%x]", scan_code - KEYBOARD_SCANCODE_PRESSED);
     } else {
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
+//        printf("(%x)", scan_code);
         // If Ctrl+L
         if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[0x26]) {
             clear(); // clear the screen
             reset_cursor(); // reset the cursor to up-left corner
             return;
         }
-//        // If backspace
-//        // Just putc then delete the char in the keyboard_buf
-//        if (1 == key_flags[BACKSPACE_SCAN_CODE]) {
-//            if (backspace_counter < (keyboard_buf_counter / 2)) {
-//                keyboard_buf[keyboard_buf_counter] = '\b';
-//                putc(keyboard_buf[keyboard_buf_counter]);
-//                keyboard_buf_counter++;
-//                backspace_counter++;
-//            }
-//        }
-        // If shift is pressed
-        if ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS])) {
-            if (0 != shift_scan_code_table[scan_code]) {
-                if (keyboard_buf_counter < KEYBOARD_BUF_SIZE) {
-                    keyboard_buf[keyboard_buf_counter] = shift_scan_code_table[scan_code];
-                    putc(keyboard_buf[keyboard_buf_counter]);
-                    keyboard_buf_counter++;
-                }
+        // If backspace
+        // Just putc then delete the char in the keyboard_buf
+        if (1 == key_flags[BACKSPACE_SCAN_CODE]) {
+            if (0 < keyboard_buf_counter) {
+                putc('\b');
+                keyboard_buf_counter--;
             }
         } else {
-            // If shift is not pressed
-            if (0 != scan_code_table[scan_code]) {
-                if (keyboard_buf_counter < KEYBOARD_BUF_SIZE) {
-                    keyboard_buf[keyboard_buf_counter] = scan_code_table[scan_code];
-                    putc(keyboard_buf[keyboard_buf_counter]);
-                    keyboard_buf_counter++;
+            // If shift is pressed
+            if ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS])) {
+                if (0 != shift_scan_code_table[scan_code]) {
+                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE) {
+                        keyboard_buf[keyboard_buf_counter] = shift_scan_code_table[scan_code];
+                        putc(keyboard_buf[keyboard_buf_counter]);
+                        keyboard_buf_counter++;
+                    }
+                }
+            } else {
+                // If shift is not pressed
+                if (0 != scan_code_table[scan_code]) {
+                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE) {
+                        keyboard_buf[keyboard_buf_counter] = scan_code_table[scan_code];
+                        putc(keyboard_buf[keyboard_buf_counter]);
+                        keyboard_buf_counter++;
+                    }
                 }
             }
         }
@@ -187,33 +186,26 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     int32_t i = 0;  // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
     int32_t to_delete = 0;
     int32_t j;  // counter
-    //int32_t delete;
-    //int32_t delete_backspace;
+    int32_t to_continue = 1;
 
-    // Critical section to prevent keyboard buffer changes during the copy operation.
-    while (i < nbytes && to_delete < KEYBOARD_BUF_SIZE) {
+    // If user asks more than 128 bytes of data, then just return 128 bytes.
+    if (nbytes > KEYBOARD_BUF_SIZE) {
+        nbytes = KEYBOARD_BUF_SIZE;
+    }
+
+    while (to_continue) {
         cli();
         {
-            if (to_delete < keyboard_buf_counter) {
-                // If we see an enter
-                if (keyboard_buf[to_delete] == '\n') {
-                    sti();
-                    break;
+            for (i = 0; (i < keyboard_buf_counter) && (i < nbytes); i++) {
+                if (keyboard_buf[i] == '\n') {
+                    //sti();
+                    to_continue = 0;
+                    break;  // exit for
                 }
-                // If we see a backspace
-                if (keyboard_buf[to_delete] == '\b') {
-                    // If
-                    if (0 == i) {
-                        to_delete++;
-                        continue;
-                    }
-                    i--;
-                    to_delete++;
-                    continue;
-                }
-                ((char *) buf)[i] = keyboard_buf[to_delete];
-                i++;
-                to_delete++;
+            }
+            if (i == nbytes) {
+                //sti();
+                to_continue = 0;
             }
         }
         sti();
@@ -221,23 +213,12 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
 
     cli();
     {
-        // Reset the keyboard buffer
-        if (to_delete == keyboard_buf_counter) {
-            // If we read all the characters in the keyboard buffer, just clean up the keyboard buffer
-            keyboard_buf_counter = 0; // cleans up the keyboard buffer
-        } else {
-            // If we just read part of the buffer, we need to retain the rest of unread characters.
-            to_delete += (keyboard_buf[to_delete] == '\n');
-//            delete = to_delete + (keyboard_buf[to_delete] == '\n');
-            for (j = to_delete; j < keyboard_buf_counter; j++) {
-                keyboard_buf[j - to_delete] = keyboard_buf[j];
-            }
-            keyboard_buf_counter -= to_delete;
-//            for (j = delete; j < keyboard_buf_counter; j++) {
-//                keyboard_buf[j - delete] = keyboard_buf[j];
-//            }
-//            keyboard_buf_counter -= delete;
+        memcpy(buf, keyboard_buf, i);
+        to_delete = i + (keyboard_buf[i] == '\n');
+        for (j = to_delete; j < keyboard_buf_counter; j++) {
+            keyboard_buf[j - to_delete] = keyboard_buf[j];
         }
+        keyboard_buf_counter -= to_delete;
     }
     sti();
 
