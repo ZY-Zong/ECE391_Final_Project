@@ -92,3 +92,10 @@
         file and directory functions 
             ... don't know why I need them
                 maybe for the funture use 
+    begin with file system abstraction 
+?        open stdin and stdout at init?
+        add functions for abtract system 
+        write functions for each type 
+        need to make sure: the para can be changed by function call
+            if not, should update file position by adding data read 
+            no... pass by value 
