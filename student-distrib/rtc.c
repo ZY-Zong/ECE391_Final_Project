@@ -7,6 +7,8 @@
 
 unsigned int TEST_RTC_ECHO_COUNTER;
 
+static volatile int rtc_interrupt_occured;
+
 // Helper function to check whether the input is power of two
 int is_power_of_two(int32_t input);
 
@@ -47,6 +49,7 @@ void rtc_init() {
  * @reference https://wiki.osdev.org/RTC
  */
 void rtc_interrupt_handler() {
+
     rtc_interrupt_occured = 1;  // interrupt happens, set flag to 1
 
     rtc_restart_interrupt();  // get another interrupt
@@ -88,13 +91,13 @@ int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes) {
 
     rtc_restart_interrupt();  // take another interrupt, interrupt available 0.5s after rtc_read
 
-    cli();  // disable interrupts
-    {
-        flag_t = rtc_interrupt_occured;
-    }
-    sti();
-
-    while (!flag_t) {} // wait for the interrupt occurs
+    do {
+        cli();  // disable interrupts
+        {
+            flag_t = rtc_interrupt_occured;
+        }
+        sti();
+    } while (!flag_t); // wait for the interrupt occurs
 
     return 0;
 }

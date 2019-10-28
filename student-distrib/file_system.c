@@ -580,5 +580,5 @@ int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
 }
 
 int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
-    return rtc_write(fd, buf, nbytes)
+    return rtc_write(fd, buf, nbytes);
 }
