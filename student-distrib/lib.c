@@ -197,7 +197,7 @@ void putc(uint8_t c) {
         } else { // Normal cases for backspace
             screen_x--;
         }
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = 0x20;
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
@@ -223,11 +223,18 @@ void putc(uint8_t c) {
  */
 void scroll_up() {
     int x,y;
+    // Move up the last NUM_ROWS - 1 lines
     for (y = 0; y < NUM_ROWS - 1; y++) {
         for (x = 0; x < NUM_COLS; x++) {
             *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
             *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
         }
+    }
+    // Clean up the last line
+    y = NUM_ROWS - 1;
+    for (x = 0; x < NUM_COLS; x++) {
+        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
+        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)
     screen_y = NUM_ROWS - 1;
