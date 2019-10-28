@@ -498,6 +498,7 @@ int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes) {
 
 /******************************* Extra Support ***************************/
 
+/**
  * Get a PCB for the RTC and return its file descriptor number
  * @param filename    The name of the RTC to open
  * @return The file descriptor (fd) of the RTC
