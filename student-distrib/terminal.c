@@ -12,6 +12,7 @@
 #define LEFT_SHIFT_RELEASE 0xAA
 #define RIGHT_SHIFT_PRESS 0x36
 #define RIGHT_SHIFT_RELEASE 0xB6
+#define BACKSPACE_SCAN_CODE 0x0E
 
 /* Keys that correspond to scan codes, using scan code set 1 for "US QWERTY" keyboard
  * REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
@@ -46,6 +47,7 @@ static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
 // Keyboard buffer of size 128 and a counter to store the current position in the buffer
 static char keyboard_buf[KEYBOARD_BUF_SIZE];
 static uint8_t keyboard_buf_counter;
+//static uint8_t backspace_counter;
 
 /*
  * keyboard_interrupt
@@ -98,6 +100,16 @@ void handle_scan_code(uint8_t scan_code) {
             reset_cursor(); // reset the cursor to up-left corner
             return;
         }
+//        // If backspace
+//        // Just putc then delete the char in the keyboard_buf
+//        if (1 == key_flags[BACKSPACE_SCAN_CODE]) {
+//            if (backspace_counter < (keyboard_buf_counter / 2)) {
+//                keyboard_buf[keyboard_buf_counter] = '\b';
+//                putc(keyboard_buf[keyboard_buf_counter]);
+//                keyboard_buf_counter++;
+//                backspace_counter++;
+//            }
+//        }
         // If shift is pressed
         if ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS])) {
             if (0 != shift_scan_code_table[scan_code]) {
@@ -173,22 +185,36 @@ int32_t terminal_close(int32_t fd) {
  */
 int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     int32_t i = 0;  // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
-    int32_t to_delete;
+    int32_t to_delete = 0;
     int32_t j;  // counter
+    //int32_t delete;
+    //int32_t delete_backspace;
 
     // Critical section to prevent keyboard buffer changes during the copy operation.
-    while (i < nbytes && i < KEYBOARD_BUF_SIZE) {
+    while (i < nbytes && to_delete < KEYBOARD_BUF_SIZE) {
         cli();
         {
-            if (i < keyboard_buf_counter) {
-                if (keyboard_buf[i] == '\n') {
+            if (to_delete < keyboard_buf_counter) {
+                // If we see an enter
+                if (keyboard_buf[to_delete] == '\n') {
                     sti();
                     break;
                 }
-                ((char *) buf)[i] = keyboard_buf[i];
+                // If we see a backspace
+                if (keyboard_buf[to_delete] == '\b') {
+                    // If
+                    if (0 == i) {
+                        to_delete++;
+                        continue;
+                    }
+                    i--;
+                    to_delete++;
+                    continue;
+                }
+                ((char *) buf)[i] = keyboard_buf[to_delete];
                 i++;
+                to_delete++;
             }
-
         }
         sti();
     }
@@ -196,16 +222,21 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     cli();
     {
         // Reset the keyboard buffer
-        if (i == keyboard_buf_counter) {
+        if (to_delete == keyboard_buf_counter) {
             // If we read all the characters in the keyboard buffer, just clean up the keyboard buffer
             keyboard_buf_counter = 0; // cleans up the keyboard buffer
         } else {
             // If we just read part of the buffer, we need to retain the rest of unread characters.
-            to_delete = i + (keyboard_buf[i] == '\n');
+            to_delete += (keyboard_buf[to_delete] == '\n');
+//            delete = to_delete + (keyboard_buf[to_delete] == '\n');
             for (j = to_delete; j < keyboard_buf_counter; j++) {
                 keyboard_buf[j - to_delete] = keyboard_buf[j];
             }
             keyboard_buf_counter -= to_delete;
+//            for (j = delete; j < keyboard_buf_counter; j++) {
+//                keyboard_buf[j - delete] = keyboard_buf[j];
+//            }
+//            keyboard_buf_counter -= delete;
         }
     }
     sti();
