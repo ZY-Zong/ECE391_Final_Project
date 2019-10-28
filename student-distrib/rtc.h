@@ -1,8 +1,8 @@
 /* rtc.h - header file for rtc
 */
 
-#ifndef RTC_H
-#define RTC_H
+#ifndef _RTC_H
+#define _RTC_H
 
 #include "types.h"
 
@@ -36,5 +36,5 @@ int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes);
 int32_t rtc_open(const uint8_t* filename);
 int32_t rtc_close(int32_t fd);
 
-#endif // RTC_H
+#endif // _RTC_H
 

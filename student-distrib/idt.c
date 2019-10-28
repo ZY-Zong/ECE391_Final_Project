@@ -5,6 +5,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "linkage.h"
+#include "file_system.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.
@@ -136,7 +137,7 @@ asmlinkage long sys_not_implemented() {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
-    return 0;
+    return file_system_read(fd, buf, nbytes);
 }
 
 /**
@@ -148,7 +149,7 @@ asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
-    return 0;
+    return file_system_write(fd, buf, nbytes);
 }
 
 /**
@@ -158,7 +159,7 @@ asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_open(const uint8_t* filename) {
-    return 0;
+    return file_system_open(filename);
 }
 
 /**
@@ -168,5 +169,5 @@ asmlinkage int32_t sys_open(const uint8_t* filename) {
  * @usage           System call jump table in idt.S
  */
 asmlinkage int32_t sys_close(int32_t fd) {
-    return 0;
+    return file_system_close(fd);
 }
