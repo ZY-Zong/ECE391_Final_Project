@@ -318,9 +318,8 @@ long fs_test() {
     char buf[buf_size];
     unsigned long ret;
 
-    // TODO: add some test files
     const char *valid_test_file[] = {"sigtest", "shell", "grep", "syserr", "rtc", "fish", "frame0.txt", "frame1.txt",
-                                     "create.txt", "veryylargetextwithverylongname.tx"};
+                                     "created.txt", "verylargetextwithverylongname.tx"};
     const char *invalid_test_file[] = {"non_exist_file"};
 
     unsigned long i;
@@ -354,10 +353,6 @@ long fs_test() {
         clear();
         reset_cursor();
 
-        printf("Read %s (%u/%u)\n", valid_test_file[i], i, sizeof(valid_test_file) / sizeof(const char *));
-
-        press_enter_to_continue();
-
         if (-1 == (fd = open((const uint8_t *) valid_test_file[i]))) {
             printf("Failed to open %s\n", valid_test_file[i]);
             result = FAIL;
@@ -369,7 +364,7 @@ long fs_test() {
                     result = FAIL;
                 }
                 buf[ret] = '\0';
-                if (-1 == write(FD_STDOUT, buf, ret + 1)) {
+                if (-1 == write(FD_STDOUT, buf, ret)) {
                     printf("Failed to write to stdout\n");
                     close(fd);
                     result = FAIL;
@@ -378,6 +373,11 @@ long fs_test() {
         }
 
         close(fd);
+
+        printf("\nThis is content of file %s (%u/%u)\n", valid_test_file[i], i + 1,
+                sizeof(valid_test_file) / sizeof(const char *));
+
+        press_enter_to_continue();
     }
 
     // Test invalid files
@@ -386,9 +386,10 @@ long fs_test() {
         clear();
         reset_cursor();
 
-        printf("Try reading %s (%u/%u)...", invalid_test_file[i], i, sizeof(invalid_test_file) / sizeof(const char *));
+        printf("Try reading %s (%u/%u)...", invalid_test_file[i], i + 1,
+                sizeof(invalid_test_file) / sizeof(const char *));
 
-        if (-1 == (fd = open((const uint8_t *) valid_test_file[i]))) {
+        if (-1 == (fd = open((const uint8_t *) invalid_test_file[i]))) {
             printf("Correct\n");
         } else {
             printf("Incorrect with fd = %u\n", fd);
@@ -417,11 +418,11 @@ void launch_tests() {
 
     TEST_OUTPUT("idt_test", idt_test());
     TEST_OUTPUT("paging_test", paging_test());
-//    TEST_OUTPUT("rtc_test", rtc_test());
+    TEST_OUTPUT("rtc_test", rtc_test());
     press_enter_to_continue();
     TEST_OUTPUT("terminal_test", terminal_test());
     press_enter_to_continue();
     TEST_OUTPUT("fs_test", fs_test());
 
-    printf("\nTests complete. Press F2 to divide 0, F3 to dereference NULL.\n");
+    printf("\nTests complete.\n");
 }

@@ -77,7 +77,6 @@ int32_t file_system_open(const uint8_t *filename) {
             break;
         default:
             printf("ERROR: file_open(): unknown file type of %s\n", filename);
-            file_close(fd);
             return -1;
     }
 
