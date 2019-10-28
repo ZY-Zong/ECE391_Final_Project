@@ -187,11 +187,11 @@ long rtc_test() {
     }
 
     // Set and read RTC for valid frequencies
-    for (i = 0; i < sizeof(valid_freq); i++) {
+    for (i = 0; i < sizeof(valid_freq) / sizeof(unsigned long); i++) {
         // Set RTC
         freq = valid_freq[i];
         printf("Setting RTC to %uHz...", freq);
-        if (4 == (ret = write(fd, (char *) (&freq), 4))) {
+        if (4 == (ret = write(fd, &freq, 4))) {
             printf("Done\n");
         } else {
             printf("Fail with return code %d\n", ret);
@@ -217,11 +217,11 @@ long rtc_test() {
     }
 
     // Set and read RTC for invalid frequencies
-    for (i = 0; i < sizeof(invalid_freq); i++) {
+    for (i = 0; i < sizeof(invalid_freq) / sizeof(unsigned long); i++) {
         // Set RTC
         freq = invalid_freq[i];
         printf("Try setting RTC to %uHz...", freq);
-        if (-1 == (ret = write(fd, (char *) (&freq), 4))) {
+        if (-1 == (ret = write(fd, &freq, 4))) {
             printf("Correct\n");
         } else {
             printf("Incorrect return code %d\n", ret);
@@ -246,8 +246,8 @@ long terminal_test() {
     unsigned long ret;
     unsigned long i;
 
-    size_t valid_write_size[] = {16, 128};
-    size_t invalid_write_size[] = {200};
+    int32_t valid_write_size[] = {16, 128};
+    int32_t invalid_write_size[] = {200};
 
     // Test reading
     for (i = 1; i <= 3; i++) {
@@ -268,7 +268,7 @@ long terminal_test() {
     buf[255] = '\0';
 
     // Test valid write
-    for (i = 0; i < sizeof(valid_write_size); i++) {
+    for (i = 0; i < sizeof(valid_write_size) / sizeof(int32_t); i++) {
         printf("Writing to terminal of size %u ...\n", valid_write_size[i]);
         if (valid_write_size[i] == (ret = write(FD_STDOUT, buf, valid_write_size[i]))) {
             printf("... Done\n");
@@ -279,7 +279,7 @@ long terminal_test() {
     }
 
     // Test invalid write
-    for (i = 0; i < sizeof(invalid_write_size); i++) {
+    for (i = 0; i < sizeof(invalid_write_size) / sizeof(int32_t); i++) {
         printf("Try writing to terminal of size %u ...\n", invalid_write_size[i]);
         if (128 == (ret = write(FD_STDOUT, buf, invalid_write_size[i]))) {
             printf("... Correct\n");

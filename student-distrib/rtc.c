@@ -81,13 +81,16 @@ int32_t rtc_open(const uint8_t* filename) {
  * @return       0 on success
  */
 int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes) {
+
+    int flag_t;
+
     rtc_interrupt_occured = 0;  // set flag to 0
 
     rtc_restart_interrupt();  // take another interrupt, interrupt available 0.5s after rtc_read
 
     cli();  // disable interrupts
     {
-        int flag_t = rtc_interrupt_occured;
+        flag_t = rtc_interrupt_occured;
     }
     sti();
 
@@ -112,7 +115,6 @@ int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes) {
     int power = is_power_of_two(frequency);
 
     if (power == -1) {
-        rate = 0;
         return -1;
     }  // fail if frequency is not power of two
 

@@ -113,11 +113,11 @@ system_call_entry:
     pushl %edx
     pushl %ecx
     pushl %ebx
-    /* if EAX > SYSTEM_CALL_TABLE_SIZE, call sys_not_implemented */
+    /* if SYSTEM_CALL_TABLE_SIZE <= EAX, call sys_not_implemented */
     cmpl $SYSTEM_CALL_TABLE_SIZE, %eax
-    jbe system_call_entry_invalid
+    jae system_call_entry_invalid
     /* if EAX valid, call corresponding system call */
-    call *system_call_table(%eax)
+    call *system_call_table(,%eax,4)
     jmp system_call_entry_done
 system_call_entry_invalid:
     call sys_not_implemented

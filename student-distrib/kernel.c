@@ -141,9 +141,6 @@ void entry(unsigned long magic, unsigned long addr) {
         ltr(KERNEL_TSS);
     }
 
-    /* Enable paging */
-    enable_paging();
-
     /* Init the PIC */
     i8259_init();
 
@@ -169,6 +166,8 @@ void entry(unsigned long magic, unsigned long addr) {
          init_file_system((module_t *)mbi->mods_addr);
     }
 
+    /* Enable paging */
+    enable_paging();
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close

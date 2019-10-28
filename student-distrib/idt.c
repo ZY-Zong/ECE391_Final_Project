@@ -60,7 +60,8 @@ void idt_init() {
     SET_IDT_ENTRY(idt[17], exception_entry_17);
     SET_IDT_ENTRY(idt[18], exception_entry_18);
     SET_IDT_ENTRY(idt[19], exception_entry_19);
-    SET_IDT_ENTRY(idt[20], exception_entry_30);
+    SET_IDT_ENTRY(idt[20], exception_entry_20);
+    SET_IDT_ENTRY(idt[30], exception_entry_30);
 
     // Set keyboard handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
@@ -72,6 +73,7 @@ void idt_init() {
 
     // Set system calls handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], system_call_entry);
+    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
 
     // Load IDT into IDTR
