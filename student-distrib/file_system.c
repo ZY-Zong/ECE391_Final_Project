@@ -237,6 +237,9 @@ int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry) {
 
     int i;  // loop counter
 
+    // check if the file name is too long 
+    if (strlen((int8_t*)fname) > FILE_NAME_LENGTH) return -1;
+
     // Loop though all the file names
     for (i = 0; i < boot_block.dir_num; i++) {
         // Test whether current file match
