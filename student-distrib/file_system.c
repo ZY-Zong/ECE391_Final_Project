@@ -130,6 +130,13 @@ int32_t file_system_close(int32_t fd) {
  *         0 if offset reach the end of the file
  */
 int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
+    // check for NULL buffer 
+    if (buf == NULL){
+        printf("ERROR: file_system_read(): the buf is NULL, ");
+        printf("cannot read from file %d\n", fd);
+        return -1;
+    }
+    
     // check whether the file is opened 
     if (opened_files[fd].flags == FD_NOT_IN_USE) {
         printf("ERROR: file_system_read(): fd %d is not opened\n", fd);
@@ -148,6 +155,13 @@ int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
  * @note This is a read only file system, if file type is dir/regular file, return -1
  */
 int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes) {
+    // check for NULL buffer 
+    if (buf == NULL){
+        printf("ERROR: file_system_write(): the buf is NULL, ");
+        printf("cannot write to file %d\n", fd);
+        return -1;
+    }
+    
     // check whether the file is opened 
     if (opened_files[fd].flags == FD_NOT_IN_USE) {
         printf("ERROR: file_system_write(): fd %d is not opened\n", fd);
