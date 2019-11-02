@@ -15,9 +15,9 @@ static operation_table_t rtc_op_table;
 static operation_table_t dir_op_table;
 static operation_table_t file_op_table;
 
-// PCB array 
+// file_array array 
 static int32_t current_open_file_num = 2;  // 0 and 1 for stdin and stdout
-static pcb_t opened_files[MAX_OPEN_FILE];
+static file_array_t opened_files[MAX_OPEN_FILE];
 
 // Blocks for file system
 static boot_block_t boot_block;
@@ -89,7 +89,7 @@ int32_t file_system_open(const uint8_t *filename) {
  * Support system call: close
  * @param fd    the file to be closed
  * @return      0 for success, -1 for failure
- * @effect      The array of PCB and count will be changed
+ * @effect      The array of file_array and count will be changed
  */
 int32_t file_system_close(int32_t fd) {
 
@@ -207,7 +207,7 @@ int32_t init_file_system(module_t *fs) {
     file_op_table.read = file_read;
     file_op_table.write = file_write;
 
-    // Init PCB
+    // Init file_array
 
     opened_files[0].file_op_table_p = &terminal_op_table;
     opened_files[0].flags = FD_IN_USE;
@@ -340,7 +340,7 @@ int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length
 
 
 /**
- * Get a PCB for the file and return its file descriptor number
+ * Get a file_array for the file and return its file descriptor number
  * @param filename    The name of the file to open
  * @return The file descriptor (fd) of the file
  */
@@ -352,10 +352,10 @@ int32_t file_open(const uint8_t *filename) {
         printf("WARNING: file_open(): cannot open %s, no such file\n", filename);
     }
 
-    // Get a PCB, guarantee by file_system_open that have space
+    // Get a file_array, guarantee by file_system_open that have space
     int32_t fd = get_free_fd();
 
-    // Init the PCB got
+    // Init the file_array got
     opened_files[fd].file_op_table_p = &file_op_table;
     opened_files[fd].inode = current_dentry.inode_num;
     opened_files[fd].file_position = 0;  // the beginning of the file
@@ -416,17 +416,17 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nBytes) {
 /**************************** directory operatoins ****************************/
 
 /**
- * Get a PCB for the dir and return its file descriptor number
+ * Get a file_array for the dir and return its file descriptor number
  * @param filename    The name of the dir to open
  * @return The file descriptor (fd) of the dir
  */
 int32_t dir_open(const uint8_t *filename) {
     (void) filename;  // no need to use, avoid warning
 
-    // Get a PCB, garentee by file_system_open that have space
+    // Get a file_array, garentee by file_system_open that have space
     int32_t fd = get_free_fd();
 
-    // Init the PCB
+    // Init the file_array
     opened_files[fd].file_op_table_p = &dir_op_table;
     opened_files[fd].inode = 0;
     opened_files[fd].file_position = 0;  // the beginning of the file
@@ -457,7 +457,7 @@ int32_t dir_close(int32_t fd) {
  * 0 if reach the end 
  * SIDE EFFECTS:
  * the buf will be changed 
- * the file position filed of corresponding PCB will be changed  
+ * the file position filed of corresponding file_array will be changed  
  */
 /**
  * Read the dentries' names in current dir from recorded file_position, report if reach the end
@@ -506,7 +506,7 @@ int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes) {
 /******************************* Extra Support ***************************/
 
 /**
- * Get a PCB for the RTC and return its file descriptor number
+ * Get a file_array for the RTC and return its file descriptor number
  * @param filename    The name of the RTC to open
  * @return The file descriptor (fd) of the RTC
  */
@@ -516,10 +516,10 @@ int32_t local_rtc_open(const uint8_t *filename) {
 
     if (rtc_open(filename) != 0) return -1;
 
-    // Get a PCB, guarantee by file_system_open that have space
+    // Get a file_array, guarantee by file_system_open that have space
     int32_t fd = get_free_fd();
 
-    // Init the PCB, guarantee by file_system_open that have space
+    // Init the file_array, guarantee by file_system_open that have space
     opened_files[fd].file_op_table_p = &rtc_op_table;
     opened_files[fd].inode = 0;
     opened_files[fd].file_position = 0;  // the beginning of the file

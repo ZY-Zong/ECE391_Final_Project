@@ -46,12 +46,12 @@ typedef struct operation_table_t {
 } operation_table_t;
 
 // the struct for process control block, see mp3 document 8.2
-typedef struct pcb_t {
+typedef struct file_array_t {
     operation_table_t*    file_op_table_p;    // 4 Bytes: file operatoin table pointer
     uint32_t    inode;              // 4 Bytes: the inode number, only valid for data file
     uint32_t    file_position;      // 4 Bytes: where is currently reading, updated by sys read
     uint32_t    flags;              // 4 Bytes: making this file descriptor as "in use"
-} pcb_t;
+} file_array_t;
 
 
 /*************************** file system (utility) structs *****************************/
