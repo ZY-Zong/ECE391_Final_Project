@@ -15,6 +15,23 @@
 #define TEST_OUTPUT(name, result)    \
     printf("[TEST %s] Result = %s\n", name, (result) ? "PASS" : "FAIL")
 
+/** Test Printing Macros */
+// Use printf() if things to print are normal effect of demonstration.
+// Only use the following macros when info are optional.
+#define TEST_PRINT_VERBOSE    0
+#if TEST_PRINT_VERBOSE
+#define TEST_PRINT(fmt, ...)    do { printf("%s:%d:%s(): " fmt, \
+                                             __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
+#define TEST_ERR(fmt, ...)      do { printf("[ERROR]" "%s:%d:%s(): " fmt, \
+                                             __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
+#define TEST_WARN(fmt, ...)     do { printf("[WARNING]" "%s:%d:%s(): " fmt, \
+                                             __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
+#else
+#define TEST_PRINT(fmt, ...)    do { printf(fmt, ##__VA_ARGS__); } while (0)
+#define TEST_ERR(fmt, ...)      do { printf("[ERROR]" fmt, ##__VA_ARGS__); } while (0)
+#define TEST_WARN(fmt, ...)     do { printf("[WARNING]" fmt, ##__VA_ARGS__); } while (0)
+#endif
+
 static inline void assertion_failure() {
     /* Use exception #15 for assertions, otherwise
        reserved by Intel */
@@ -72,7 +89,7 @@ int paging_test() {
     :
     : "memory", "cc");
     if ((kernel_page_directory_t *) tmp != &kernel_page_directory) {
-        debug_err("CR3 not correct");
+        TEST_ERR("CR3 not correct");
         result = FAIL;
     }
 
@@ -82,36 +99,36 @@ int paging_test() {
     :
     : "memory", "cc");
     if ((tmp & 0x80000000) == 0) {
-        printf(PRINT_ERR"Paging is not enabled");
+        TEST_ERR("Paging is not enabled");
         result = FAIL;
     }
 
     // Check kernel page directory
     if ((kernel_page_table_t *) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
-        printf(PRINT_ERR"Paging directory entry 0 is not correct");
+        TEST_ERR("Paging directory entry 0 is not correct");
         result = FAIL;
     }
     if ((kernel_page_directory.entry[1] & 0x00400000) != 0x00400000) {
-        printf(PRINT_ERR"Paging directory entry 1 is not correct");
+        TEST_ERR("Paging directory entry 1 is not correct");
         result = FAIL;
     }
 
     // Check kernel page table 0
     for (i = 0; i < VIDEO_MEMORY_START_PAGE; ++i) {
         if (kernel_page_table_0.entry[i] != 0) {
-            printf(PRINT_ERR"Paging table entry %d is not correct", i);
+            TEST_ERR("Paging table entry %d is not correct", i);
             result = FAIL;
         }
     }
 
     // Check video memory configuration
     if ((kernel_page_table_0.entry[VIDEO_MEMORY_START_PAGE] & 0x000B8003) != 0x000B8003) {
-        printf("Paging table entry for video memory is not correct");
+        TEST_ERR("Paging table entry for video memory is not correct");
         result = FAIL;
     }
     for (i = VIDEO_MEMORY_START_PAGE + 1; i < KERNEL_PAGE_TABLE_SIZE; ++i) {
         if (kernel_page_table_0.entry[i] != 0) {
-            printf(PRINT_ERR"Paging table entry %d is not correct", i);
+            TEST_ERR("Paging table entry %d is not correct", i);
             result = FAIL;
         }
     }
@@ -119,7 +136,7 @@ int paging_test() {
     // Try to dereference some variables
     int *i_ptr = &i;
     if (*i_ptr != i) {
-        printf(PRINT_ERR"Dereference i error");
+        TEST_ERR("Dereference i error");
         result = FAIL;
     }
 
@@ -141,7 +158,7 @@ long divide_zero_test() {
     unsigned long j = 42 / i;
 
     // To avoid compiler warnings. Should not get here
-    printf("j = %u", j);
+    TEST_ERR("j = %u", j);
 
     return FAIL;
 }
@@ -161,7 +178,7 @@ long dereference_null_test() {
     unsigned long j = *((unsigned long *) i);
 
     // To avoid compiler warnings. Should not get here
-    printf("j = %u", j);
+    TEST_ERR("j = %u", j);
 
     return FAIL;
 }

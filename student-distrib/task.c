@@ -90,7 +90,7 @@ static process_t *process_allocate_new_slot() {
             return ptr_process(i);
         }
     }
-    printf(PRINT_ERR "process_cnt is inconsistent");
+    DEBUG_ERR( "process_cnt is inconsistent");
     return NULL;
 }
 
@@ -192,7 +192,7 @@ int32_t system_halt(uint8_t status) {
 
     halt_backtrack(parent->kesp, status);
 
-    printf(PRINT_ERR "halt() should never return");
+    DEBUG_ERR( "halt() should never return");
 
     return -1;
 }
