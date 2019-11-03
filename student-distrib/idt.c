@@ -6,6 +6,7 @@
 #include "lib.h"
 #include "linkage.h"
 #include "file_system.h"
+#include "task.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.
@@ -129,12 +130,38 @@ asmlinkage long sys_not_implemented() {
 }
 
 /**
+ * System call handler for execute()
+ * @param command    Command to be executed
+ * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
+ * @note New program given in command will run immediately, and this function will return after its terminate
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
+ */
+asmlinkage int32_t sys_execute(uint8_t *command) {
+    return system_execute(command);
+}
+
+/**
+ * System call handler for halt()
+ * @param status    Exit code of current process
+ * @return This function should never return
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
+ */
+asmlinkage int32_t sys_halt(uint8_t status) {
+    return system_halt(status);
+}
+
+// TODO: complete comments of read(), write(), open(), close()
+
+/**
  * System call handler for read()
  * @param fd        File descriptor
  * @param buf       Buffer to store output
  * @param nbytes    Maximal number of bytes to write
- * @return          0 on success, -1 on failure
- * @usage           System call jump table in idt.S
+ * @return 0 on success, -1 on failure
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
     return file_system_read(fd, buf, nbytes);
@@ -146,7 +173,8 @@ asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
  * @param buf       Buffer of content to write
  * @param nbytes    Number of bytes to write
  * @return          0 on success, -1 on failure
- * @usage           System call jump table in idt.S
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
     return file_system_write(fd, buf, nbytes);
@@ -156,7 +184,8 @@ asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
  * System call handler for write()
  * @param filename    String of filename to open
  * @return          0 on success, -1 on failure
- * @usage           System call jump table in idt.S
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t sys_open(const uint8_t* filename) {
     return file_system_open(filename);
@@ -166,8 +195,21 @@ asmlinkage int32_t sys_open(const uint8_t* filename) {
  * System call handler for close()
  * @param fd    File descriptor
  * @return          0 on success, -1 on failure
- * @usage           System call jump table in idt.S
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t sys_close(int32_t fd) {
     return file_system_close(fd);
+}
+
+/**
+ * Actual implementation of getargs() system call
+ * @param buf       String buffer to accept args
+ * @param nbytes    Maximal number of bytes to write to buf
+ * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
+ */
+int32_t sys_getargs(uint8_t *buf, int32_t nbytes) {
+    return system_getargs(buf, nbytes);
 }

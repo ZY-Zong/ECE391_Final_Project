@@ -12,6 +12,7 @@
 #include "file_system.h"
 #include "rtc.h"
 #include "terminal.h"
+#include "task.h"
 
 #define RUN_TESTS
 
@@ -156,15 +157,18 @@ void entry(unsigned long magic, unsigned long addr) {
     enable_irq(RTC_IRQ_NUM);  // enable IRQ after setting up RTC
     rtc_restart_interrupt();  // in case that an interrupt happens after rtc_init() and before enable_irq
 
-    /* Enable interrupts */
-    idt_init();
-
-    /* init the file system */
+    /* Init the file system */
     if (mbi->mods_count == 0){
         printf("WARNING: no file system loaded\n");
     } else {
          init_file_system((module_t *)mbi->mods_addr);
     }
+
+    /* Init the process system */
+    process_init();
+
+    /* Enable interrupts */
+    idt_init();
 
     /* Enable paging */
     enable_paging();

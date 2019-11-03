@@ -536,6 +536,44 @@ void test_interrupts(void) {
     }
 }
 
+/**
+ * C linkage to halt() system call
+ * @param status    Exit code of current process
+ * @return This function should never return
+ */
+int32_t halt(uint8_t status) {
+    long ret;
+    asm volatile ("INT $0x80"
+    : "=a" (ret)
+    : "a" (0x01), "b" (status)
+    : "memory", "cc");
+    return ret;
+}
+
+/**
+ * C linkage to execute() system call
+ * @param command    Command to be executed
+ * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
+ * @note New program given in command will run immediately, and this function will return after its terminate
+ */
+int32_t execute(const uint8_t* command) {
+    long ret;
+    asm volatile ("INT $0x80"
+    : "=a" (ret)
+    : "a" (0x02), "b" (command)
+    : "memory", "cc");
+    return ret;
+}
+
+// TODO: complete comments of read(), write(), open(), close()
+
+/**
+ * C linkage to read() system call
+ * @param fd
+ * @param buf
+ * @param nbytes
+ * @return
+ */
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT $0x80"
@@ -545,6 +583,13 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     return ret;
 }
 
+/**
+ * C linkage to write() system call
+ * @param fd
+ * @param buf
+ * @param nbytes
+ * @return
+ */
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT $0x80"
@@ -554,6 +599,11 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
     return ret;
 }
 
+/**
+ * C linkage to open() system call
+ * @param filename
+ * @return
+ */
 int32_t open(const uint8_t* filename) {
     long ret;
     asm volatile ("INT $0x80"
@@ -563,11 +613,31 @@ int32_t open(const uint8_t* filename) {
     return ret;
 }
 
+/**
+ * C linkage to close() system call
+ * @param fd
+ * @return
+ */
 int32_t close(int32_t fd) {
     long ret;
     asm volatile ("INT $0x80"
     : "=a" (ret)
     : "a" (0x06), "b" (fd)
+    : "memory", "cc");
+    return ret;
+}
+
+/**
+ * C linkage to getargs() system call
+ * @param buf       String buffer to accept args
+ * @param nbytes    Maximal number of bytes to write to buf
+ * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
+ */
+int32_t getargs(uint8_t* buf, int32_t nbytes) {
+    long ret;
+    asm volatile ("INT $0x80"
+    : "=a" (ret)
+    : "a" (0x07), "b" (buf), "c" (nbytes)
     : "memory", "cc");
     return ret;
 }
