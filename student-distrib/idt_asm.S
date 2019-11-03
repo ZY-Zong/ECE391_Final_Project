@@ -59,7 +59,7 @@ exception_entry_\n:
 
 EXCEPTION_ENTRY 0, print_exception
 EXCEPTION_ENTRY 1, print_exception
-EXCEPTION_ENTRY 2, print_exception  # TODO: actually Non-maskable Interrupt
+EXCEPTION_ENTRY 2, print_exception  # non-maskable Interrupt
 EXCEPTION_ENTRY 3, print_exception
 EXCEPTION_ENTRY 4, print_exception
 EXCEPTION_ENTRY 5, print_exception

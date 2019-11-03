@@ -26,7 +26,7 @@ int task_get_pid();
  * @return             pid for success, -1 for no such task, -2 for fail to get eip 
  * @effect             The paging setting will be changed, para eip may be set 
  */
-int task_set_up_paging(const uint8_t* task_name, int* eip){
+int task_set_up_paging(const uint8_t* task_name, uint32_t* eip){
     
     int i;  // loop counter and temp use 
     dentry_t task; // the dentry of the taks in the file system

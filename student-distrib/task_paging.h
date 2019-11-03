@@ -25,7 +25,7 @@
 #define     TASK_VIR_MEM_ENTRY  32          // 128MB / 4MB
 
 
-int task_set_up_paging(const uint8_t* task_name, int* eip); // called by system call execute 
+int task_set_up_paging(const uint8_t* task_name, uint32_t* eip); // called by system call execute
 int task_reset_paging(const int cur_id, const int pre_id); // called by system call halt 
 
 

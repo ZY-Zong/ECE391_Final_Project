@@ -4,6 +4,8 @@
 
 #include "task.h"
 #include "lib.h"
+#include "file_system.h"
+#include "task_paging.h"
 
 uint32_t process_cnt = 0;
 
@@ -103,7 +105,7 @@ process_t *process_create() {
 
     if (proc == NULL) return NULL;  // no available slot
 
-    proc->file_array = /* TODO: init file system */;  // init opened file list
+    init_file_array(&proc->file_array);  // init opened file list
     proc->parent = cur_process();
     proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;  // initialize kernel esp to the bottom of PKM
 
@@ -157,12 +159,8 @@ int32_t system_execute(uint8_t *command) {
 
     if (execute_parse_command(command, &proc->args) != 0) return -1;  // invalid command
 
-    // TODO: allocate new page
-
-    if ((start_eip = /* TODO: open executable file */) == 0) {  // invalid executable file
-        // TODO: deallocate the page
-        return -1;
-    }
+    // Setup paging, run program loader, get new EIP
+    if ((proc->page_id = task_set_up_paging(command, &start_eip)) < 0) return -1;
 
     tss.esp0 = proc->kesp;  // set tss to new process's kernel stack to make sure system calls use correct stack
 
@@ -178,7 +176,7 @@ int32_t system_execute(uint8_t *command) {
  */
 int32_t system_halt(uint8_t status) {
 
-    // TODO: closed all opened files
+    clear_file_array(&cur_process()->file_array);
 
     process_t *parent = process_remove_from_list(cur_process());
     if (parent == NULL) {  // the last program has been halt
@@ -186,7 +184,7 @@ int32_t system_halt(uint8_t status) {
         while (1) {}
     }
 
-    // TODO: switch page to parent
+    task_reset_paging(cur_process()->page_id, parent->page_id);  // switch page to parent
 
     tss.esp0 = parent->kesp;  // set tss to parent's kernel stack to make sure system calls use correct stack
 
