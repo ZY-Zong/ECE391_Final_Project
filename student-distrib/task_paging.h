@@ -2,6 +2,16 @@
 #ifndef _TASK_PAHING_H
 #define _TASK_PAHING_H
 
+#include "types.h"
+
+#define     MAX_RUNNING_TASK    2           // for cp3 
+#define     PID_USED            666         // good number!
+#define     PID_FREE            0   
+
+#define     TASK_START_MEM      0x8000000   // 128MB 
+#define     TASK_PAGE_FLAG      0x00000087  // flags for a user level task 
+#define     TASK_VIR_MEM_ENTRY  32          // 128MB / 4MB
+
 /*
  * Deal with the paging turn on and load for task 
  * Note: 
@@ -9,15 +19,9 @@
  *  init_paging is done in boot.S 
  */
 
-int task_turn_on_paging(); // called by system call execute 
-int task_turn_off_paging(); // called by system call halt 
+int task_set_up_paging(const uint8_t* task_name); // called by system call execute 
+int task_reset_paging(const int cur_id, const int pre_id); // called by system call halt 
 
-
-
-/***************************** helper funtion *******************************/
-
-int task_is_executable();
-int task_load();
 
 
 #endif /*_TASK_PAHING_H*/

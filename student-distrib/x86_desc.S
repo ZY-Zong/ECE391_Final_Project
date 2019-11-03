@@ -129,7 +129,7 @@ kernel_page_directory:
     .long   0x00000003  # the 3 is for present and W/R flag
 
     # Index 1: 4-8MB, map to physical memory 4-8MB
-    .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 1MB place
+    .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 4MB place
 
     # Index 2-1023: not presented
     .rept KERNEL_PAGE_DIRECTORY_SIZE - 2  # 1024 - 2

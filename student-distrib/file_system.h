@@ -46,13 +46,17 @@ typedef struct operation_table_t {
 } operation_table_t;
 
 // the struct for process control block, see mp3 document 8.2
-typedef struct file_array_t {
+typedef struct file_array_entry_t {
     operation_table_t*    file_op_table_p;    // 4 Bytes: file operatoin table pointer
     uint32_t    inode;              // 4 Bytes: the inode number, only valid for data file
     uint32_t    file_position;      // 4 Bytes: where is currently reading, updated by sys read
     uint32_t    flags;              // 4 Bytes: making this file descriptor as "in use"
-} file_array_t;
+} file_array_entry_t;
 
+typedef struct file_array_t{
+    file_array_entry_t  opened_files[MAX_OPEN_FILE];
+    int32_t             current_open_file_num;
+} file_array_t;
 
 /*************************** file system (utility) structs *****************************/
 
@@ -102,6 +106,10 @@ int32_t file_system_write(int32_t fd, const void* buf, int32_t nBytes);
 
 int32_t init_file_system(module_t * file_system);
 
+int32_t init_file_array(file_array_t* cur_file_array);
+int32_t clear_file_array(file_array_t* cur_file_array);
+int32_t set_file_array(file_array_t* cur_file_array);
+
 int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry);
 int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry);
 int32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length);
@@ -130,8 +138,8 @@ int32_t local_rtc_close(int32_t fd);
 int32_t local_rtc_read(int32_t fd, void* buf, int32_t nbytes);
 int32_t local_rtc_write(int32_t fd, const void* buf, int32_t nbytes);
 
-// for test 
 int32_t get_file_size(uint32_t inode);
+int32_t get_free_fd();
 
 
 #endif  // _FILE_SYSTEM_H

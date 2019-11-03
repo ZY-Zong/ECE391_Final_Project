@@ -104,4 +104,24 @@
     start cp3 
     things need to change:
         modify the name: PCB_t into "file array"
+            for each program, need to get file array in its PCB 
+            rather than use global varibale 
         get paging into seperate file 
+    begin with file_loader in paging file 
+        need to check whether this is a executable file (ELF)
+            add the function in file system, and sligtly modufy file_read()
+            OK, put it in task_paging.c temperorly
+        need to figure out where to load (relate to paging)
+            why there is a offset from 128MB ?
+                because before actual program start, there are some format thing 
+                just load the whole image in 128MB is OK 
+        deal with paging turn on and off 
+            struct for PDE? OK 
+            not sure what to do in task_turn_off_paging
+                just call turn on for pre_id? 
+        need to switch file_array for each task 
+        do tomorrow 
+
+2019.11.3
+    countinue
+
