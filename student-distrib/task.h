@@ -16,7 +16,7 @@ struct process_t {
     process_t* parent;
     uint8_t* args;
     uint32_t kesp;  // kernel stack esp
-    file_array_t opened_files;
+    file_array_t file_array;
     int page_id;
 };
 

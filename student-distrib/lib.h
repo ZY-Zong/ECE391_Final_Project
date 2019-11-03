@@ -7,6 +7,8 @@
 
 #include "types.h"
 
+/** System Calls */
+
 int32_t halt(uint8_t status);
 int32_t execute(const uint8_t* command);
 int32_t read(int32_t fd, void* buf, int32_t nbytes);
@@ -18,7 +20,27 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 //int32_t set_handler(int32_t signum, void* handler_address);
 //int32_t sigreturn (void);
 
-/* For potential future usage */
+/** Debug Helper function */
+#define DEBUG   1
+#define DEBUG_VERBOSE   0
+#if DEBUG
+#if DEBUG_VERBOSE
+#define debug_print(fmt, ...)    do { printf("%s:%d:%s(): " fmt, \
+                                             __FILE__, __LINE__, __func__, __VA_ARGS__); } while (0)
+#define debug_err(fmt, ...)      do { printf("[ERROR]" "%s:%d:%s(): " fmt, \
+                                             __FILE__, __LINE__, __func__, __VA_ARGS__); } while (0)
+#define debug_warn(fmt, ...)     do { printf("[WARNING]" "%s:%d:%s(): " fmt, \
+                                             __FILE__, __LINE__, __func__, __VA_ARGS__); } while (0)
+#else
+#define debug_print(fmt, ...)    do { printf(fmt, __VA_ARGS__); } while (0)
+#define debug_err(fmt, ...)      do { printf("[ERROR]" fmt, __VA_ARGS__); } while (0)
+#define debug_warn(fmt, ...)     do { printf("[WARNING]" fmt, __VA_ARGS__); } while (0)
+#endif
+#else
+#define debug_print(fmt, ...)    do {} while (0)
+#define debug_err(fmt, ...)      do {} while (0)
+#define debug_warn(fmt, ...)     do {} while (0)
+#endif
 #define PRINT_ERR
 #define PRINT_WARN
 

@@ -72,7 +72,7 @@ int paging_test() {
     :
     : "memory", "cc");
     if ((kernel_page_directory_t *) tmp != &kernel_page_directory) {
-        printf(PRINT_ERR"CR3 not correct");
+        debug_err("CR3 not correct");
         result = FAIL;
     }
 

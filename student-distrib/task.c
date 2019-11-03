@@ -8,9 +8,15 @@
 uint32_t process_cnt = 0;
 
 /**
- * This macro yield CPU to new process and return after it terminate
- * @note Make sure paging of the new process is all set
- * @note Make sure TSS is set to kernel stack of this new process
+ * This macro yield CPU from current process (_prev_) to new process (_next_) and return after _next_ terminate
+ * @param kesp_save_to    Save ESP of kernel stack of _prev_ to this address
+ * @param new_esp         Starting ESP of _next_
+ * @param new_eip         Starting EIP of _next_
+ * @param ret             After _next_ terminate, return value is written to this address, and this macro returns
+ * @note Make sure paging of _next_ is all set
+ * @note Make sure TSS is set to kernel stack of _next_
+ * @note After switching, the top of _prev_ stack is the return address (label 1)
+ * @note To switch back, load the return value in EAX, switch stack to _prev_, and run `ret` on _prev_ stack
  */
 #define execute_launch(kesp_save_to, new_esp, new_eip, ret) asm ("                    \
     pushfl          /* save flags on the stack */                                   \n\
@@ -34,14 +40,17 @@ uint32_t process_cnt = 0;
 
 /**
  * This jump back to label 1 in execute_launch
+ * @param old_esp    ESP of parent process. On the top of parent's stack should be return address to parent's code
+ * @param ret        Return value of current thread. Will be stored to EAX
  * @note Make sure paging of the destination process is all set
  * @note Make sure TSS is set to kernel stack of the destination process
  */
-#define halt_backtrack(old_esp) asm ("                                             \
+#define halt_backtrack(old_esp, ret) asm ("                                        \
     movl %0, %%esp  /* load back old ESP */                                      \n\
+    /* EAX store the return status */                                            \n\
     ret  /* on the old kernel stack, return address is on the top of the stack */" \
     :                                                                              \
-    : "r" (old_esp)                                                                \
+    : "r" (old_esp)   , "a" (ret)                                                  \
     : "cc", "memory"                                                               \
 )
 
@@ -94,7 +103,7 @@ process_t *process_create() {
 
     if (proc == NULL) return NULL;  // no available slot
 
-    proc->opened_files =;  // init opened file list
+    proc->file_array = /* TODO: init file system */;  // init opened file list
     proc->parent = cur_process();
     proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;  // initialize kernel esp to the bottom of PKM
 
@@ -181,7 +190,7 @@ int32_t system_halt(uint8_t status) {
 
     tss.esp0 = parent->kesp;  // set tss to parent's kernel stack to make sure system calls use correct stack
 
-    halt_backtrack(parent->kesp);
+    halt_backtrack(parent->kesp, status);
 
     printf(PRINT_ERR "halt() should never return");
 
