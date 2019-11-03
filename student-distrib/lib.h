@@ -38,9 +38,9 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 #define DEBUG_WARN(fmt, ...)     do { printf("[WARNING]" fmt, ##__VA_ARGS__); } while (0)
 #endif
 #else
-#define debug_print(fmt, ...)    do {} while (0)
-#define debug_err(fmt, ...)      do {} while (0)
-#define debug_warn(fmt, ...)     do {} while (0)
+#define DEBUG_PRINT(fmt, ...)    do {} while (0)
+#define DEBUG_ERR(fmt, ...)      do {} while (0)
+#define DEBUG_WARN(fmt, ...)     do {} while (0)
 #endif
 
 int32_t printf(int8_t *format, ...);
