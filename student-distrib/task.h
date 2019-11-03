@@ -31,14 +31,15 @@ union process_kernel_memory_t {
 
 #define PKM_STARTING_ADDR    0x800000  // PKM starts at 8MB (bottom of kernel image), going to low address
 
+#define PKM_ALIGN_MASK     0xFFFF2000  // PKM is 8k-aligned, when in kernel_stack, mask ESP with this is current PCB
 
 #define ptr_process(idx) (((process_t *) PKM_STARTING_ADDR) - (idx + 1))  // address of idx-th process control block
 #define PROCESS_MAX_CNT    2  // maximum number of processes running at the same time
 extern uint32_t process_cnt;
 
-extern process_t* cur_process;  // current process
+extern inline process_t* cur_process();  // get current process based on ESP, only used in kernel state
 
-#define USER_STACK_STARTING_ADDR  0x8400000  // User stack starts at 132MB (with paging)
+#define USER_STACK_STARTING_ADDR  (0x8400000 - 1)  // User stack starts at 132MB - 1 (with paging enabled)
 
 void process_init();
 process_t* process_create();

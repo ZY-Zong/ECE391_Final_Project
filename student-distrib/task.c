@@ -6,7 +6,6 @@
 #include "lib.h"
 
 uint32_t process_cnt = 0;
-process_t *cur_process = NULL;
 
 /**
  * This macro yield CPU to new process and return after it terminate
@@ -41,6 +40,16 @@ process_t *cur_process = NULL;
     : "r" (old_esp) \
     : "cc", "memory" \
     )
+
+/**
+ * Get current process based on ESP. Only for usage in kernel state.
+ * @return Pointer to current process
+ */
+process_t* cur_process() {
+    process_t* ret;
+    asm volatile ("movl %%esp, %0; andl $PKM_ALIGN_MASK, %0": "=r" (ret) : : "cc", "memory");
+    return ret;
+}
 
 /**
  * Initialize process list
@@ -82,8 +91,8 @@ process_t *process_create() {
     if (proc == NULL) return NULL;  // no available slot
 
     proc->opened_files =;  // init opened file list
-    proc->parent = cur_process;
-    proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES;  // initialize kernel esp to the bottom of PKM
+    proc->parent = cur_process();
+    proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;  // initialize kernel esp to the bottom of PKM
 
     return proc;
 }
@@ -143,7 +152,6 @@ int32_t system_execute(uint8_t *command) {
     }
 
     tss.esp0 = proc->kesp;  // set tss to new process's kernel stack to make sure system calls use correct stack
-    cur_process = proc;  // switch to the new process
 
     execute_launch(proc->parent->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
 
@@ -159,7 +167,7 @@ int32_t system_halt(uint8_t status) {
 
     // TODO: closed all opened files
 
-    process_t *parent = process_remove_from_list(cur_process);
+    process_t *parent = process_remove_from_list(cur_process());
     if (parent == NULL) {  // the last program has been halt
         printf("OS halt with status %u", status);
         while (1) {}
@@ -168,7 +176,6 @@ int32_t system_halt(uint8_t status) {
     // TODO: switch page to parent
 
     tss.esp0 = parent->kesp;  // set tss to parent's kernel stack to make sure system calls use correct stack
-    cur_process = parent;   // switch to the parent process
 
     halt_backtrack(parent->kesp);
 
@@ -184,8 +191,9 @@ int32_t system_halt(uint8_t status) {
  * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
  */
 int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
-    if (cur_process->args == NULL) return -1;  // no args
-    if (strlen((int8_t *) cur_process->args) >= nbytes) return -1;  // can not fit into buf (including ending NULL char)
-    strncpy((int8_t *) buf, (int8_t *) cur_process->args, nbytes);
+    uint8_t args = cur_process()->args;
+    if (args == NULL) return -1;  // no args
+    if (strlen((int8_t *) args) >= nbytes) return -1;  // can not fit into buf (including ending NULL char)
+    strncpy((int8_t *) buf, (int8_t *) args, nbytes);
     return 0;
 }
