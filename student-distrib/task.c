@@ -12,20 +12,24 @@ uint32_t process_cnt = 0;
  * @note Make sure paging of the new process is all set
  * @note Make sure TSS is set to kernel stack of this new process
  */
-#define execute_launch(kesp_save_to, new_esp, new_eip, ret) asm (" \
+#define execute_launch(kesp_save_to, new_esp, new_eip, ret) asm ("                    \
+    pushfl          /* save flags on the stack */                                   \n\
+    pushl %%ebp     /* save EBP on the stack */                                     \n\
     pushl $1f       /* return address to label 1, on top of the stack after iret */ \n\
-    movl %%esp, %0\
-    pushl $USER_DS  /* user SS  */ \n\
-    pushl %2        /* user ESP */ \n\
-    pushf           /* flags (new program should not care) */ \n\
-    pushl $USER_CS  /* user CS  */ \n\
-    pushl %3        /* user EIP */ \n\
-    iret            /* enter user program */ \n\
-1:  movl %%eax, %1  /* return value pass by halt() in EAX */ "  \
-    : "=rm" (kesp_save_to), "=rm" (ret) \
-    : "rm" (new_esp), "rm" (new_eip) \
-    : "cc", "memory" \
-    )
+    movl %%esp, %0  /* save current ESP */                                          \n\
+    pushl $USER_DS  /* user SS */                                                   \n\
+    pushl %2        /* user ESP */                                                  \n\
+    pushf           /* flags (new program should not care) */                       \n\
+    pushl $USER_CS  /* user CS  */                                                  \n\
+    pushl %3        /* user EIP */                                                  \n\
+    iret            /* enter user program */                                        \n\
+1:  movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
+    popl %%ebp      /* restore EBP */                                               \n\
+    popfl           /* restore flags */"                                              \
+    : "=rm" (kesp_save_to), "=rm" (ret)                                               \
+    : "rm" (new_esp), "rm" (new_eip)                                                  \
+    : "cc", "memory"                                                                  \
+)
 
 
 /**
@@ -33,13 +37,13 @@ uint32_t process_cnt = 0;
  * @note Make sure paging of the destination process is all set
  * @note Make sure TSS is set to kernel stack of the destination process
  */
-#define halt_backtrack(old_esp) asm (" \
-    movl %0, %%esp  /* load back old ESP */ \n\
+#define halt_backtrack(old_esp) asm ("                                             \
+    movl %0, %%esp  /* load back old ESP */                                      \n\
     ret  /* on the old kernel stack, return address is on the top of the stack */" \
-    : \
-    : "r" (old_esp) \
-    : "cc", "memory" \
-    )
+    :                                                                              \
+    : "r" (old_esp)                                                                \
+    : "cc", "memory"                                                               \
+)
 
 /**
  * Get current process based on ESP. Only for usage in kernel state.
