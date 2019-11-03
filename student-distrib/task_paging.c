@@ -16,18 +16,19 @@ int task_turn_on_paging(const int id);
 int task_turn_off_paging(const int id, const int pre_id);
 int task_load(dentry_t* task);
 int task_is_executable(dentry_t* task);
+uint32_t task_get_eip(dentry_t* task);
 int task_get_pid();
 
 
 /**
- * Set up paging for a task that is going to run
+ * Set up paging for a task that is going to run and get its eip
  * @param task_name    the name of the task
- * @return             pid for success, -1 for no such task
- * @effect             The paging setting will be changed 
+ * @return             pid for success, -1 for no such task, -2 for fail to get eip 
+ * @effect             The paging setting will be changed, para eip may be set 
  */
-int task_set_up_paging(const uint8_t* task_name){
+int task_set_up_paging(const uint8_t* task_name, int* eip){
     
-    int i;  // loop counter
+    int i;  // loop counter and temp use 
     dentry_t task; // the dentry of the taks in the file system
 
     // When first run, do some init work
@@ -46,8 +47,17 @@ int task_set_up_paging(const uint8_t* task_name){
     // Check whether the file is executable 
     if ( !task_is_executable(&task)){
         printf("ERROR: test_set_up_paging(): not a executable task: %s\n", task_name);
+        return -1;
     }
 
+    // Get the eip of the task 
+    if ( -1 == ( i = task_get_eip(&task) )){
+        printf("ERROR: task_set_up_paging(): fail to get eip of task: %s\n", task_name);
+        return -2;
+    } else{
+        *eip = i;
+    }
+    
     // Get a pid for the task
     int pid=task_get_pid();
     if (pid==-1){
@@ -55,7 +65,7 @@ int task_set_up_paging(const uint8_t* task_name){
         printf("cannot open task: %s\n", task_name);
         return -1;
     }
-
+    
     // Turn on the paging space for the file 
     task_turn_on_paging(pid);
 
@@ -185,6 +195,32 @@ int task_is_executable(dentry_t* task){
     ret &= (buf[3]=='F');
 
     return ret;
+}
+
+/**
+ * Get the eip of the task in the elf file 
+ * @param task    the dentry of the elf file 
+ * @return        its pid for success, -1 for fail 
+ * @note          the eip is at byte 24~27
+ */
+uint32_t task_get_eip(dentry_t* task){
+    
+    uint32_t    eip=0;  // the return value 
+
+    // check if task is NULL 
+    if (task == NULL) return -1;
+    
+    uint8_t     buf[SIZE_INT_IN_BYTES+1]; // the buffer for storing eip, +1 for Nul terminate 
+    if (-1 == read_data(task->inode_num, 24, buf, 4)) return -1;
+
+    // get the buf into a uint32_t value 
+    int i; // loop counter 
+    for (i=0; i<SIZE_INT_IN_BYTES; i++){
+        eip |= ( buf[i] << (SIZE_BYTE_IN_BITS * (SIZE_INT_IN_BYTES - i - 1) ) );
+    }
+
+    return eip;
+
 }
 
 /**

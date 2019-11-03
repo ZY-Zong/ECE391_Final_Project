@@ -26,6 +26,8 @@
 #define SIZE_K          1024
 #define SIZE_4K         4096
 #define ADDRESS_4MB     0x400000
+#define SIZE_BYTE_IN_BITS       8 
+#define SIZE_INT_IN_BYTES       4 
 
 #define KERNEL_PAGE_DIRECTORY_SIZE    1024
 #define KERNEL_PAGE_TABLE_SIZE    1024
