@@ -102,7 +102,7 @@ void null_interrupt_handler(uint32_t irq) {
 
     cli();
     {
-        printf(PRINT_ERR "Interrupt handler for IRQ %u is not implemented", irq);
+        DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
     }
     sti();
 }
@@ -124,7 +124,7 @@ asmlinkage long sys_not_implemented() {
     :
     : "memory", "cc"
     );
-    printf(PRINT_ERR"Invalid system call: \nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
+    DEBUG_ERR("Invalid system call: \nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
            eax_val, ebx_val, ecx_val, edx_val);
     return -1;
 }
