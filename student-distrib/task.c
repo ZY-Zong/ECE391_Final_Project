@@ -20,15 +20,15 @@ uint32_t process_cnt = 0;
  * @note After switching, the top of _prev_ stack is the return address (label 1)
  * @note To switch back, load the return value in EAX, switch stack to _prev_, and run `ret` on _prev_ stack
  */
-#define execute_launch(kesp_save_to, new_esp, new_eip, ret) asm ("                    \
+#define execute_launch(kesp_save_to, new_esp, new_eip, ret) asm volatile ("                    \
     pushfl          /* save flags on the stack */                                   \n\
     pushl %%ebp     /* save EBP on the stack */                                     \n\
     pushl $1f       /* return address to label 1, on top of the stack after iret */ \n\
     movl %%esp, %0  /* save current ESP */                                          \n\
-    pushl $USER_DS  /* user SS */                                                   \n\
+    pushl $0x002B   /* user SS - USER_DS */                                         \n\
     pushl %2        /* user ESP */                                                  \n\
     pushf           /* flags (new program should not care) */                       \n\
-    pushl $USER_CS  /* user CS  */                                                  \n\
+    pushl $0x0023   /* user CS - USER_CS  */                                        \n\
     pushl %3        /* user EIP */                                                  \n\
     iret            /* enter user program */                                        \n\
 1:  movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
@@ -47,7 +47,7 @@ uint32_t process_cnt = 0;
  * @note Make sure paging of the destination process is all set
  * @note Make sure TSS is set to kernel stack of the destination process
  */
-#define halt_backtrack(old_esp, ret) asm ("                                        \
+#define halt_backtrack(old_esp, ret) asm volatile ("                                        \
     movl %0, %%esp  /* load back old ESP */                                      \n\
     /* EAX store the return status */                                            \n\
     ret  /* on the old kernel stack, return address is on the top of the stack */" \
@@ -62,7 +62,12 @@ uint32_t process_cnt = 0;
  */
 process_t* cur_process() {
     process_t* ret;
-    asm volatile ("movl %%esp, %0; andl $PKM_ALIGN_MASK, %0": "=r" (ret) : : "cc", "memory");
+    asm volatile ("movl %%esp, %0  \n\
+                   andl $0xFFFF2000, %0    /* PKM_ALIGN_MASK */" \
+                   : "=r" (ret) \
+                   : \
+                   : "cc", "memory" \
+                   );
     return ret;
 }
 
@@ -202,7 +207,7 @@ int32_t system_halt(uint8_t status) {
  * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
  */
 int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
-    uint8_t args = cur_process()->args;
+    uint8_t* args = cur_process()->args;
     if (args == NULL) return -1;  // no args
     if (strlen((int8_t *) args) >= nbytes) return -1;  // can not fit into buf (including ending NULL char)
     strncpy((int8_t *) buf, (int8_t *) args, nbytes);

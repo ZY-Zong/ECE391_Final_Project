@@ -126,15 +126,15 @@ int32_t file_system_close(int32_t fd)
  */
 int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes)
 {
-    // check for NULL buffer
-    if (buf == NULL)
+    // Check for NULL buffer
+    if (nbytes != 0 && buf == NULL)
     {
         printf("ERROR: file_system_read(): the buf is NULL, ");
         printf("cannot read from file %d\n", fd);
         return -1;
     }
 
-    // check whether the file is opened
+    // Check whether the file is opened
     if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE)
     {
         printf("ERROR: file_system_read(): fd %d is not opened\n", fd);
@@ -154,15 +154,15 @@ int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes)
  */
 int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes)
 {
-    // check for NULL buffer
-    if (buf == NULL)
+    // Check for NULL buffer
+    if (nbytes != 0 && buf == NULL)
     {
         printf("ERROR: file_system_write(): the buf is NULL, ");
         printf("cannot write to file %d\n", fd);
         return -1;
     }
 
-    // check whether the file is opened
+    // Check whether the file is opened
     if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE)
     {
         printf("ERROR: file_system_write(): fd %d is not opened\n", fd);
