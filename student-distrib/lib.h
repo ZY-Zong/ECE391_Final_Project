@@ -34,8 +34,8 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
 #else
 #define DEBUG_PRINT(fmt, ...)    do { printf(fmt, ##__VA_ARGS__); } while (0)
-#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR]" fmt, ##__VA_ARGS__); } while (0)
-#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING]" fmt, ##__VA_ARGS__); } while (0)
+#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR] " fmt, ##__VA_ARGS__); } while (0)
+#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING] " fmt, ##__VA_ARGS__); } while (0)
 #endif
 #else
 #define DEBUG_PRINT(fmt, ...)    do {} while (0)

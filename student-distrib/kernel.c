@@ -164,14 +164,14 @@ void entry(unsigned long magic, unsigned long addr) {
          init_file_system((module_t *)mbi->mods_addr);
     }
 
-    /* Init the process system */
-    process_init();
-
     /* Enable interrupts */
     idt_init();
 
     /* Enable paging */
     enable_paging();
+
+    /* Init the process system */
+    process_init();
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close

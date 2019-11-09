@@ -34,7 +34,7 @@ uint32_t process_cnt = 0;
 1:  movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
     popl %%ebp      /* restore EBP */                                               \n\
     popfl           /* restore flags */"                                              \
-    : "=rm" (kesp_save_to), "=rm" (ret)                                               \
+    : "=m" (kesp_save_to), "=m" (ret)                                               \
     : "rm" (new_esp), "rm" (new_eip)                                                  \
     : "cc", "memory"                                                                  \
 )
@@ -78,6 +78,7 @@ void process_init() {
     int i;
     for (i = 0; i < PROCESS_MAX_CNT; i++) {
         ptr_process(i)->valid = 0;
+        DEBUG_PRINT("ptr_process(%d)->valid = %d\n", i, ptr_process(i)->valid);
     }
 }
 
@@ -92,11 +93,13 @@ static process_t *process_allocate_new_slot() {
 
     process_cnt++;
     for (i = 0; i < PROCESS_MAX_CNT; i++) {
+        DEBUG_PRINT("? ptr_process(%d)->valid = %d\n", i, ptr_process(i)->valid);
         if (!ptr_process(i)->valid) {
             ptr_process(i)->valid = 1;
             return ptr_process(i);
         }
     }
+
     DEBUG_ERR( "process_cnt is inconsistent");
     return NULL;
 }

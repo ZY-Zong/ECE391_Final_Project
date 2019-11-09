@@ -20,7 +20,8 @@
 #define     PID_USED            666         // good number!
 #define     PID_FREE            0   
 
-#define     TASK_START_MEM      0x8000000   // 128MB 
+#define     TASK_START_MEM      0x08000000  // 128MB
+#define     TASK_IMG_LOAD_ADDR  0x08048000
 #define     TASK_PAGE_FLAG      0x00000087  // flags for a user level task 
 #define     TASK_VIR_MEM_ENTRY  32          // 128MB / 4MB
 

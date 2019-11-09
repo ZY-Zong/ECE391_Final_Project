@@ -2,6 +2,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "file_system.h"
+#include "task.h"
 
 #define FD_STDIN     0
 #define FD_STDOUT    1
@@ -442,16 +443,17 @@ long fs_test() {
 void launch_tests() {
 
     // Clear screen
-    clear();
-    reset_cursor();
+//    clear();
+//    reset_cursor();
 
-    TEST_OUTPUT("idt_test", idt_test());
-    TEST_OUTPUT("paging_test", paging_test());
-    TEST_OUTPUT("rtc_test", rtc_test());
-    press_enter_to_continue();
-    TEST_OUTPUT("terminal_test", terminal_test());
-    press_enter_to_continue();
-    TEST_OUTPUT("fs_test", fs_test());
+//    TEST_OUTPUT("idt_test", idt_test());
+//    TEST_OUTPUT("paging_test", paging_test());
+//    TEST_OUTPUT("rtc_test", rtc_test());
+//    press_enter_to_continue();
+//    TEST_OUTPUT("terminal_test", terminal_test());
+//    press_enter_to_continue();
+//    TEST_OUTPUT("fs_test", fs_test());
+    system_execute("shell");
 
     printf("\nTests complete.\n");
 }
