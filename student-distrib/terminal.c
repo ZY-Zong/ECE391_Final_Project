@@ -252,6 +252,11 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     int32_t j;  // counter
     int32_t to_continue = 1;
 
+    if (fd != 0) {
+        DEBUG_ERR("terminal_read(): invalid fd %d for terminal read\n", fd);
+        return -1;
+    }
+
     // If user asks more than 128 bytes of data, then just return 128 bytes.
     if (nbytes > KEYBOARD_BUF_SIZE) {
         nbytes = KEYBOARD_BUF_SIZE;
@@ -298,6 +303,12 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
  */
 int32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
     int i;
+
+    if (fd != 1) {
+        DEBUG_ERR("terminal_write(): invalid fd %d for terminal write\n", fd);
+        return -1;
+    }
+
     // Critical section to prevent keyboard buffer changes during the copy operation.
     cli();
     {

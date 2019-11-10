@@ -1,8 +1,8 @@
-CFLAGS += -g -Wall -nostdlib -ffreestanding
-LDFLAGS += -g -nostdlib -ffreestanding
+CFLAGS += -Wall -nostdlib -ffreestanding
+LDFLAGS += -nostdlib -ffreestanding
 CC = gcc
 
-ALL: cat grep hello ls pingpong counter shell sigtest testprint syserr
+ALL: cat grep hello ls pingpong counter shell sigtest testprint syserr derefnull divzero
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

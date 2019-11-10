@@ -453,7 +453,7 @@ void launch_tests() {
 //    TEST_OUTPUT("terminal_test", terminal_test());
 //    press_enter_to_continue();
 //    TEST_OUTPUT("fs_test", fs_test());
-    system_execute((uint8_t *) "shell");
+    task_run_initial_process();
 
     printf("\nTests complete.\n");
 }

@@ -565,14 +565,12 @@ int32_t execute(const uint8_t* command) {
     return ret;
 }
 
-// TODO: complete comments of read(), write(), open(), close()
-
 /**
  * C linkage to read() system call
- * @param fd
- * @param buf
- * @param nbytes
- * @return
+ * @param fd        File descriptor
+ * @param buf       Buffer to store output
+ * @param nbytes    Maximal number of bytes to write
+ * @return 0 on success, -1 on failure
  */
 int32_t read(int32_t fd, void* buf, int32_t nbytes) {
     long ret;
@@ -585,10 +583,10 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
 
 /**
  * C linkage to write() system call
- * @param fd
- * @param buf
- * @param nbytes
- * @return
+ * @param fd        File descriptor
+ * @param buf       Buffer of content to write
+ * @param nbytes    Number of bytes to write
+ * @return 0 on success, -1 on failure
  */
 int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
     long ret;
@@ -601,8 +599,8 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
 
 /**
  * C linkage to open() system call
- * @param filename
- * @return
+ * @param filename    String of filename to open
+ * @return 0 on success, -1 on failure
  */
 int32_t open(const uint8_t* filename) {
     long ret;
@@ -615,8 +613,8 @@ int32_t open(const uint8_t* filename) {
 
 /**
  * C linkage to close() system call
- * @param fd
- * @return
+ * @param fd    File descriptor
+ * @return 0 on success, -1 on failure
  */
 int32_t close(int32_t fd) {
     long ret;

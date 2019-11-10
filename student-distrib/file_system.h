@@ -32,9 +32,9 @@
 
 #define     FILE_NAME_LENGTH    32
 
-/************************* file system (abtraction) structs *********************/
+/************************* File System (Abtraction) Structs *********************/
 
-// function pointers for system calls 
+// Function pointers for system calls
 typedef int32_t(*func_open)(const uint8_t*);
 typedef int32_t(*func_close)(int32_t);
 typedef int32_t(*func_read)(int32_t, void*, int32_t);
@@ -48,7 +48,7 @@ typedef struct operation_table_t {
     func_write   write;
 } operation_table_t;
 
-// the struct for process control block, see mp3 document 8.2
+// The struct for process control block, see mp3 document 8.2
 typedef struct file_array_entry_t {
     operation_table_t*    file_op_table_p;    // 4 Bytes: file operatoin table pointer
     uint32_t    inode;              // 4 Bytes: the inode number, only valid for data file
@@ -61,9 +61,9 @@ typedef struct file_array_t{
     int32_t             current_open_file_num;
 } file_array_t;
 
-/*************************** file system (utility) structs *****************************/
+/*************************** File System (Utility) Structs *****************************/
 
-// the struct for directory entry in the file system, see mp3 document 8.1 
+// The struct for directory entry in the file system, see mp3 document 8.1
 typedef struct dentry_t{        // the total size of the directory entry: 64B
     uint8_t     file_name[FILE_NAME_LENGTH];  // 32 Bytes: file name
     uint32_t    file_type;      // 4 Bytes: file type
@@ -71,7 +71,7 @@ typedef struct dentry_t{        // the total size of the directory entry: 64B
     uint8_t     reserved[24];   // 24 Bytes reserved
 } dentry_t ;
 
-// the struct for boot block. see mp3 document 8.1
+// The struct for boot block. see mp3 document 8.1
 typedef struct boot_block_t {   // the total size of the block: 4kB= (63+1) * 64B
     uint32_t    dir_num;        // 4 Bytes: number of directories
     uint32_t    inode_num;      // 4 Bytes: number of inodes (N)
@@ -82,7 +82,7 @@ typedef struct boot_block_t {   // the total size of the block: 4kB= (63+1) * 64
                                 // only the first dir_num ones are meaningful
 } boot_block_t ;
 
-// the struct for inode, see mp3 document 8.1 
+// The struct for inode, see mp3 document 8.1
 typedef struct inode_t {        // the total size of the inode: 4kB = (1023 + 1) * 4B 
     uint32_t    length_in_bytes;    // 4 Bytes: the length of the file in Byte
     uint32_t    data_block_num[(FILE_BLOCK_SIZE_IN_BYTES / DATA_BLOCK_NUM_SIZE_IN_BYTE) - 1];
@@ -96,15 +96,15 @@ typedef struct data_block_t {   // the total size of a data block: 4kB
 } data_block_t ;
 
 
-/*************************** abstract file system calls ***********************/
+/*************************** Abstract File System Calls ***********************/
 
-int32_t file_system_open(const uint8_t* filename);
-int32_t file_system_close(int32_t fd);
-int32_t file_system_read(int32_t fd, void* buf, int32_t nBytes);
-int32_t file_system_write(int32_t fd, const void* buf, int32_t nBytes);
+int32_t system_open(const uint8_t* filename);
+int32_t system_close(int32_t fd);
+int32_t system_read(int32_t fd, void* buf, int32_t nbytes);
+int32_t system_write(int32_t fd, const void* buf, int32_t nbytes);
 
 
-/***************************** public functions *********************************/
+/***************************** Public Functions *********************************/
 
 
 int32_t init_file_system(module_t * file_system);
@@ -118,7 +118,7 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry);
 int32_t read_data(uint32_t inode, uint32_t offset, uint8_t* buf, uint32_t length);
 
 
-/**************************** file operatoins ****************************/
+/**************************** File Operations ****************************/
 
 int32_t file_open(const uint8_t* filename);
 int32_t file_close(int32_t fd);
@@ -126,7 +126,7 @@ int32_t file_read(int32_t fd, void* buf, int32_t nBytes);
 int32_t file_write(int32_t fd, const void* buf, int32_t nBytes);
 
 
-/**************************** directory operatoins ****************************/
+/**************************** Directory Operations ****************************/
 
 int32_t dir_open(const uint8_t* filename);
 int32_t dir_close(int32_t fd);
@@ -134,7 +134,7 @@ int32_t dir_read(int32_t fd, void* buf, int32_t nBytes);
 int32_t dir_write(int32_t fd, const void* buf, int32_t nBytes);
 
 
-/******************************* extra support ***************************/
+/******************************* Extra Support ***************************/
 
 int32_t local_rtc_open(const uint8_t* filename);
 int32_t local_rtc_close(int32_t fd);

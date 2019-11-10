@@ -33,18 +33,18 @@ static data_block_t *data_blocks = NULL;
  * @param filename    File to open
  * @return   -1 for failure, or file descriptor
  */
-int32_t file_system_open(const uint8_t *filename) {
+int32_t system_open(const uint8_t *filename) {
 
     // Check if already open max number of file
     if (cur_process()->file_array.current_open_file_num >= MAX_OPEN_FILE) {
-        DEBUG_WARN("file_open(): already reach max, cannot open %s\n", filename);
+        DEBUG_WARN("system_open(): already reach max, cannot open %s\n", filename);
         return -1;
     }
 
     // Find the correspond dentry
     dentry_t current_dentry;
     if (-1 == read_dentry_by_name(filename, &current_dentry)) {
-        DEBUG_WARN("file_open(): cannot open %s, no such file\n", filename);
+        DEBUG_WARN("system_open(): cannot open %s, no such file\n", filename);
         return -1;
     }
 
@@ -62,7 +62,7 @@ int32_t file_system_open(const uint8_t *filename) {
             fd = file_open(filename);
             break;
         default:
-            DEBUG_ERR("file_open(): unknown file type of %s\n", filename);
+            DEBUG_ERR("system_open(): unknown file type of %s\n", filename);
             return -1;
     }
 
@@ -77,26 +77,26 @@ int32_t file_system_open(const uint8_t *filename) {
  * @return      0 for success, -1 for failure
  * @effect      The array of file_array and count will be changed
  */
-int32_t file_system_close(int32_t fd) {
+int32_t system_close(int32_t fd) {
 
     int32_t ret;
 
     // Check whether fd is valid
     if (fd == 0) {
-        DEBUG_ERR("file_system_close(): cannot close stdin\n");
+        DEBUG_ERR("system_close(): cannot close stdin\n");
         return -1;
     }
     if (fd == 1) {
-        DEBUG_ERR("file_system_close(): cannot close stdout\n");
+        DEBUG_ERR("system_close(): cannot close stdout\n");
         return -1;
     }
-    if (fd < 0 || fd > MAX_OPEN_FILE) {
-        DEBUG_ERR("file_system_close(): no such fd!\n");
+    if (fd < 0 || fd >= MAX_OPEN_FILE) {
+        DEBUG_ERR("system_close(): no such fd!\n");
         return -1;
     }
     if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-        DEBUG_WARN("file_system_close(): file %d is not opened\n", fd);
-        return 0;
+        DEBUG_ERR("system_close(): file %d is not opened\n", fd);
+        return -1;
     }
 
     ret = cur_process()->file_array.opened_files[fd].file_op_table_p->close(fd);
@@ -115,16 +115,23 @@ int32_t file_system_close(int32_t fd) {
  * @return the number of Bytes read and placed into buffer , -1 for the bad fd,
  *         0 if offset reach the end of the file
  */
-int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
+int32_t system_read(int32_t fd, void *buf, int32_t nbytes) {
+
+    // Check for invalid fd
+    if (fd < 0 || fd >= MAX_OPEN_FILE) {
+        DEBUG_ERR("system_read(): invalid fd %d\n", fd);
+        return -1;
+    }
+
     // Check for NULL buffer
     if (nbytes != 0 && buf == NULL) {
-        DEBUG_ERR("file_system_read(): the buf is NULL, cannot read from file %d\n", fd);
+        DEBUG_ERR("system_read(): the buf is NULL, cannot read from file %d\n", fd);
         return -1;
     }
 
     // Check whether the file is opened
     if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-        DEBUG_ERR("file_system_read(): fd %d is not opened\n", fd);
+        DEBUG_ERR("system_read(): fd %d is not opened\n", fd);
         return -1;
     }
 
@@ -139,16 +146,23 @@ int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
  * @return 0 for success, -1 for fail
  * @note This is a read only file system, if file type is dir/regular file, return -1
  */
-int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes) {
+int32_t system_write(int32_t fd, const void *buf, int32_t nbytes) {
+
+    // Check for invalid fd
+    if (fd < 0 || fd >= MAX_OPEN_FILE) {
+        DEBUG_ERR("system_write(): invalid fd %d\n", fd);
+        return -1;
+    }
+
     // Check for NULL buffer
     if (nbytes != 0 && buf == NULL) {
-        DEBUG_ERR("file_system_write(): the buf is NULL, cannot write to file %d\n", fd);
+        DEBUG_ERR("system_write(): the buf is NULL, cannot write to file %d\n", fd);
         return -1;
     }
 
     // Check whether the file is opened
     if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-        DEBUG_ERR("file_system_write(): fd %d is not opened\n", fd);
+        DEBUG_ERR("system_write(): fd %d is not opened\n", fd);
         return -1;
     }
 
@@ -259,7 +273,7 @@ int32_t clear_file_array(file_array_t *cur_file_array) {
 
     int i;  // loop counter
     for (i = 2; i < MAX_OPEN_FILE; i++) {
-        if (cur_process()->file_array.opened_files[i].flags == FD_IN_USE) file_system_close(i);
+        if (cur_process()->file_array.opened_files[i].flags == FD_IN_USE) system_close(i);
     }
 
     return 0;
@@ -413,7 +427,7 @@ int32_t file_open(const uint8_t *filename) {
         return -1;
     }
 
-    // Get a fd, guarantee by file_system_open that have space
+    // Get a fd, guarantee by system_open that have space
     int32_t fd = get_free_fd();
 
     // Init the file_array got
@@ -483,7 +497,7 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nBytes) {
 int32_t dir_open(const uint8_t *filename) {
     (void) filename; // no need to use, avoid warning
 
-    // Get a fd, garentee by file_system_open that have space
+    // Get a fd, garentee by system_open that have space
     int32_t fd = get_free_fd();
 
     // Init the file_array
@@ -578,10 +592,10 @@ int32_t local_rtc_open(const uint8_t *filename) {
     if (rtc_open(filename) != 0)
         return -1;
 
-    // Get a file_array, guarantee by file_system_open that have space
+    // Get a file_array, guarantee by system_open that have space
     int32_t fd = get_free_fd();
 
-    // Init the file_array, guarantee by file_system_open that have space
+    // Init the file_array, guarantee by system_open that have space
     cur_process()->file_array.opened_files[fd].file_op_table_p = &rtc_op_table;
     cur_process()->file_array.opened_files[fd].inode = 0;
     cur_process()->file_array.opened_files[fd].file_position = 0; // the beginning of the file

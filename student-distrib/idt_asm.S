@@ -133,13 +133,13 @@ system_call_entry_done:
 
 system_call_table:
     .long sys_not_implemented  /* 0 */
-    .long sys_halt
-    .long sys_execute
-    .long sys_read
-    .long sys_write
-    .long sys_open             /* 5 */
-    .long sys_close
-    .long sys_getargs
+    .long lowlevel_sys_halt
+    .long lowlevel_sys_execute
+    .long lowlevel_sys_read
+    .long lowlevel_sys_write
+    .long lowlevel_sys_open             /* 5 */
+    .long lowlevel_sys_close
+    .long lowlevel_sys_getargs
     .long sys_not_implemented
     .long sys_not_implemented
     .long sys_not_implemented  /* 10 */
