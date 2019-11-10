@@ -7,17 +7,17 @@
 #define ELF_MAGIC_SIZE_IN_BYTE  4
 
 // Global variables
-static int pid_count = 0; // the ID for new task, also the count of running tasks
-static int pid_running[MAX_RUNNING_TASK] = {0};
-static int pid_active;
+static int page_id_count = 0; // the ID for new task, also the count of running tasks
+static int page_id_running[MAX_RUNNING_TASK] = {0};
+static int page_id_active;
 
-// Helper funtions
+// Helper functions
 int task_turn_on_paging(const int id);
 int task_turn_off_paging(const int id, const int pre_id);
 int task_load(dentry_t *task);
 int task_is_executable(dentry_t *task);
 uint32_t task_get_eip(dentry_t *task);
-int task_get_pid();
+int task_get_page_id();
 
 #define FLUSH_TLB()  asm volatile ("  \
     movl    %%cr3, %%eax            \n\
@@ -32,58 +32,57 @@ int task_get_pid();
  * @return             pid for success, -1 for no such task, -2 for fail to get eip 
  * @effect             The paging setting will be changed, para eip may be set 
  */
-int task_set_up_paging(const uint8_t *task_name, uint32_t *eip) {
+int task_set_up_memory(const uint8_t *task_name, uint32_t *eip) {
 
     int i;  // loop counter and temp use 
-    dentry_t task; // the dentry of the taks in the file system
+    dentry_t task; // the dentry of the tasks in the file system
 
     // When first run, do some init work
-    if (pid_count == 0) {
+    if (page_id_count == 0) {
         for (i = 0; i < MAX_RUNNING_TASK; i++) {
-            pid_running[i] = PID_FREE;
+            page_id_running[i] = PID_FREE;
         }
     }
 
     // Get the task in file system 
     if (-1 == read_dentry_by_name(task_name, &task)) {
-        printf("ERROR: test_set_up_paging(): no such task: %s\n", task_name);
+        DEBUG_ERR("task_set_up_memory(): no such task: %s\n", task_name);
         return -1;
     }
 
     // Check whether the file is executable 
     if (!task_is_executable(&task)) {
-        printf("ERROR: test_set_up_paging(): not a executable task: %s\n", task_name);
+        DEBUG_ERR("task_set_up_memory(): not a executable task: %s\n", task_name);
         return -1;
     }
 
-    // Get the eip of the task 
+    // Get a pid for the task
+    int page_id = task_get_page_id();
+    if (page_id == -1) {
+        DEBUG_WARN("task_set_up_memory(): max task reached, cannot open task: %s\n", task_name);
+        return -1;
+    }
+
+    // Get the eip of the task
     if (-1 == (i = task_get_eip(&task))) {
-        printf("ERROR: task_set_up_paging(): fail to get eip of task: %s\n", task_name);
+        DEBUG_ERR("task_set_up_memory(): fail to get eip of task: %s\n", task_name);
         return -2;
     } else {
         *eip = i;
     }
 
-    // Get a pid for the task
-    int pid = task_get_pid();
-    if (pid == -1) {
-        printf("WARNING: task_set_up_paging(): max task reached, ");
-        printf("cannot open task: %s\n", task_name);
-        return -1;
-    }
-
     // Turn on the paging space for the file 
-    task_turn_on_paging(pid);
+    task_turn_on_paging(page_id);
 
     // Load the file
     task_load(&task);
 
     // Update the pid 
-    pid_running[pid] = PID_USED;
-    pid_active = pid;
-    pid_count++;
+    page_id_running[page_id] = PID_USED;
+    page_id_active = page_id;
+    page_id_count++;
 
-    return pid;
+    return page_id;
 }
 
 /**
@@ -94,19 +93,19 @@ int task_set_up_paging(const uint8_t *task_name, uint32_t *eip) {
  * @effect      The paging setting will be changed 
  */
 int task_reset_paging(const int cur_id, const int pre_id) {
-    // check if it is shell
+    // Check if it is shell
     if (cur_id == 0) {
-        printf("ERROR: task_reset_paging(): cannot turn off shell\n");
+        DEBUG_ERR("task_reset_paging(): cannot turn off shell\n");
         return -1;
     }
 
     // Check whether the id is valid 
     if (cur_id >= MAX_RUNNING_TASK) {
-        printf("ERROR: task_reset_paging(): invalid task id: %d\n", cur_id);
+        DEBUG_ERR("task_reset_paging(): invalid task id: %d\n", cur_id);
         return -1;
     }
-    if (pid_running[cur_id] == PID_FREE) {
-        printf("ERROR: task_reset_paging(): task %d is not running\n", cur_id);
+    if (page_id_running[cur_id] == PID_FREE) {
+        DEBUG_ERR("task_reset_paging(): task %d is not running\n", cur_id);
         return -1;
     }
 
@@ -114,14 +113,14 @@ int task_reset_paging(const int cur_id, const int pre_id) {
     task_turn_off_paging(cur_id, pre_id);
 
     // Release the pid 
-    pid_running[cur_id] = PID_FREE;
-    pid_active = pre_id;
-    pid_count--;
+    page_id_running[cur_id] = PID_FREE;
+    page_id_active = pre_id;
+    page_id_count--;
 
     return 0;
 }
 
-/***************************** helper funtions *******************************/
+/***************************** Helper Functions *******************************/
 
 /**
  * Turn on the paging for specific task (privilege = 3)
@@ -229,10 +228,10 @@ uint32_t task_get_eip(dentry_t *task) {
  * Get a free pid 
  * @return      the pid got for success , -1 for fail
  */
-int task_get_pid() {
-    int pid = 0;
-    for (pid = 0; pid < MAX_RUNNING_TASK; pid++) {
-        if (pid_running[pid] == PID_FREE) return pid;
+int task_get_page_id() {
+    int page_id = 0;
+    for (page_id = 0; page_id < MAX_RUNNING_TASK; page_id++) {
+        if (page_id_running[page_id] == PID_FREE) return page_id;
     }
     return -1;
 }

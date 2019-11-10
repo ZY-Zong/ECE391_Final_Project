@@ -139,7 +139,6 @@ void entry(unsigned long magic, unsigned long addr) {
         tss.ldt_segment_selector = KERNEL_LDT;
         tss.ss0 = KERNEL_DS;
         tss.esp0 = 0x800000;
-        // FIXME: if kernel stack is moved, this should be changed
         ltr(KERNEL_TSS);
     }
 

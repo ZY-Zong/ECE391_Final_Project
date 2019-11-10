@@ -9,16 +9,19 @@
 #include "x86_desc.h"
 #include "file_system.h"
 
+#define PROCESS_INITIAL     1U  // initial process
+
 // Process control block (PCB) stores info for every task
 typedef struct process_t process_t;
 struct process_t {
     uint8_t valid;
-    process_t* parent;
     uint8_t* executable_name;
     uint8_t* args;
+    uint32_t flags;
+    process_t* parent;
     uint32_t kesp;  // kernel stack esp
+    int32_t page_id;
     file_array_t file_array;
-    int page_id;
 };
 
 

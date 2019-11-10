@@ -32,8 +32,8 @@ continue:
     ljmp    $KERNEL_CS, $keep_going
 
 keep_going:
-    # Set up ESP so we can have an initial stack, 8MB - 2 * PCB (Process Control Block, 8KB each)
-    movl    $0x7FC000, %esp
+    # Set up ESP so we can have an initial stack, 8MB
+    movl    $0x800000, %esp
 
     # Set up the rest of the segment selector registers
     movw    $KERNEL_DS, %cx

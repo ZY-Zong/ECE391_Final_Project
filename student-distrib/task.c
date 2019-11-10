@@ -105,23 +105,6 @@ static process_t *process_allocate_new_slot() {
 }
 
 /**
- * Create a new process in the process list and init process control block
- * @return Pointer to process_t
- */
-process_t *process_create() {
-    process_t *proc = process_allocate_new_slot();  // allocate a new PCB
-
-    if (proc == NULL) return NULL;  // no available slot
-
-    init_file_array(&proc->file_array);  // init opened file list
-    proc->parent = cur_process();
-    // FIXME: for initial process, cur_process() will return a strange address. Is it OK?
-    proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;  // initialize kernel esp to the bottom of PKM
-
-    return proc;
-}
-
-/**
  * Remove a process from process list
  * @param proc    Pointer to process_t of the process to be removed
  * @return Pointer to its parent process
@@ -161,29 +144,52 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  */
 int32_t system_execute(uint8_t *command) {
 
-    process_t *proc = process_create();
+    process_t *proc;
     uint32_t start_eip;
     int32_t program_ret;
+    uint32_t temp;
 
-    if (proc == NULL) return -1;  // failed to create new process
+    // Allocate a new PCB
+    if (NULL == (proc = process_allocate_new_slot())) return -1;  // no available slot
 
+    // Setup flags and parent
+    proc->flags = 0;
+    if (process_cnt == 1) {  // this is the initial process
+        proc->flags |= PROCESS_INITIAL;
+        proc->parent = NULL;
+    } else {
+        proc->parent = cur_process();
+    }
+
+    // Initialize kernel ESP to the bottom of PKM
+    proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;
+
+    // Parse executable name and arguments
     if (execute_parse_command(command, &proc->args) != 0) {
         process_remove_from_list(proc);
         return -1;  // invalid command
     }
-    proc->executable_name = command;  // save executable name
+    proc->executable_name = command;
 
     // Setup paging, run program loader, get new EIP
-    if ((proc->page_id = task_set_up_paging(command, &start_eip)) < 0) {
+    if ((proc->page_id = task_set_up_memory(command, &start_eip)) < 0) {
         process_remove_from_list(proc);
         return -1;
     }
 
-    tss.ss0 = KERNEL_DS;
-    tss.esp0 = proc->kesp;  // set tss to new process's kernel stack to make sure system calls use correct stack
+    // Init opened file list
+    init_file_array(&proc->file_array);
 
-    // FIXME: for initial process, cur_process() will return a strange address. Is it OK?
-    execute_launch(cur_process()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+    // Set tss to new process's kernel stack to make sure system calls use correct stack
+    tss.ss0 = KERNEL_DS;
+    tss.esp0 = proc->kesp;
+
+    // Jump to user program entry
+    if (proc->flags & PROCESS_INITIAL) {
+        execute_launch(temp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+    } else {
+        execute_launch(cur_process()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+    }
 
     return program_ret;
 }

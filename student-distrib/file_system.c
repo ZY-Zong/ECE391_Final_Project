@@ -33,41 +33,37 @@ static data_block_t *data_blocks = NULL;
  * @param filename    File to open
  * @return   -1 for failure, or file descriptor
  */
-int32_t file_system_open(const uint8_t *filename)
-{
+int32_t file_system_open(const uint8_t *filename) {
 
     // Check if already open max number of file
-    if (cur_process()->file_array.current_open_file_num >= MAX_OPEN_FILE)
-    {
-        printf("WARNING: file_open(): already reach max, cannot open %s\n", filename);
+    if (cur_process()->file_array.current_open_file_num >= MAX_OPEN_FILE) {
+        DEBUG_WARN("file_open(): already reach max, cannot open %s\n", filename);
         return -1;
     }
 
     // Find the correspond dentry
     dentry_t current_dentry;
-    if (-1 == read_dentry_by_name(filename, &current_dentry))
-    {
-        printf("WARNING: file_open(): cannot open %s, no such file\n", filename);
+    if (-1 == read_dentry_by_name(filename, &current_dentry)) {
+        DEBUG_WARN("file_open(): cannot open %s, no such file\n", filename);
         return -1;
     }
 
     int32_t fd = -1; // the fd to return
 
     // Call open function according to file type
-    switch (current_dentry.file_type)
-    {
-    case 0: // RTC
-        fd = local_rtc_open(filename);
-        break;
-    case 1: // directory
-        fd = dir_open(filename);
-        break;
-    case 2: // regular file
-        fd = file_open(filename);
-        break;
-    default:
-        printf("ERROR: file_open(): unknown file type of %s\n", filename);
-        return -1;
+    switch (current_dentry.file_type) {
+        case 0:  // RTC
+            fd = local_rtc_open(filename);
+            break;
+        case 1:  // directory
+            fd = dir_open(filename);
+            break;
+        case 2:  // regular file
+            fd = file_open(filename);
+            break;
+        default:
+            DEBUG_ERR("file_open(): unknown file type of %s\n", filename);
+            return -1;
     }
 
     cur_process()->file_array.current_open_file_num++;
@@ -81,30 +77,25 @@ int32_t file_system_open(const uint8_t *filename)
  * @return      0 for success, -1 for failure
  * @effect      The array of file_array and count will be changed
  */
-int32_t file_system_close(int32_t fd)
-{
+int32_t file_system_close(int32_t fd) {
 
     int32_t ret;
 
     // Check whether fd is valid
-    if (fd == 0)
-    {
-        printf("ERROR: file_system_close(): cannot close stdin\n");
+    if (fd == 0) {
+        DEBUG_ERR("file_system_close(): cannot close stdin\n");
         return -1;
     }
-    if (fd == 1)
-    {
-        printf("ERROR: file_system_close(): cannot close stdout\n");
+    if (fd == 1) {
+        DEBUG_ERR("file_system_close(): cannot close stdout\n");
         return -1;
     }
-    if (fd < 0 || fd > MAX_OPEN_FILE)
-    {
-        printf("ERROR: file_system_close(): no such fd!\n");
+    if (fd < 0 || fd > MAX_OPEN_FILE) {
+        DEBUG_ERR("file_system_close(): no such fd!\n");
         return -1;
     }
-    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE)
-    {
-        printf("WARNING: file_system_close(): file %d is not opened\n", fd);
+    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+        DEBUG_WARN("file_system_close(): file %d is not opened\n", fd);
         return 0;
     }
 
@@ -124,20 +115,16 @@ int32_t file_system_close(int32_t fd)
  * @return the number of Bytes read and placed into buffer , -1 for the bad fd,
  *         0 if offset reach the end of the file
  */
-int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes)
-{
+int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes) {
     // Check for NULL buffer
-    if (nbytes != 0 && buf == NULL)
-    {
-        printf("ERROR: file_system_read(): the buf is NULL, ");
-        printf("cannot read from file %d\n", fd);
+    if (nbytes != 0 && buf == NULL) {
+        DEBUG_ERR("file_system_read(): the buf is NULL, cannot read from file %d\n", fd);
         return -1;
     }
 
     // Check whether the file is opened
-    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE)
-    {
-        printf("ERROR: file_system_read(): fd %d is not opened\n", fd);
+    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+        DEBUG_ERR("file_system_read(): fd %d is not opened\n", fd);
         return -1;
     }
 
@@ -152,20 +139,16 @@ int32_t file_system_read(int32_t fd, void *buf, int32_t nbytes)
  * @return 0 for success, -1 for fail
  * @note This is a read only file system, if file type is dir/regular file, return -1
  */
-int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes)
-{
+int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes) {
     // Check for NULL buffer
-    if (nbytes != 0 && buf == NULL)
-    {
-        printf("ERROR: file_system_write(): the buf is NULL, ");
-        printf("cannot write to file %d\n", fd);
+    if (nbytes != 0 && buf == NULL) {
+        DEBUG_ERR("file_system_write(): the buf is NULL, cannot write to file %d\n", fd);
         return -1;
     }
 
     // Check whether the file is opened
-    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE)
-    {
-        printf("ERROR: file_system_write(): fd %d is not opened\n", fd);
+    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+        DEBUG_ERR("file_system_write(): fd %d is not opened\n", fd);
         return -1;
     }
 
@@ -181,23 +164,21 @@ int32_t file_system_write(int32_t fd, const void *buf, int32_t nbytes)
  * @param fs    The file system image that is loaded as module
  * @return    0 for success, -1 for the file system already inited
  */
-int32_t init_file_system(module_t *fs)
-{
-    // check if already inited
-    if (file_system_inited == 1)
-    {
-        printf("ERROR: file_system.c: file system already inited\n");
+int32_t init_file_system(module_t *fs) {
+    // Check if already inited
+    if (file_system_inited == 1) {
+        DEBUG_ERR("init_file_system(): file system already inited\n");
         return -1;
     }
 
-    // Init: set the global variables
+    // Set the global variables
     file_system_inited = 1;
     file_system = *fs;
 
-    // store the blocks as global variable
-    boot_block = *((boot_block_t *)fs->mod_start);
-    inodes = ((inode_t *)fs->mod_start) + 1;
-    data_blocks = ((data_block_t *)fs->mod_start) + boot_block.inode_num + 1;
+    // Store the blocks as global variable
+    boot_block = *((boot_block_t *) fs->mod_start);
+    inodes = ((inode_t *) fs->mod_start) + 1;
+    data_blocks = ((data_block_t *) fs->mod_start) + boot_block.inode_num + 1;
 
     // Init operation table for terminal
     terminal_op_table.open = terminal_open;
@@ -235,11 +216,11 @@ int32_t init_file_system(module_t *fs)
  * @param cur_file_array    the file array to be init
  * @return                  0 for success, -1 for bad file array pointer 
  */
-int32_t init_file_array(file_array_t *cur_file_array){
-    
+int32_t init_file_array(file_array_t *cur_file_array) {
+
     // Check the array pointer
-    if (cur_file_array == NULL){
-        printf("ERROR: init_file_array(): bad input\n");
+    if (cur_file_array == NULL) {
+        DEBUG_ERR("init_file_array(): bad input\n");
         return -1;
     }
 
@@ -252,11 +233,10 @@ int32_t init_file_array(file_array_t *cur_file_array){
     cur_file_array->opened_files[1].flags = FD_IN_USE;
     cur_file_array->opened_files[1].file_position = cur_file_array->opened_files[1].inode = 1;
 
-    cur_file_array->current_open_file_num=2;
+    cur_file_array->current_open_file_num = 2;
 
-    int i; // loop counter
-    for (i = 2; i < MAX_OPEN_FILE; i++)
-    {
+    int i;  // loop counter
+    for (i = 2; i < MAX_OPEN_FILE; i++) {
         cur_file_array->opened_files[i].flags = FD_NOT_IN_USE;
     }
 
@@ -269,18 +249,17 @@ int32_t init_file_array(file_array_t *cur_file_array){
  * @return                  0 for success, -1 for bad file array pointer 
  * @effect                  the file array will be changed 
  */
-int32_t clear_file_array(file_array_t* cur_file_array){
-    
+int32_t clear_file_array(file_array_t *cur_file_array) {
+
     // Check the array pointer
-    if (cur_file_array == NULL){
-        printf("ERROR: clear_file_array(): bad input\n");
+    if (cur_file_array == NULL) {
+        DEBUG_ERR("clear_file_array(): bad input\n");
         return -1;
     }
 
-    int i; // loop counter
-    for (i = 2; i < MAX_OPEN_FILE; i++)
-    {
-        if(cur_process()->file_array.opened_files[i].flags==FD_IN_USE) file_system_close(i);
+    int i;  // loop counter
+    for (i = 2; i < MAX_OPEN_FILE; i++) {
+        if (cur_process()->file_array.opened_files[i].flags == FD_IN_USE) file_system_close(i);
     }
 
     return 0;
@@ -293,14 +272,14 @@ int32_t clear_file_array(file_array_t* cur_file_array){
  * @effect                  the file system will work in another file array 
  * @note                    the caller is responsible for init file array before set 
  */
-int32_t set_file_array(file_array_t* cur_file_array){
-    
+int32_t set_file_array(file_array_t *cur_file_array) {
+
     // Check the array pointer
-    if (cur_file_array == NULL){
-        printf("ERROR: set_file_array(): bad input\n");
+    if (cur_file_array == NULL) {
+        DEBUG_ERR("set_file_array(): bad input\n");
         return -1;
     }
-    
+
     // Update the global variable 
     // file_array=*cur_file_array;
 
@@ -313,21 +292,18 @@ int32_t set_file_array(file_array_t* cur_file_array){
  * @param dentry   Pointer of output dentry
  * @return         0 for success, -1 for no such file exist
  */
-int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry)
-{
+int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry) {
 
-    int i; // loop counter
+    int i;  // loop counter
 
-    // check if the file name is too long
-    if (strlen((int8_t *)fname) > FILE_NAME_LENGTH)
+    // Check if the file name is too long
+    if (strlen((int8_t *) fname) > FILE_NAME_LENGTH)
         return -1;
 
     // Loop though all the file names
-    for (i = 0; i < boot_block.dir_num; i++)
-    {
+    for (i = 0; i < boot_block.dir_num; i++) {
         // Test whether current file match
-        if (!strncmp((int8_t *)fname, (int8_t *)boot_block.dir_entries[i].file_name, FILE_NAME_LENGTH))
-        {
+        if (!strncmp((int8_t *) fname, (int8_t *) boot_block.dir_entries[i].file_name, FILE_NAME_LENGTH)) {
             // If yes, set dentry and return
             *dentry = boot_block.dir_entries[i];
             return 0;
@@ -344,24 +320,21 @@ int32_t read_dentry_by_name(const uint8_t *fname, dentry_t *dentry)
  * @param dentry    Pointer of output dentry
  * @return   0 for success, -1 for no such index exist
  */
-int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry)
-{
+int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry) {
 
-    int i; // loop counter
+    int i;  // loop counter
 
-    // loop though all the file names
-    for (i = 0; i < boot_block.dir_num; i++)
-    {
+    // Loop though all the file names
+    for (i = 0; i < boot_block.dir_num; i++) {
         // test whether current file match
-        if (index == boot_block.dir_entries[i].inode_num)
-        {
+        if (index == boot_block.dir_entries[i].inode_num) {
             // if yes, set dentry and return
             *dentry = boot_block.dir_entries[i];
             return 0;
         }
     }
 
-    // after looping though all dentries and not found, meaning not exist
+    // After looping though all dentries and not found, meaning not exist
     return -1;
 }
 
@@ -375,8 +348,7 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t *dentry)
  *         -1 for the bad inode / inode point to bad data block, 0 if offset reach the end of the file
  * @note The caller is responsible for produce enough space for the buffer
  */
-int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length)
-{
+int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length) {
 
     // Check whether inode is valid
     if (inode >= boot_block.inode_num)
@@ -396,8 +368,7 @@ int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length
     if (current_data_block_num >= boot_block.data_block_num)
         return -1;
 
-    while (bytes_read < length)
-    {
+    while (bytes_read < length) {
 
         // Check if reach the end of the file
         if (offset >= file_length)
@@ -412,8 +383,7 @@ int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length
         current_data_block_offset++;
 
         // Check if need to update block_num
-        if (current_data_block_offset >= FILE_BLOCK_SIZE_IN_BYTES)
-        {
+        if (current_data_block_offset >= FILE_BLOCK_SIZE_IN_BYTES) {
             current_data_block_offset -= FILE_BLOCK_SIZE_IN_BYTES;
             current_data_block_index++;
             current_data_block_num = inodes[inode].data_block_num[current_data_block_index];
@@ -434,14 +404,13 @@ int32_t read_data(uint32_t inode, uint32_t offset, uint8_t *buf, uint32_t length
  * @param filename    The name of the file to open
  * @return The file descriptor (fd) of the file
  */
-int32_t file_open(const uint8_t *filename)
-{
+int32_t file_open(const uint8_t *filename) {
 
     // Find the correspond dentry
     dentry_t current_dentry;
-    if (-1 == read_dentry_by_name(filename, &current_dentry))
-    {
-        printf("WARNING: file_open(): cannot open %s, no such file\n", filename);
+    if (-1 == read_dentry_by_name(filename, &current_dentry)) {
+        DEBUG_WARN("file_open(): cannot open %s, no such file\n", filename);
+        return -1;
     }
 
     // Get a fd, guarantee by file_system_open that have space
@@ -461,9 +430,8 @@ int32_t file_open(const uint8_t *filename)
  * @param fd    The descriptor of the file to be closed
  * @return 0
  */
-int32_t file_close(int32_t fd)
-{
-    (void)fd; // avoid warning
+int32_t file_close(int32_t fd) {
+    (void) fd; // avoid warning
     return 0;
 }
 
@@ -475,8 +443,7 @@ int32_t file_close(int32_t fd)
  * @return the number of Bytes read and placed into buffer, or
  *         -1 for the bad inode / inode point to bad data block, 0 if offset reach the end of the file
  */
-int32_t file_read(int32_t fd, void *buf, int32_t nbytes)
-{
+int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
 
     int32_t ret = 0;                                  // the return value
     uint32_t offset = cur_process()->file_array.opened_files[fd].file_position; // current offset of the file
@@ -496,14 +463,13 @@ int32_t file_read(int32_t fd, void *buf, int32_t nbytes)
 /**
  * The file system is read only, always return -1 and report error
  */
-int32_t file_write(int32_t fd, const void *buf, int32_t nBytes)
-{
+int32_t file_write(int32_t fd, const void *buf, int32_t nBytes) {
     // Params will not be used, avoid warning
-    (void)fd;
-    (void)buf;
-    (void)nBytes;
+    (void) fd;
+    (void) buf;
+    (void) nBytes;
 
-    printf("ERROR: file_write(): the file system is read only\n");
+    DEBUG_ERR("file_write(): the file system is read only\n");
     return -1;
 }
 
@@ -514,9 +480,8 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nBytes)
  * @param filename    The name of the dir to open
  * @return The file descriptor (fd) of the dir
  */
-int32_t dir_open(const uint8_t *filename)
-{
-    (void)filename; // no need to use, avoid warning
+int32_t dir_open(const uint8_t *filename) {
+    (void) filename; // no need to use, avoid warning
 
     // Get a fd, garentee by file_system_open that have space
     int32_t fd = get_free_fd();
@@ -535,9 +500,8 @@ int32_t dir_open(const uint8_t *filename)
  * @param fd    The file descriptor of dir to be closed
  * @return 0
  */
-int32_t dir_close(int32_t fd)
-{
-    (void)fd; // avoid warning
+int32_t dir_close(int32_t fd) {
+    (void) fd; // avoid warning
     return 0;
 }
 
@@ -563,21 +527,20 @@ int32_t dir_close(int32_t fd)
  * @return The bytes read, the small one of nbytes or FILE_NAME_LENGTH.
  * @note To get the exact length of file name string, use strlen()
  */
-int32_t dir_read(int32_t fd, void *buf, int32_t nbytes)
-{
+int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
 
     // Since only one dir exist, just get from boot block
 
     // Check if reach the end
-    if (cur_process()->file_array.opened_files[fd].file_position >= boot_block.dir_num)
-    {
-        printf("WARNING: dir_read(): already reach the end\n");
+    if (cur_process()->file_array.opened_files[fd].file_position >= boot_block.dir_num) {
+        // DEBUG_WARN("dir_read(): already reach the end\n");
         return 0;
     }
 
     // Copy the file name into buf
     int32_t buf_size = (nbytes > FILE_NAME_LENGTH ? FILE_NAME_LENGTH : nbytes);
-    strncpy(buf, (int8_t *)(boot_block.dir_entries[cur_process()->file_array.opened_files[fd].file_position++].file_name),
+    strncpy(buf,
+            (int8_t *) (boot_block.dir_entries[cur_process()->file_array.opened_files[fd].file_position++].file_name),
             buf_size);
 
     return buf_size;
@@ -590,15 +553,14 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes)
  * @param nBytes
  * @return -1
  */
-int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes)
-{
+int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes) {
 
     // Params will not be used, avoid warning
-    (void)fd;
-    (void)buf;
-    (void)nBytes;
+    (void) fd;
+    (void) buf;
+    (void) nBytes;
 
-    printf("ERROR: dir_write(): the file system is read only\n");
+    DEBUG_ERR("dir_write(): the file system is read only\n");
     return -1;
 }
 
@@ -609,10 +571,9 @@ int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes)
  * @param filename    The name of the RTC to open
  * @return The file descriptor (fd) of the RTC
  */
-int32_t local_rtc_open(const uint8_t *filename)
-{
+int32_t local_rtc_open(const uint8_t *filename) {
 
-    (void)filename; // no need to use, avoid warning
+    (void) filename; // no need to use, avoid warning
 
     if (rtc_open(filename) != 0)
         return -1;
@@ -634,8 +595,7 @@ int32_t local_rtc_open(const uint8_t *filename)
  * @param fd    The file descriptor of RTC
  * @return Return from rtc_close(fd)
  */
-int32_t local_rtc_close(int32_t fd)
-{
+int32_t local_rtc_close(int32_t fd) {
     return rtc_close(fd);
 }
 
@@ -646,8 +606,7 @@ int32_t local_rtc_close(int32_t fd)
  * @param nbytes    The size of buf
  * @return Return from rtc_read(fd, buf, nbytes)
  */
-int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes)
-{
+int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
     return rtc_read(fd, buf, nbytes);
 }
 
@@ -658,8 +617,7 @@ int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes)
  * @param nbytes    The size of buf
  * @return Return from rtc_write(fd, buf, nbytes)
  */
-int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes)
-{
+int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
     return rtc_write(fd, buf, nbytes);
 }
 
@@ -668,11 +626,9 @@ int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes)
  * @param inode    Inode index
  * @return Length in bytes
  */
-int32_t get_file_size(uint32_t inode)
-{
-    if (inode >= boot_block.inode_num)
-    {
-        printf("ERROR: get_file_size(): no such inode\n");
+int32_t get_file_size(uint32_t inode) {
+    if (inode >= boot_block.inode_num) {
+        DEBUG_ERR("get_file_size(): no such inode\n");
         return -1;
     }
     return inodes[inode].length_in_bytes;
@@ -682,13 +638,10 @@ int32_t get_file_size(uint32_t inode)
  * Get free fd in file_array.opened_files[]
  * @return Free fd, or MAX_OPEN_FILE if no available
  */
-int32_t get_free_fd()
-{
+int32_t get_free_fd() {
     int fd;
-    for (fd = 2; fd < MAX_OPEN_FILE; fd++)
-    {
-        if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE)
-        {
+    for (fd = 2; fd < MAX_OPEN_FILE; fd++) {
+        if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
             cur_process()->file_array.opened_files[fd].flags = FD_IN_USE;
             break;
         }
