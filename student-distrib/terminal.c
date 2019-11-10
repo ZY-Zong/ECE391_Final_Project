@@ -13,11 +13,13 @@
 #define RIGHT_SHIFT_PRESS 0x36
 #define RIGHT_SHIFT_RELEASE 0xB6
 #define BACKSPACE_SCAN_CODE 0x0E
+#define CAPSLOCK_PRESS 0x3A
+#define ENTER_PRESS 0x1C
 #define L_SCANCODE_PRESSED 0x26
 
 /* Keys that correspond to scan codes, using scan code set 1 for "US QWERTY" keyboard
  * REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
- * TODO: Not handled keys: Esc, Tab, right ctrl, Caps.
+ * TODO: Not handled keys: Esc, Tab, right ctrl.
  */
 static const char scan_code_table[128] = {
         0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',      /* 0x00 - 0x0E */
@@ -41,10 +43,34 @@ static const char shift_scan_code_table[128] = {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
 };
-
+static const char caps_shift_scan_code_table[128] = {
+        0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',   /* 0x00 - 0x0E */
+        0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '{', '}', '\n',      /* 0x0F - 0x1C */
+        0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ':', '\"', '~',           /* 0x1D - 0x29 */
+        0, '|', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '<', '>', '?', 0, 0,          /* 0x2A - 0x37 */
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
+};
+static const char caps_scan_code_table[128] = {
+        0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',      /* 0x00 - 0x0E */
+        0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\n',      /* 0x0F - 0x1C */
+        0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '\'', '`',           /* 0x1D - 0x29 */
+        0, '\\', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 0, 0,           /* 0x2A - 0x37 */
+        0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                            /* 0x38 - 0x46 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,                                    /* 0x47 - 0x53 */
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0                                        /* 0x54 - 0x80 */
+};
 // Array to record what keys has been pressed currently
 static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
-
+// Bit vector used to check whether the CapsLock is on
+static uint8_t capslock_status = 0;
+// Bit vector used to check whether someone is reading from the keyboard
+static uint8_t whether_read = 0;
 // Keyboard buffer of size 128 and a counter to store the current position in the buffer
 static char keyboard_buf[KEYBOARD_BUF_SIZE];
 static uint8_t keyboard_buf_counter = 0;
@@ -95,6 +121,24 @@ void handle_scan_code(uint8_t scan_code) {
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
 //        printf("(%x)", scan_code);
+        // If Enter and someone is reading from the keyboard, just let the read function handle \n
+        if ((1 == whether_read) && (ENTER_PRESS == scan_code)) {
+            keyboard_buf[keyboard_buf_counter] = '\n';
+            putc(keyboard_buf[keyboard_buf_counter]);
+            keyboard_buf_counter++;
+            return;
+        }
+        // If Enter and no one is reading from the keyboard, clear the keyboard buffer
+        if ((0 == whether_read) && (ENTER_PRESS == scan_code)) {
+            keyboard_buf_counter = 0;
+            putc('\n');
+            return;
+        }
+        // If CapsLock
+        if (CAPSLOCK_PRESS == scan_code) {
+            capslock_status ^= 0x1; //  Flip the status bit for CapsLock
+            return;
+        }
         // If Ctrl+L
         if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[L_SCANCODE_PRESSED]) {
             clear(); // clear the screen
@@ -110,19 +154,38 @@ void handle_scan_code(uint8_t scan_code) {
             }
         } else {
             // If shift is pressed
-            if ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS])) {
+            if ((0 == capslock_status) && ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS]))) {
+                // If CapsLock but shift is pressed
                 if (0 != shift_scan_code_table[scan_code]) {
-                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE) {
+                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
                         keyboard_buf[keyboard_buf_counter] = shift_scan_code_table[scan_code];
                         putc(keyboard_buf[keyboard_buf_counter]);
                         keyboard_buf_counter++;
                     }
                 }
-            } else {
-                // If shift is not pressed
+            } else if ((0 == capslock_status) && ((0 == key_flags[LEFT_SHIFT_PRESS]) && (0 == key_flags[RIGHT_SHIFT_PRESS]))){
+                // If not CapsLock and shift is not pressed
                 if (0 != scan_code_table[scan_code]) {
-                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE) {
+                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
                         keyboard_buf[keyboard_buf_counter] = scan_code_table[scan_code];
+                        putc(keyboard_buf[keyboard_buf_counter]);
+                        keyboard_buf_counter++;
+                    }
+                }
+            } else if ((1 == capslock_status) && ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS]))) {
+                // If CapsLock and shift is pressed
+                if (0 != scan_code_table[scan_code]) {
+                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                        keyboard_buf[keyboard_buf_counter] = caps_shift_scan_code_table[scan_code];
+                        putc(keyboard_buf[keyboard_buf_counter]);
+                        keyboard_buf_counter++;
+                    }
+                }
+            } else {
+                // If CapsLock but shift is not pressed
+                if (0 != scan_code_table[scan_code]) {
+                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                        keyboard_buf[keyboard_buf_counter] = caps_scan_code_table[scan_code];
                         putc(keyboard_buf[keyboard_buf_counter]);
                         keyboard_buf_counter++;
                     }
@@ -193,7 +256,7 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     if (nbytes > KEYBOARD_BUF_SIZE) {
         nbytes = KEYBOARD_BUF_SIZE;
     }
-
+    whether_read = 1;
     while (to_continue) {
         cli();
         {
@@ -211,7 +274,7 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
         }
         sti();
     }
-
+    whether_read = 0;
     cli();
     {
         memcpy(buf, keyboard_buf, i);
@@ -239,6 +302,11 @@ int32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
     cli();
     {
         for (i = 0; i < nbytes; i++) {
+            // TODO: decide whether to terminate write when seeing a NUL
+//            if (0 == ((uint8_t *) buf)[i]) {
+//                // If current character is '\0', stop
+//                break;
+//            }
             putc(((uint8_t *) buf)[i]);
         }
     }
