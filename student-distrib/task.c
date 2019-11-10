@@ -219,18 +219,23 @@ int32_t system_execute(uint8_t *command) {
 
 /**
  * Actual implementation of halt() system call
- * @param status    Exit code of current process
+ * @param status    Exit code of current process (size are enlarged to support 256 return from exception)
  * @return This function should never return
  */
-int32_t system_halt(uint8_t status) {
+int32_t system_halt(int32_t status) {
 
     clear_file_array(&cur_process()->file_array);
 
-    process_t *parent = process_remove_from_list(cur_process());
-    if (parent == NULL) {  // the last program has been halt
-        printf("Shell halt with status %u. Restarting...", status);
-        task_run_initial_process();
+    if (cur_process()->parent == NULL) {  // the last program has been halt
+        int page_id = cur_process()->page_id;
+        process_remove_from_list(cur_process());
+        printf("Initial shell halt with status %u. Restarting...", status);
+        task_reset_paging(page_id, page_id);  // do nothing to paging, but decrease count
+        task_run_initial_process();  // execute shell again
+        // Will not reach here
     }
+
+    process_t *parent = process_remove_from_list(cur_process());
 
     task_reset_paging(cur_process()->page_id, parent->page_id);  // switch page to parent
 

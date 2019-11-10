@@ -47,7 +47,7 @@ void task_init();
 void task_run_initial_process();
 
 int32_t system_execute(uint8_t *command);
-int32_t system_halt(uint8_t status);
+int32_t system_halt(int32_t status);
 int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 
 #endif // _TASK_H

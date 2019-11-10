@@ -91,11 +91,11 @@ void print_exception(uint32_t vec_num) {
     if (process_cnt == 0) {
         clear();
         reset_cursor();
-        printf("EXCEPTION %u OCCUR in PURE KERNEL STATE!\n", vec_num);
+        printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", vec_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
         DEBUG_ERR("EXCEPTION %u OCCUR!\n", vec_num);
-        system_halt((uint8_t) 256);
+        system_halt(256);
     }
 
 
@@ -152,12 +152,12 @@ asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
 
 /**
  * Low-level system call handler for halt()
- * @param status    Exit code of current process
+ * @param status    Exit code of current process (size are enlarged to support 256 return from exception)
  * @return This function should never return
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t lowlevel_sys_halt(uint8_t status) {
+asmlinkage int32_t lowlevel_sys_halt(int32_t status) {
     return system_halt(status);
 }
 

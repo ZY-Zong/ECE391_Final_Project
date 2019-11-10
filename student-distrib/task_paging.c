@@ -93,11 +93,6 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip) {
  * @effect      The paging setting will be changed 
  */
 int task_reset_paging(const int cur_id, const int pre_id) {
-    // Check if it is shell
-    if (cur_id == 0) {
-        DEBUG_ERR("task_reset_paging(): cannot turn off shell\n");
-        return -1;
-    }
 
     // Check whether the id is valid 
     if (cur_id >= MAX_RUNNING_TASK) {
