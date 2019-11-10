@@ -171,7 +171,7 @@ void entry(unsigned long magic, unsigned long addr) {
     enable_paging();
 
     /* Init the process system */
-    process_init();
+    task_init();
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close

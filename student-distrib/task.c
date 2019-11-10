@@ -7,6 +7,8 @@
 #include "file_system.h"
 #include "task_paging.h"
 
+#define USER_STACK_STARTING_ADDR  (0x8400000 - 1)  // User stack starts at 132MB - 1 (with paging enabled)
+
 uint32_t process_cnt = 0;
 
 /**
@@ -58,6 +60,8 @@ uint32_t process_cnt = 0;
     : "cc", "memory"                                                               \
 )
 
+static process_t *process_remove_from_list(process_t *proc);
+
 /**
  * Get current process based on ESP. Only for usage in kernel state.
  * @return Pointer to current process
@@ -76,11 +80,18 @@ process_t* cur_process() {
 /**
  * Initialize process list
  */
-void process_init() {
+void task_init() {
     int i;
     for (i = 0; i < PROCESS_MAX_CNT; i++) {
         ptr_process(i)->valid = 0;
     }
+}
+
+/**
+ * Run shell
+ */
+void task_run_initial_process() {
+    system_execute((uint8_t *) "shell");
 }
 
 /**
@@ -109,7 +120,7 @@ static process_t *process_allocate_new_slot() {
  * @param proc    Pointer to process_t of the process to be removed
  * @return Pointer to its parent process
  */
-process_t *process_remove_from_list(process_t *proc) {
+static process_t *process_remove_from_list(process_t *proc) {
     process_t *ret = proc->parent;
     proc->valid = 0;
     process_cnt--;
@@ -171,7 +182,19 @@ int32_t system_execute(uint8_t *command) {
     }
     proc->executable_name = command;
 
+    // Store the executable name and argument string to the kernel stack of new program, or they will be inaccessible
+    temp = strlen((int8_t *) proc->executable_name);
+    proc->kesp -= temp;
+    proc->executable_name = (uint8_t *) strcpy((int8_t *) proc->kesp, (int8_t *) proc->executable_name);
+
+    if (proc->args != NULL){
+        temp = strlen((int8_t *) proc->args);
+        proc->kesp -= temp;
+        proc->args = (uint8_t *) strcpy((int8_t *) proc->kesp, (int8_t *) proc->args);
+    }
+
     // Setup paging, run program loader, get new EIP
+    // NOTICE: after setting up paging for new program, command become useless
     if ((proc->page_id = task_set_up_memory(command, &start_eip)) < 0) {
         process_remove_from_list(proc);
         return -1;
@@ -205,8 +228,8 @@ int32_t system_halt(uint8_t status) {
 
     process_t *parent = process_remove_from_list(cur_process());
     if (parent == NULL) {  // the last program has been halt
-        printf("OS halt with status %u", status);
-        while (1) {}
+        printf("Shell halt with status %u. Restarting...", status);
+        task_run_initial_process();
     }
 
     task_reset_paging(cur_process()->page_id, parent->page_id);  // switch page to parent

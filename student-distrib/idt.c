@@ -87,10 +87,17 @@ void idt_init() {
  * @param vec_num    vector number of the interrupt/exception
  */
 void print_exception(uint32_t vec_num) {
-    clear();
-    reset_cursor();
-    printf("EXCEPTION %u OCCUR!\n", vec_num);
-    printf("------------------------ BLUE SCREEN ------------------------");
+
+    if (process_cnt == 0) {
+        clear();
+        reset_cursor();
+        printf("EXCEPTION %u OCCUR in PURE KERNEL STATE!\n", vec_num);
+        printf("------------------------ BLUE SCREEN ------------------------");
+    } else {
+        DEBUG_ERR("EXCEPTION %u OCCUR!\n", vec_num);
+        system_halt((uint8_t) 256);
+    }
+
 
     volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
     while (inf_loop) {}   // put kernel into infinite loop
@@ -126,38 +133,36 @@ asmlinkage long sys_not_implemented() {
     :
     : "memory", "cc"
     );
-    DEBUG_ERR("Invalid system call: \nEAX: %d  EBX: %d\n ECX: %d  EDX: %d\n",
+    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d\n",
            eax_val, ebx_val, ecx_val, edx_val);
     return -1;
 }
 
 /**
- * System call handler for execute()
+ * Low-level system call handler for execute()
  * @param command    Command to be executed
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t sys_execute(uint8_t *command) {
+asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
     return system_execute(command);
 }
 
 /**
- * System call handler for halt()
+ * Low-level system call handler for halt()
  * @param status    Exit code of current process
  * @return This function should never return
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t sys_halt(uint8_t status) {
+asmlinkage int32_t lowlevel_sys_halt(uint8_t status) {
     return system_halt(status);
 }
 
-// TODO: complete comments of read(), write(), open(), close()
-
 /**
- * System call handler for read()
+ * Low-level system call handler for read()
  * @param fd        File descriptor
  * @param buf       Buffer to store output
  * @param nbytes    Maximal number of bytes to write
@@ -165,53 +170,53 @@ asmlinkage int32_t sys_halt(uint8_t status) {
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t sys_read(int32_t fd, void* buf, int32_t nbytes) {
-    return file_system_read(fd, buf, nbytes);
+asmlinkage int32_t lowlevel_sys_read(int32_t fd, void* buf, int32_t nbytes) {
+    return system_read(fd, buf, nbytes);
 }
 
 /**
- * System call handler for write()
+ * Low-level system call handler for write()
  * @param fd        File descriptor
  * @param buf       Buffer of content to write
  * @param nbytes    Number of bytes to write
- * @return          0 on success, -1 on failure
+ * @return 0 on success, -1 on failure
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t sys_write(int32_t fd, const void* buf, int32_t nbytes) {
-    return file_system_write(fd, buf, nbytes);
+asmlinkage int32_t lowlevel_sys_write(int32_t fd, const void* buf, int32_t nbytes) {
+    return system_write(fd, buf, nbytes);
 }
 
 /**
- * System call handler for write()
+ * Low-level system call handler for open()
  * @param filename    String of filename to open
- * @return          0 on success, -1 on failure
+ * @return 0 on success, -1 on failure
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t sys_open(const uint8_t* filename) {
-    return file_system_open(filename);
+asmlinkage int32_t lowlevel_sys_open(const uint8_t* filename) {
+    return system_open(filename);
 }
 
 /**
- * System call handler for close()
+ * Low-level system call handler for close()
  * @param fd    File descriptor
- * @return          0 on success, -1 on failure
+ * @return 0 on success, -1 on failure
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-asmlinkage int32_t sys_close(int32_t fd) {
-    return file_system_close(fd);
+asmlinkage int32_t lowlevel_sys_close(int32_t fd) {
+    return system_close(fd);
 }
 
 /**
- * Actual implementation of getargs() system call
+ * Low-level system call handler for getargs()
  * @param buf       String buffer to accept args
  * @param nbytes    Maximal number of bytes to write to buf
  * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
  * @usage System call jump table in idt.S
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
-int32_t sys_getargs(uint8_t *buf, int32_t nbytes) {
+asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
     return system_getargs(buf, nbytes);
 }
