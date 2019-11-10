@@ -7,6 +7,11 @@
 #include "file_system.h"
 #include "task_paging.h"
 
+#define TASK_ENABLE_CHECKPOINT    1
+#if TASK_ENABLE_CHECKPOINT
+#include "tests.h"
+#endif
+
 #define USER_STACK_STARTING_ADDR  (0x8400000 - 1)  // User stack starts at 132MB - 1 (with paging enabled)
 
 uint32_t process_cnt = 0;
@@ -214,6 +219,10 @@ int32_t system_execute(uint8_t *command) {
         execute_launch(cur_process()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
     }
 
+#if TASK_ENABLE_CHECKPOINT
+    checkpoint_task_paging_consistent();  // check paging is recovered to current process
+#endif
+
     return program_ret;
 }
 
@@ -224,7 +233,20 @@ int32_t system_execute(uint8_t *command) {
  */
 int32_t system_halt(int32_t status) {
 
+    if (process_cnt == 0) {   // pure kernel state
+        DEBUG_ERR("Can't halt pure kernel state!");
+        return -1;
+    }
+
+#if TASK_ENABLE_CHECKPOINT
+    checkpoint_task_paging_consistent();  // check paging is consistent
+#endif
+
     clear_file_array(&cur_process()->file_array);
+
+#if TASK_ENABLE_CHECKPOINT
+    checkpoint_task_closed_all_files();
+#endif
 
     if (cur_process()->parent == NULL) {  // the last program has been halt
         int page_id = cur_process()->page_id;

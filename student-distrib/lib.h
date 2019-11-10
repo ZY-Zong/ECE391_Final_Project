@@ -22,7 +22,7 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 
 /** Debug Helper function */
 // Use printf() if things to print are normal. Only use the following macros when info are optional.
-#define DEBUG   1
+#define DEBUG   0
 #define DEBUG_VERBOSE   0
 #if DEBUG
 #if DEBUG_VERBOSE
