@@ -19,6 +19,12 @@ int task_is_executable(dentry_t *task);
 uint32_t task_get_eip(dentry_t *task);
 int task_get_pid();
 
+#define FLUSH_TLB()  asm volatile ("  \
+    movl    %%cr3, %%eax            \n\
+    movl    %%eax, %%cr3"             \
+    : \
+    : \
+    : "cc", "memory", "eax")
 
 /**
  * Set up paging for a task that is going to run and get its eip
@@ -129,13 +135,15 @@ int task_turn_on_paging(const int id) {
     uint32_t pde = 0;
 
     // Calculate the physical memory address, set at bit 22 
-    pde |= ((id + 2) << 21); // +2 for 8MB
+    pde |= (((uint32_t) id + 2) << 22U);  // +2 for 8MB
 
     // Set the flags of PDE 
     pde |= TASK_PAGE_FLAG;
 
     // Set the PDE 
     kernel_page_directory.entry[TASK_VIR_MEM_ENTRY] = pde;
+
+    FLUSH_TLB();
 
     return 0;
 }
@@ -149,7 +157,7 @@ int task_turn_on_paging(const int id) {
  * @effect          The PD will be changed 
  */
 int task_turn_off_paging(const int cur_id, const int pre_id) {
-    (void) cur_id; // seems not useful, avoid warning 
+    (void) cur_id;  // seems not useful, avoid warning
     return task_turn_on_paging(pre_id);
 }
 

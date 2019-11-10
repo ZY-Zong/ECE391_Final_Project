@@ -25,16 +25,18 @@ uint32_t process_cnt = 0;
     pushl %%ebp     /* save EBP on the stack */                                     \n\
     pushl $1f       /* return address to label 1, on top of the stack after iret */ \n\
     movl %%esp, %0  /* save current ESP */                                          \n\
+    /* The following stack linkage is for IRET */                                   \n\
     pushl $0x002B   /* user SS - USER_DS */                                         \n\
     pushl %2        /* user ESP */                                                  \n\
     pushf           /* flags (new program should not care) */                       \n\
     pushl $0x0023   /* user CS - USER_CS  */                                        \n\
     pushl %3        /* user EIP */                                                  \n\
     iret            /* enter user program */                                        \n\
-1:  movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
-    popl %%ebp      /* restore EBP */                                               \n\
+1:  popl %%ebp      /* restore EBP, must before following instructions */           \n\
+    movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
     popfl           /* restore flags */"                                              \
-    : "=m" (kesp_save_to), "=m" (ret)                                               \
+    : "=m" (kesp_save_to), /* must write to memory, or halt() will not get it */      \
+      "=m" (ret)                                                                      \
     : "rm" (new_esp), "rm" (new_eip)                                                  \
     : "cc", "memory"                                                                  \
 )
@@ -63,7 +65,7 @@ uint32_t process_cnt = 0;
 process_t* cur_process() {
     process_t* ret;
     asm volatile ("movl %%esp, %0  \n\
-                   andl $0xFFFF2000, %0    /* PKM_ALIGN_MASK */" \
+                   andl $0xFFFFE000, %0    /* PKM_ALIGN_MASK */" \
                    : "=r" (ret) \
                    : \
                    : "cc", "memory" \
@@ -78,7 +80,6 @@ void process_init() {
     int i;
     for (i = 0; i < PROCESS_MAX_CNT; i++) {
         ptr_process(i)->valid = 0;
-        DEBUG_PRINT("ptr_process(%d)->valid = %d\n", i, ptr_process(i)->valid);
     }
 }
 
@@ -93,7 +94,6 @@ static process_t *process_allocate_new_slot() {
 
     process_cnt++;
     for (i = 0; i < PROCESS_MAX_CNT; i++) {
-        DEBUG_PRINT("? ptr_process(%d)->valid = %d\n", i, ptr_process(i)->valid);
         if (!ptr_process(i)->valid) {
             ptr_process(i)->valid = 1;
             return ptr_process(i);
@@ -129,6 +129,7 @@ process_t *process_create() {
 process_t *process_remove_from_list(process_t *proc) {
     process_t *ret = proc->parent;
     proc->valid = 0;
+    process_cnt--;
     return ret;
 }
 
@@ -166,10 +167,17 @@ int32_t system_execute(uint8_t *command) {
 
     if (proc == NULL) return -1;  // failed to create new process
 
-    if (execute_parse_command(command, &proc->args) != 0) return -1;  // invalid command
+    if (execute_parse_command(command, &proc->args) != 0) {
+        process_remove_from_list(proc);
+        return -1;  // invalid command
+    }
+    proc->executable_name = command;  // save executable name
 
     // Setup paging, run program loader, get new EIP
-    if ((proc->page_id = task_set_up_paging(command, &start_eip)) < 0) return -1;
+    if ((proc->page_id = task_set_up_paging(command, &start_eip)) < 0) {
+        process_remove_from_list(proc);
+        return -1;
+    }
 
     tss.ss0 = KERNEL_DS;
     tss.esp0 = proc->kesp;  // set tss to new process's kernel stack to make sure system calls use correct stack

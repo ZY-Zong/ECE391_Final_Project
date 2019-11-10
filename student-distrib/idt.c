@@ -91,7 +91,9 @@ void print_exception(uint32_t vec_num) {
     reset_cursor();
     printf("EXCEPTION %u OCCUR!\n", vec_num);
     printf("------------------------ BLUE SCREEN ------------------------");
-    while (1) {}   // put kernel into infinite loop
+
+    volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
+    while (inf_loop) {}   // put kernel into infinite loop
 }
 
 /**

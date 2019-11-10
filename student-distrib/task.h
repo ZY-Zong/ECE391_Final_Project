@@ -14,6 +14,7 @@ typedef struct process_t process_t;
 struct process_t {
     uint8_t valid;
     process_t* parent;
+    uint8_t* executable_name;
     uint8_t* args;
     uint32_t kesp;  // kernel stack esp
     file_array_t file_array;
@@ -31,7 +32,7 @@ union process_kernel_memory_t {
 
 #define PKM_STARTING_ADDR    0x800000  // PKM starts at 8MB (bottom of kernel image), going to low address
 
-#define PKM_ALIGN_MASK     0xFFFF2000  // PKM is 8k-aligned, when in kernel_stack, mask ESP with this is current PCB
+#define PKM_ALIGN_MASK     0xFFFFE000  // PKM is 8k-aligned, when in kernel_stack, mask ESP with this is current PCB
 
 // Address of idx-th process control block
 #define ptr_process(idx) ((process_t *) (PKM_STARTING_ADDR - (idx + 1) * PKM_SIZE_IN_BYTES))
