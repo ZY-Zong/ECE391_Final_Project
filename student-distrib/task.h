@@ -33,7 +33,8 @@ union process_kernel_memory_t {
 
 #define PKM_ALIGN_MASK     0xFFFF2000  // PKM is 8k-aligned, when in kernel_stack, mask ESP with this is current PCB
 
-#define ptr_process(idx) (((process_t *) PKM_STARTING_ADDR) - (idx + 1))  // address of idx-th process control block
+// Address of idx-th process control block
+#define ptr_process(idx) ((process_t *) (PKM_STARTING_ADDR - (idx + 1) * PKM_SIZE_IN_BYTES))
 #define PROCESS_MAX_CNT    2  // maximum number of processes running at the same time
 extern uint32_t process_cnt;
 

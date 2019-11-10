@@ -115,6 +115,7 @@ process_t *process_create() {
 
     init_file_array(&proc->file_array);  // init opened file list
     proc->parent = cur_process();
+    // FIXME: for initial process, cur_process() will return a strange address. Is it OK?
     proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;  // initialize kernel esp to the bottom of PKM
 
     return proc;
@@ -170,9 +171,11 @@ int32_t system_execute(uint8_t *command) {
     // Setup paging, run program loader, get new EIP
     if ((proc->page_id = task_set_up_paging(command, &start_eip)) < 0) return -1;
 
+    tss.ss0 = KERNEL_DS;
     tss.esp0 = proc->kesp;  // set tss to new process's kernel stack to make sure system calls use correct stack
 
-    execute_launch(proc->parent->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+    // FIXME: for initial process, cur_process() will return a strange address. Is it OK?
+    execute_launch(cur_process()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
 
     return program_ret;
 }
