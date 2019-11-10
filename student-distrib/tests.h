@@ -10,6 +10,10 @@ void test1_handle_rtc();
 long divide_zero_test();
 long dereference_null_test();
 
+
+void checkpoint_task_closed_all_files();
+void checkpoint_task_paging_consistent();
+
 // test launcher
 void launch_tests();
 

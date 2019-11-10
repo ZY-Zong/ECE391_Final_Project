@@ -435,6 +435,112 @@ long fs_test() {
 }
 
 /* Checkpoint 3 tests */
+
+/**
+ * Test error arguments to fs system calls
+ * @return PASS or FAIL
+ * @note Inspired by ece391syserr.c
+ */
+long fs_err_test() {
+    TEST_HEADER;
+
+    long result = PASS;
+    int32_t ret;
+    uint8_t buf[32];
+
+    printf("Try passing error fds to fs syscalls...\n");
+    if (-1 != (ret = read(-1, buf, 31))) {
+        printf("read error return value %d\n", ret);
+        result = FAIL;
+    }
+    if (-1 != (ret = read(99999999, buf, 31))) {
+        printf("read error return value %d\n", ret);
+        result = FAIL;
+    }
+    if (-1 != (ret = write(-1, buf, 31))) {
+        printf("write error return value %d\n", ret);
+        result = FAIL;
+    }
+    if (-1 != (ret = write(99999999, buf, 31))) {
+        printf("write error return value %d\n", ret);
+        result = FAIL;
+    }
+    if (-1 != (ret = close(-1))) {
+        printf("close error return value %d\n", ret);
+        result = FAIL;
+    }
+    if (-1 != (ret = close(99999999))) {
+        printf("close error return value %d\n", ret);
+        result = FAIL;
+    }
+
+    return result;
+}
+
+/**
+ * Test error arguments to execute
+ * @return PASS or FAIL
+ */
+long execute_err_test() {
+    TEST_HEADER;
+
+    long result = PASS;
+    int32_t ret;
+
+    printf("Try executing non-exist file...");
+    if (-1 != (ret = system_execute((uint8_t *) "non_exist"))) {
+        printf("error return value %d for non-exist file\n", ret);
+        result = FAIL;
+    } else {
+        printf("Correct\n");
+    }
+
+    printf("Try executing non-executable file...");
+    if (-1 != (ret = system_execute((uint8_t *) "frame1.txt"))) {
+        printf("error return value %d for non-executable file\n", ret);
+        result = FAIL;
+    } else {
+        printf("Correct\n");
+    }
+
+    return result;
+}
+
+/**
+ * Test whether all files are closed correctly. Used at halt().
+ */
+void checkpoint_task_closed_all_files() {
+    int cnt = 0;
+    int i;
+    for (i = 0; i < MAX_OPEN_FILE; i++) {
+        if (-1 != close(i)) {
+            cnt++;  // count unclosed files
+        }
+    }
+    if (cnt == 0) {
+        printf("[PASS] system_halt(): closed all files.\n");
+    } else {
+        printf("[ERROR] system_halt(): didn't close all files!\n");
+    }
+}
+
+/**
+ * Test whether paging is consistent for current process
+ */
+void checkpoint_task_paging_consistent() {
+    // check 128M - 132M maps to current process correctly
+
+    uint32_t user_paging_idx = ((kernel_page_directory.entry[32] & 0xFFC00000) >> 22) - 2;
+    uint32_t pcb_idx = (PKM_STARTING_ADDR - (uint32_t) cur_process()) / PKM_SIZE_IN_BYTES - 1;
+
+    if (user_paging_idx == pcb_idx) {
+        printf("[PASS] system_execute/halt(): user paging consistent.\n");
+    } else {
+        printf("[ERROR] system_execute/halt(): user paging %u inconsistent with pcb idx %u.\n",
+               user_paging_idx, pcb_idx);
+    }
+}
+
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
 
@@ -443,8 +549,8 @@ long fs_test() {
 void launch_tests() {
 
     // Clear screen
-//    clear();
-//    reset_cursor();
+    clear();
+    reset_cursor();
 
 //    TEST_OUTPUT("idt_test", idt_test());
 //    TEST_OUTPUT("paging_test", paging_test());
@@ -453,7 +559,10 @@ void launch_tests() {
 //    TEST_OUTPUT("terminal_test", terminal_test());
 //    press_enter_to_continue();
 //    TEST_OUTPUT("fs_test", fs_test());
-    task_run_initial_process();
+    TEST_OUTPUT("fs_err_test", fs_err_test());
+    TEST_OUTPUT("execute_err_test", execute_err_test());
 
     printf("\nTests complete.\n");
+
+    task_run_initial_process();  // run shell
 }
