@@ -21,6 +21,15 @@
 #define RTC_REGISTER_PORT       0x70
 #define RTC_RW_DATA_PORT        0x71
 
+typedef struct rtc_control_t rtc_control_t;
+struct rtc_control_t {
+    int32_t target_freq;
+    int32_t counter;
+};
+
+// TODO: implement this function
+void rtc_control_init(rtc_control_t* rtc_control);
+
 /* Initialize the real time clock */
 void rtc_init();
 
@@ -31,6 +40,7 @@ void rtc_interrupt_handler();
 void rtc_restart_interrupt();
 
 /* RTC drivers */
+// TODO: revise these function to support virtual RTC
 int32_t rtc_read(int32_t fd, void* buf, int32_t nbytes);
 int32_t rtc_write(int32_t fd, const void* buf, int32_t nbytes);
 int32_t rtc_open(const uint8_t* filename);

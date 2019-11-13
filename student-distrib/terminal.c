@@ -3,8 +3,9 @@
 //
 #include "terminal.h"
 
+#include "task.h"
+
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
-#define KEYBOARD_BUF_SIZE 128
 #define KEYBOARD_FLAG_SIZE 128
 #define CTRL_PRESS 0x1D
 #define CTRL_RELEASE 0x9D

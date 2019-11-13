@@ -5,6 +5,8 @@
 #include "lib.h"
 #include "i8259.h"
 
+#include "task.h"
+
 unsigned int TEST_RTC_ECHO_COUNTER;
 
 static volatile int rtc_interrupt_occured;

@@ -4,10 +4,11 @@
 
 #include "task.h"
 #include "lib.h"
+#include "sync.h"
 #include "file_system.h"
 #include "task_paging.h"
 
-#define TASK_ENABLE_CHECKPOINT    1
+#define TASK_ENABLE_CHECKPOINT    0
 #if TASK_ENABLE_CHECKPOINT
 #include "tests.h"
 #endif
@@ -65,14 +66,14 @@ uint32_t process_cnt = 0;
     : "cc", "memory"                                                               \
 )
 
-static process_t *process_remove_from_list(process_t *proc);
+static task_t *process_remove_from_list(task_t *proc);
 
 /**
  * Get current process based on ESP. Only for usage in kernel state.
  * @return Pointer to current process
  */
-process_t* cur_process() {
-    process_t* ret;
+task_t* cur_process() {
+    task_t* ret;
     asm volatile ("movl %%esp, %0  \n\
                    andl $0xFFFFE000, %0    /* PKM_ALIGN_MASK */" \
                    : "=r" (ret) \
@@ -103,7 +104,7 @@ void task_run_initial_process() {
  * Find an available slot in process list, mark as valid and return. If no available, return NULL
  * @return Pointer to newly allocated process_t, or NULL is no available
  */
-static process_t *process_allocate_new_slot() {
+static task_t *process_allocate_new_slot() {
     int i;
 
     if (process_cnt >= PROCESS_MAX_CNT) return NULL;
@@ -125,8 +126,8 @@ static process_t *process_allocate_new_slot() {
  * @param proc    Pointer to process_t of the process to be removed
  * @return Pointer to its parent process
  */
-static process_t *process_remove_from_list(process_t *proc) {
-    process_t *ret = proc->parent;
+static task_t *process_remove_from_list(task_t *proc) {
+    task_t *ret = proc->parent;
     proc->valid = 0;
     process_cnt--;
     return ret;
@@ -152,6 +153,8 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
     return 0;
 }
 
+// TODO: evaluate whether locks are needed with scheduling
+
 /**
  * Actual implementation of execute() system call
  * @param command    Command to be executed
@@ -160,7 +163,7 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  */
 int32_t system_execute(uint8_t *command) {
 
-    process_t *proc;
+    task_t *proc;
     uint32_t start_eip;
     int32_t program_ret;
     uint32_t temp;
@@ -204,6 +207,12 @@ int32_t system_execute(uint8_t *command) {
         process_remove_from_list(proc);
         return -1;
     }
+
+    // Init RTC control info
+    rtc_control_init(&proc->rtc);
+
+    // Init terminal control info
+    terminal_control_init(&proc->terminal);
 
     // Init opened file list
     init_file_array(&proc->file_array);
@@ -257,7 +266,7 @@ int32_t system_halt(int32_t status) {
         // Will not reach here
     }
 
-    process_t *parent = process_remove_from_list(cur_process());
+    task_t *parent = process_remove_from_list(cur_process());
 
     task_reset_paging(cur_process()->page_id, parent->page_id);  // switch page to parent
 
