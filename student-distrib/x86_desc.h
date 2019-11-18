@@ -135,7 +135,51 @@ extern uint32_t tss_size;
 extern seg_desc_t tss_desc_ptr;
 extern tss_t tss;
 
-/** Paging */
+/** Paging,  See data sheet for more explanation  */
+
+typedef struct PDE_4MB_t {
+    uint32_t    base_address    : 10 ; // 10 high bits of the address of 4MB page 
+    uint32_t    reserved        : 9  ; 
+    uint32_t    pat             : 1  ; // not used in out OS, set to 0 
+    uint32_t    available       : 3  ; 
+    uint32_t    global          : 1  ; // not used, set to 0 
+    uint32_t    page_size       : 1  ; // 1 indicates 4MB 
+    uint32_t    dirty           : 1  ; 
+    uint32_t    accessed        : 1  ; 
+    uint32_t    cache_disabled  : 1  ; 
+    uint32_t    write_through   : 1  ; 
+    uint32_t    user_or_super   : 1  ; // 0 for supervisor, 1 for user 
+    uint32_t    can_write       : 1  ; // 0 for read only, 1 for both read and write 
+    uint32_t    present         : 1  ; // 0 for unpresent, 1 for present 
+} PDE_4MB_t;
+
+typedef struct PDE_4kB_t {
+    uint32_t    base_address    : 20 ; // 20 high bits of the physical address of PT 
+    uint32_t    available       : 3  ;
+    uint32_t    global          : 1  ; // not used, set to 0
+    uint32_t    page_size       : 1  ; // 0 indicates 4 kB 
+    uint32_t    reserved        : 1  ; // should be set to 0 
+    uint32_t    accessed        : 1  ; 
+    uint32_t    cache_disabled  : 1  ; 
+    uint32_t    write_through   : 1  ; 
+    uint32_t    user_or_super   : 1  ; // 0 for supervisor, 1 for user 
+    uint32_t    can_write       : 1  ; // 0 for read only, 1 for both read and write 
+    uint32_t    present         : 1  ; // 0 for unpresent, 1 for present 
+} PDE_4kB_t;
+
+typedef struct PTE_t {
+    uint32_t    base_address    : 20 ; // 20 high bits of the address of 4kB page 
+    uint32_t    available       : 3  ; 
+    uint32_t    global          : 1  ; // not used, set to 0 
+    uint32_t    pat             : 1  ; // not used, set to 0 
+    uint32_t    dirty           : 1  ; 
+    uint32_t    accessed        : 1  ; 
+    uint32_t    cache_disabled  : 1  ; 
+    uint32_t    write_through   : 1  ; 
+    uint32_t    user_or_super   : 1  ; // 0 for supervisor, 1 for user 
+    uint32_t    can_write       : 1  ; // 0 for read only, 1 for both read and write 
+    uint32_t    present         : 1  ; // 0 for unpresent, 1 for present
+} PTE_t;
 
 typedef struct __attribute__((packed)) {
     uint32_t entry[KERNEL_PAGE_DIRECTORY_SIZE];

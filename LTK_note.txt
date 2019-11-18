@@ -125,3 +125,8 @@
 2019.11.3
     countinue
 
+2019.11.17
+    vidmap:
+        create structs for PDE/PTE
+        allocate 4kB video memory for each task 
+        switch the VRAM pointer and copy when switching task (cp5)

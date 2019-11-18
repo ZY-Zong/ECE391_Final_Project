@@ -5,19 +5,29 @@
 #include "x86_desc.h"
 
 #define ELF_MAGIC_SIZE_IN_BYTE  4
+#define TASK_USER_VRAM_START_INDEX    0xB9    // real VRAM is at 0xB8
 
 // Global variables
 static int page_id_count = 0; // the ID for new task, also the count of running tasks
 static int page_id_running[MAX_RUNNING_TASK] = {0};
 static int page_id_active;
 
+// video memory 
+static kernel_page_table_t user_video_memory_PT[MAX_RUNNING_TASK];
+
 // Helper functions
 int task_turn_on_paging(const int id);
 int task_turn_off_paging(const int id, const int pre_id);
+
 int task_load(dentry_t *task);
 int task_is_executable(dentry_t *task);
 uint32_t task_get_eip(dentry_t *task);
 int task_get_page_id();
+
+int task_init_video_memory();
+int task_clear_PDE_4MB(PDE_4MB_t* entry);
+int task_clear_PDE_4kB(PDE_4kB_t* entry); 
+int task_clear_PTE(PTE_t* entry);
 
 #define FLUSH_TLB()  asm volatile ("  \
     movl    %%cr3, %%eax            \n\
@@ -25,6 +35,13 @@ int task_get_page_id();
     : \
     : \
     : "cc", "memory", "eax")
+
+#define SET_PDBR(addr) asm volatile ("  \
+    movl    %0, %%cr3 "                 \
+    : /* no outputs*/                   \
+    : /* inputs: */  "d" ((addr))       \
+    : /* flags: */  "cc", "memory" ) 
+
 
 /**
  * Set up paging for a task that is going to run and get its eip
@@ -40,7 +57,11 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip) {
     // When first run, do some init work
     if (page_id_count == 0) {
         for (i = 0; i < MAX_RUNNING_TASK; i++) {
+            // init the global var 
             page_id_running[i] = PID_FREE;
+            page_id_active = -1;
+            // init pages for in-active video memory
+            task_init_video_memory();
         }
     }
 
@@ -112,6 +133,26 @@ int task_reset_paging(const int cur_id, const int pre_id) {
     page_id_active = pre_id;
     page_id_count--;
 
+    return 0;
+}
+
+
+/**
+ * Map current task's virtual VRAM to kernel VRAM 
+ * Write the task's VRAM pointer to *screen_start
+ * @return      0 for success, -1 for fail
+ * @effect      *screen_start will be changed
+ */
+int task_get_vimap(uint8_t ** screen_start){
+    
+    // Check whether to dest to write is valid 
+    if ((int)screen_start < TASK_START_MEM || (int)screen_start >= TASK_END_MEM){
+        DEBUG_ERR("screen_start out of range: %d\n", (int)screen_start);
+        return -1;
+    }
+
+    // Map the page according to current pid 
+    (void)page_id_active;
     return 0;
 }
 
@@ -229,4 +270,116 @@ int task_get_page_id() {
         if (page_id_running[page_id] == PID_FREE) return page_id;
     }
     return -1;
+}
+
+/**
+ * Initialize the pages for holding user video memory 
+ * 1. Set the PDE for 132MB-136MB to be 4kB page, map it to kernel 0-4MB initially
+ * 2. Set global variables of PT for each task's video memory, map 0xB8 to its VRAM
+ * 3. Set (0xB9+pid)*4kB in the 0-4MB page to be present
+ * @return      0 for success, -1 for fail
+ * @effect      PDE, PTE will be changed. TLB will be flushed 
+ */
+int task_init_video_memory(){
+    
+    // Set the PDE for 132MB-136MB to be 4kB page, pointing to a PTE
+    // Get the PDE 
+    PDE_4kB_t* user_VRAM_PDE = NULL;
+    user_VRAM_PDE = (PDE_4kB_t*)(&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1]);
+    // Clear to PDE 
+    if (-1 == task_clear_PDE_4kB(user_VRAM_PDE)) return -1;
+    // Set the fields (initially, map to kernel page table 0~4MB)
+    kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1] |= (uint32_t)kernel_page_table_0.entry;
+    
+
+    // Set global variables of PT for each task's video memory 
+    // Get PTE at 0xB8 
+
+    // Clear the PTE 
+
+    // Map the PTE to corresponding page at (0xB9+pid)*4kB
+
+    
+    // Set (0xB9+pid)*4kB in the 0-4MB page to be present
+
+
+    FLUSH_TLB();
+    return 0;
+}
+
+/**
+ * Clear a 4MB PDE by setting all the flags to 0 and address to 0 
+ * Then set page_size flag to 1
+ * @return      0 for success, -1 for fail
+ * @effect      *entry will be changed 
+ */
+int task_clear_PDE_4MB(PDE_4MB_t* entry){
+    if (entry == NULL ){
+        DEBUG_ERR("task_clear_PDE_4MB(): bad input!\n");
+        return -1;
+    }
+
+    entry->base_address = 0;
+    entry->pat = 0;
+    entry->available = 0; 
+    entry->global = 0;
+    entry->page_size = 1; // 4MB
+    entry->dirty = 0;
+    entry->accessed = 0;
+    entry->cache_disabled = 0;
+    entry->write_through = 0;
+    entry->user_or_super = 0;
+    entry->can_write = 0;
+    entry->present = 0;
+
+    return 0;
+}
+
+/**
+ * Clear a 4kB PDE by setting all the flags to 0 and address to 0 
+ * @return      0 for success, -1 for fail
+ * @effect      *entry will be changed 
+ */
+int task_clear_PDE_4kB(PDE_4kB_t* entry){
+    if (entry == NULL ){
+        DEBUG_ERR("task_clear_PDE_4MB(): bad input!\n");
+        return -1;
+    }
+
+    entry->base_address = 0;
+    entry->global = 0;
+    entry->page_size = 0; // 4kB
+    entry->accessed = 0;
+    entry->cache_disabled = 0;
+    entry->write_through = 0;
+    entry->user_or_super = 0;
+    entry->can_write = 0;
+    entry->present = 0;
+
+    return 0;
+}
+
+/**
+ * Clear a 4MB PTE by setting all the flags to 0 and address to 0 
+ * @return      0 for success, -1 for fail
+ * @effect      *entry will be changed 
+ */
+int task_clear_PTE(PTE_t* entry){
+    if (entry == NULL ){
+        DEBUG_ERR("task_clear_PDE_4MB(): bad input!\n");
+        return -1;
+    }
+
+    entry->base_address = 0;
+    entry->global = 0;
+    entry->pat = 0;
+    entry->dirty = 0;
+    entry->accessed = 0;
+    entry->cache_disabled = 0;
+    entry->write_through = 0;
+    entry->user_or_super = 0;
+    entry->can_write = 0;
+    entry->present = 0;
+
+    return 0;
 }
