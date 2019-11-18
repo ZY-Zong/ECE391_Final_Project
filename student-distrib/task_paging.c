@@ -15,6 +15,7 @@ static int page_id_active;
 // video memory 
 static kernel_page_table_t user_video_memory_PT[MAX_RUNNING_TASK];
 
+
 // Helper functions
 int task_turn_on_paging(const int id);
 int task_turn_off_paging(const int id, const int pre_id);
@@ -151,6 +152,8 @@ int task_get_vimap(uint8_t ** screen_start){
         return -1;
     }
 
+    *screen_start = (uint8_t*)(TASK_END_MEM + 0xB8000);
+
     // Map the page according to current pid 
     (void)page_id_active;
     return 0;
@@ -284,12 +287,15 @@ int task_init_video_memory(){
     
     // Set the PDE for 132MB-136MB to be 4kB page, pointing to a PTE
     // Get the PDE 
-    PDE_4kB_t* user_VRAM_PDE = NULL;
-    user_VRAM_PDE = (PDE_4kB_t*)(&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1]);
+    PDE_4kB_t* user_vram_pde = NULL;
+    user_vram_pde = (PDE_4kB_t*)(&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1]);
     // Clear to PDE 
-    if (-1 == task_clear_PDE_4kB(user_VRAM_PDE)) return -1;
+    if (-1 == task_clear_PDE_4kB(user_vram_pde)) return -1;
     // Set the fields (initially, map to kernel page table 0~4MB)
     kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1] |= (uint32_t)kernel_page_table_0.entry;
+    user_vram_pde->can_write = 1;
+    user_vram_pde->present = 1;
+    // set to user level ???
     
 
     // Set global variables of PT for each task's video memory 
