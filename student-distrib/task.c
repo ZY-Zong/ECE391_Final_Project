@@ -7,7 +7,7 @@
 #include "file_system.h"
 #include "task_paging.h"
 
-#define TASK_ENABLE_CHECKPOINT    1
+#define TASK_ENABLE_CHECKPOINT    0
 #if TASK_ENABLE_CHECKPOINT
 #include "tests.h"
 #endif

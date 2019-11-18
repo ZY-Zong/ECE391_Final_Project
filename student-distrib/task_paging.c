@@ -13,7 +13,7 @@ static int page_id_running[MAX_RUNNING_TASK] = {0};
 static int page_id_active;
 
 // video memory 
-static kernel_page_table_t user_video_memory_PT[MAX_RUNNING_TASK];
+//static page_table_t user_video_memory_PT[MAX_RUNNING_TASK];
 
 
 // Helper functions
@@ -61,9 +61,8 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip) {
             // init the global var 
             page_id_running[i] = PID_FREE;
             page_id_active = -1;
-            // init pages for in-active video memory
-            task_init_video_memory();
         }
+        task_init_video_memory();
     }
 
     // Get the task in file system 
@@ -292,10 +291,10 @@ int task_init_video_memory(){
     // Clear to PDE 
     if (-1 == task_clear_PDE_4kB(user_vram_pde)) return -1;
     // Set the fields (initially, map to kernel page table 0~4MB)
-    kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1] |= (uint32_t)kernel_page_table_0.entry;
+    kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1] |= (uint32_t) &user_page_table_0;
     user_vram_pde->can_write = 1;
     user_vram_pde->present = 1;
-    // set to user level ???
+    user_vram_pde->user_or_super = 1;
     
 
     // Set global variables of PT for each task's video memory 

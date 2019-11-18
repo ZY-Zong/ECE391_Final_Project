@@ -105,7 +105,7 @@ int paging_test() {
     }
 
     // Check kernel page directory
-    if ((kernel_page_table_t *) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
+    if ((page_table_t *) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
         TEST_ERR("Paging directory entry 0 is not correct");
         result = FAIL;
     }
