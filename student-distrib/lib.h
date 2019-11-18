@@ -6,6 +6,8 @@
 #define _LIB_H
 
 #include "types.h"
+#include "virtual_screen.h"
+#include "task.h"
 
 /** System Calls */
 
@@ -45,6 +47,7 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 
 int32_t printf(int8_t *format, ...);
 void putc(uint8_t c);
+void virtual_putc(uint8_t c, virtual_screen_t* virtual_screen);
 int32_t puts(int8_t *s);
 int8_t *itoa(uint32_t value, int8_t* buf, int32_t radix);
 int8_t *strrev(int8_t* s);

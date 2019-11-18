@@ -5,6 +5,10 @@
 #ifndef _VIRTUAL_SCREEN_H
 #define _VIRTUAL_SCREEN_H
 
+// Constants used for virtual_screen_t in text mode
+#define TEXT_MODE_WIDTH 80
+#define TEXT_MODE_HEIGHT 25
+
 typedef struct virtual_screen_t virtual_screen_t;
 struct virtual_screen_t {
     int screen_width;
@@ -15,6 +19,6 @@ struct virtual_screen_t {
 };
 
 // TODO: implement this function
-void virtual_screen_init(virtual_screen_t* virtual_screen)
+void virtual_screen_init(virtual_screen_t* virtual_screen);
 
 #endif // _VIRTUAL_SCREEN_H

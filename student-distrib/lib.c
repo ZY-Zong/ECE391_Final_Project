@@ -215,6 +215,47 @@ void putc(uint8_t c) {
         }
     }
 }
+/* void putc(uint8_t c);
+ * Inputs: uint_8* c = character to print
+ * Return Value: void
+ *  Function: Output a character to the console */
+void virtual_putc(uint8_t c, virtual_screen_t* virtual_screen) {
+    if(c == '\n' || c == '\r') {
+        virtual_screen -> screen_x = 0;
+        virtual_screen -> screen_y++;
+        if (virtual_screen -> screen_height == virtual_screen -> screen_y) {
+            scroll_up();
+        }
+    } else if ('\b' == c) {
+        // If user types backspace
+        if (0 == virtual_screen -> screen_x) {
+            if (0 == virtual_screen -> screen_y) { // At the top left corner of the screen
+                return;
+            } else { // Originally at the start of a new line, now at the end of last line
+                virtual_screen -> screen_x = virtual_screen -> screen_width - 1;
+                virtual_screen -> screen_y--;
+            }
+        } else { // Normal cases for backspace
+            virtual_screen -> screen_x--;
+        }
+        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1)) = ' ';
+        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1) + 1) = ATTRIB;
+        // Don't increase screen_x since next time we need to start from the same location for a new character
+    } else {
+        // Normal cases for a character
+        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1)) = c;
+        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1) + 1) = ATTRIB;
+        virtual_screen -> screen_x++;
+        if ((virtual_screen -> screen_width) == virtual_screen -> screen_x) {
+            // We need a new line
+            virtual_screen -> screen_x %= (virtual_screen -> screen_width);
+            virtual_screen -> screen_y++;
+            if ((virtual_screen -> screen_height) == virtual_screen -> screen_y) {
+                scroll_up();
+            }
+        }
+    }
+}
 /**
  * scroll_up
  * This function is called whenever the cursor moves to NUM_ROWS row (which should not happen).
