@@ -14,7 +14,9 @@
 
 /** Process Control Block (PCB) */
 
-#define PROCESS_INITIAL     1U  // initial process
+#define TASK_FLAG_INITIAL        1U  // initial process
+#define TASK_WAITING_RTC         8U  // is in waiting list of RTC
+#define TASK_WAITING_TERMINAL    16U // is in waiting list of terminal
 
 typedef struct task_t task_t;
 struct task_t {
@@ -59,11 +61,23 @@ union process_kernel_memory_t {
 #define PROCESS_MAX_CNT    2  // maximum number of processes running at the same time
 extern uint32_t process_cnt;
 
+// TODO: get rid of this function
 extern inline task_t* cur_process();  // get current process based on ESP, only used in kernel state
 
 // TODO: implement these two pointer
 task_t* running_task;
 task_t* focus_task;
+
+// Used for waiting list
+typedef struct task_list_node_t task_list_node_t;
+struct task_list_node_t {
+    task_t* task;
+    task_list_node_t* next;
+    task_list_node_t* prev;
+};
+
+void task_rtc_read_done(task_list_node_t* task);
+void task_terminal_read_done(task_list_node_t* task);
 
 /** Interface for Pure Kernel State */
 

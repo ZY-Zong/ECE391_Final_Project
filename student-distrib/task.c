@@ -174,7 +174,7 @@ int32_t system_execute(uint8_t *command) {
     // Setup flags and parent
     proc->flags = 0;
     if (process_cnt == 1) {  // this is the initial process
-        proc->flags |= PROCESS_INITIAL;
+        proc->flags |= TASK_FLAG_INITIAL;
         proc->parent = NULL;
     } else {
         proc->parent = cur_process();
@@ -222,7 +222,7 @@ int32_t system_execute(uint8_t *command) {
     tss.esp0 = proc->kesp;
 
     // Jump to user program entry
-    if (proc->flags & PROCESS_INITIAL) {
+    if (proc->flags & TASK_FLAG_INITIAL) {
         execute_launch(temp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
     } else {
         execute_launch(cur_process()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);

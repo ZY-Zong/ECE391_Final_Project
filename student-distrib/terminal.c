@@ -77,6 +77,9 @@ static char keyboard_buf[KEYBOARD_BUF_SIZE];
 static uint8_t keyboard_buf_counter = 0;
 //static uint8_t backspace_counter;
 
+
+task_list_node_t wait_list_sentinel;
+
 /*
  * keyboard_interrupt
  *   REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
