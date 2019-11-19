@@ -17,6 +17,7 @@
 .globl kernel_page_directory
 .globl kernel_page_table
 .globl kernel_page_table_0
+.globl user_page_table_0
 
 .align 4
 
@@ -147,6 +148,19 @@ kernel_page_table_0:
 
     # 0xB8: video memory
     .long   0x000B8003  # the 3 is for present and W/R flag
+
+    # Fill the rest to 1024
+    .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1
+    .long 0
+    .endr
+user_page_table_0:
+    # Fill index 0-0xB7
+    .rept VIDEO_MEMORY_START_PAGE   # 0xB8
+    .long 0
+    .endr
+
+    # 0xB8: video memory
+    .long   0x000B8007  # the 7 is for U, present and W/R flag
 
     # Fill the rest to 1024
     .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1

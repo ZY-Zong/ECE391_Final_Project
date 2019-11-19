@@ -21,14 +21,16 @@
 #define     PID_FREE            0   
 
 #define     TASK_START_MEM      0x08000000  // 128MB
+#define     TASK_END_MEM        0x08400000  // 132MB 
 #define     TASK_IMG_LOAD_ADDR  0x08048000
 #define     TASK_PAGE_FLAG      0x00000087  // flags for a user level task 
 #define     TASK_VIR_MEM_ENTRY  32          // 128MB / 4MB
-
+#define     TASK_VIR_VIDEO_MEM_ENTRY    0xB8 
 
 int task_set_up_memory(const uint8_t* task_name, uint32_t* eip); // called by system call execute
 int task_reset_paging(const int cur_id, const int pre_id); // called by system call halt 
 
+int task_get_vimap(uint8_t ** screen_start);
 
 
 #endif /*_TASK_PAHING_H*/

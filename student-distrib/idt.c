@@ -7,6 +7,7 @@
 #include "linkage.h"
 #include "file_system.h"
 #include "task.h"
+#include "task_paging.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.
@@ -219,4 +220,8 @@ asmlinkage int32_t lowlevel_sys_close(int32_t fd) {
  */
 asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
     return system_getargs(buf, nbytes);
+}
+
+asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
+    return task_get_vimap(screen_start);
 }

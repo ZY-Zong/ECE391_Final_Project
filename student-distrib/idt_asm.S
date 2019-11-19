@@ -140,6 +140,6 @@ system_call_table:
     .long lowlevel_sys_open             /* 5 */
     .long lowlevel_sys_close
     .long lowlevel_sys_getargs
-    .long sys_not_implemented
+    .long lowlevel_sys_vidmap
     .long sys_not_implemented
     .long sys_not_implemented  /* 10 */
