@@ -90,13 +90,18 @@ task_t* running_task() {
 }
 
 /**
- * Initialize task list
+ * Initialize task management
  */
 void task_init() {
     int i;
+
+    // Initialize task slots
     for (i = 0; i < TASK_MAX_COUNT; i++) {
         task_slot(i)->valid = 0;
     }
+
+    // Initialize scheduler
+    sched_init();
 }
 
 /**

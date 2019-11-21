@@ -15,7 +15,7 @@
 extern task_list_node_t run_queue;
 #endif
 
-#define SCHED_PIT_FREQUENCY    1000  // Hz
+#define SCHED_PIT_FREQUENCY    100  // Hz
 #define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // ms
 #define SCHED_TASK_TIME        10  // ms
 

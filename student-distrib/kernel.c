@@ -148,6 +148,12 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
 
+    /* Setup IDT table */
+    idt_init();
+
+    /* Init the PIT for scheduler */
+    enable_irq(0);
+
     /* Init the keyboard */
     keyboard_init();
     enable_irq(KEYBOARD_IRQ_NUM);
@@ -163,9 +169,6 @@ void entry(unsigned long magic, unsigned long addr) {
     } else {
          init_file_system((module_t *)mbi->mods_addr);
     }
-
-    /* Enable interrupts */
-    idt_init();
 
     /* Enable paging */
     enable_paging();

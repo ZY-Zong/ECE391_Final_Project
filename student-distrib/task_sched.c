@@ -9,6 +9,8 @@
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
+static int32_t pit_counter = 0;
+
 /**
  * This macro yield CPU from current process (_prev_) to new process (_next_) and prepare kernel stack for return
  * @param kesp_save_to    Save ESP of kernel stack of _prev_ to this address
@@ -33,10 +35,10 @@ task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
     : "cc", "memory"                                                                  \
 )
 
-static void setup_pit(int hz);
+static void setup_pit(uint16_t hz);
 
 void sched_init() {
-
+    setup_pit(SCHED_PIT_FREQUENCY);
 }
 
 void sched_refill_time(task_t* task) {
@@ -51,8 +53,11 @@ void sched_switch_to_current_head() {
 
 }
 
-void sched_pit_callback() {
-
+void sched_pit_interrupt_handler() {
+    if (++pit_counter == 100) {
+        printf("!!!\n");
+        pit_counter = 0;
+    }
 }
 
 /**
@@ -61,10 +66,10 @@ void sched_pit_callback() {
  * @note Reference: http://www.osdever.net/bkerndev/Docs/pit.htm
 
  */
-static void setup_pit(int hz)
+static void setup_pit(uint16_t hz)
 {
-    uint32_t divisor = 1193180 / hz;
-    outb(0x43, 0x36);  // set command byte 0x36
-    outb(0x40, divisor & 0xFF);   // Set low byte of divisor
-    outb(0x40, divisor >> 8);     // Set high byte of divisor
+    uint16_t divisor = 1193180 / hz;
+    outb(0x36, 0x34);  // set command byte 0x36
+    outb(divisor & 0xFF, 0x40);   // Set low byte of divisor
+    outb(divisor >> 8, 0x40);     // Set high byte of divisor
 }

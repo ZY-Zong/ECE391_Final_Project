@@ -98,6 +98,7 @@ interrupt_entry_\irq:
     iret  /* return from interrupt context */
 .endm
 
+INTERRUPT_ENTRY 0, sched_pit_interrupt_handler
 INTERRUPT_ENTRY 1, keyboard_interrupt_handler
 INTERRUPT_ENTRY 8, rtc_interrupt_handler
 

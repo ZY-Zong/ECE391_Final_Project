@@ -66,6 +66,10 @@ void idt_init() {
     SET_IDT_ENTRY(idt[20], exception_entry_20);
     SET_IDT_ENTRY(idt[30], exception_entry_30);
 
+    // Set PIT handler (defined in idt_asm.S)
+    SET_IDT_ENTRY(idt[IDT_ENTRY_PIT], interrupt_entry_0);
+    idt[IDT_ENTRY_PIT].present = 1;
+
     // Set keyboard handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
     idt[IDT_ENTRY_KEYBOARD].present = 1;
