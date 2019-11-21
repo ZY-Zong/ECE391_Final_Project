@@ -137,7 +137,7 @@ system_call_table:
     .long lowlevel_sys_execute
     .long lowlevel_sys_read
     .long lowlevel_sys_write
-    .long lowlevel_sys_open             /* 5 */
+    .long lowlevel_sys_open    /* 5 */
     .long lowlevel_sys_close
     .long lowlevel_sys_getargs
     .long lowlevel_sys_vidmap

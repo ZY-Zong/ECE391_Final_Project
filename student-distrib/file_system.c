@@ -36,7 +36,7 @@ static data_block_t *data_blocks = NULL;
 int32_t system_open(const uint8_t *filename) {
 
     // Check if already open max number of file
-    if (cur_process()->file_array.current_open_file_num >= MAX_OPEN_FILE) {
+    if (running_task()->file_array.current_open_file_num >= MAX_OPEN_FILE) {
         DEBUG_WARN("system_open(): already reach max, cannot open %s\n", filename);
         return -1;
     }
@@ -66,7 +66,7 @@ int32_t system_open(const uint8_t *filename) {
             return -1;
     }
 
-    cur_process()->file_array.current_open_file_num++;
+    running_task()->file_array.current_open_file_num++;
 
     return fd;
 }
@@ -94,15 +94,15 @@ int32_t system_close(int32_t fd) {
         DEBUG_ERR("system_close(): no such fd!\n");
         return -1;
     }
-    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+    if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
         DEBUG_ERR("system_close(): file %d is not opened\n", fd);
         return -1;
     }
 
-    ret = cur_process()->file_array.opened_files[fd].file_op_table_p->close(fd);
+    ret = running_task()->file_array.opened_files[fd].file_op_table_p->close(fd);
 
-    cur_process()->file_array.opened_files[fd].flags = FD_NOT_IN_USE;
-    cur_process()->file_array.current_open_file_num--;
+    running_task()->file_array.opened_files[fd].flags = FD_NOT_IN_USE;
+    running_task()->file_array.current_open_file_num--;
 
     return ret;
 }
@@ -130,12 +130,12 @@ int32_t system_read(int32_t fd, void *buf, int32_t nbytes) {
     }
 
     // Check whether the file is opened
-    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+    if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
         DEBUG_ERR("system_read(): fd %d is not opened\n", fd);
         return -1;
     }
 
-    return cur_process()->file_array.opened_files[fd].file_op_table_p->read(fd, buf, nbytes);
+    return running_task()->file_array.opened_files[fd].file_op_table_p->read(fd, buf, nbytes);
 }
 
 /**
@@ -161,12 +161,12 @@ int32_t system_write(int32_t fd, const void *buf, int32_t nbytes) {
     }
 
     // Check whether the file is opened
-    if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+    if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
         DEBUG_ERR("system_write(): fd %d is not opened\n", fd);
         return -1;
     }
 
-    return cur_process()->file_array.opened_files[fd].file_op_table_p->write(fd, buf, nbytes);
+    return running_task()->file_array.opened_files[fd].file_op_table_p->write(fd, buf, nbytes);
 }
 
 /***************************** Public Functions *********************************/
@@ -219,7 +219,7 @@ int32_t init_file_system(module_t *fs) {
     file_op_table.write = file_write;
 
     // Init file array
-    init_file_array(&cur_process()->file_array);
+    init_file_array(&running_task()->file_array);
 
     return 0;
 }
@@ -273,7 +273,7 @@ int32_t clear_file_array(file_array_t *cur_file_array) {
 
     int i;  // loop counter
     for (i = 2; i < MAX_OPEN_FILE; i++) {
-        if (cur_process()->file_array.opened_files[i].flags == FD_IN_USE) system_close(i);
+        if (running_task()->file_array.opened_files[i].flags == FD_IN_USE) system_close(i);
     }
 
     return 0;
@@ -431,10 +431,10 @@ int32_t file_open(const uint8_t *filename) {
     int32_t fd = get_free_fd();
 
     // Init the file_array got
-    cur_process()->file_array.opened_files[fd].file_op_table_p = &file_op_table;
-    cur_process()->file_array.opened_files[fd].inode = current_dentry.inode_num;
-    cur_process()->file_array.opened_files[fd].file_position = 0; // the beginning of the file
-    cur_process()->file_array.opened_files[fd].flags = FD_IN_USE;
+    running_task()->file_array.opened_files[fd].file_op_table_p = &file_op_table;
+    running_task()->file_array.opened_files[fd].inode = current_dentry.inode_num;
+    running_task()->file_array.opened_files[fd].file_position = 0; // the beginning of the file
+    running_task()->file_array.opened_files[fd].flags = FD_IN_USE;
 
     return fd;
 }
@@ -460,16 +460,16 @@ int32_t file_close(int32_t fd) {
 int32_t file_read(int32_t fd, void *buf, int32_t nbytes) {
 
     int32_t ret = 0;                                  // the return value
-    uint32_t offset = cur_process()->file_array.opened_files[fd].file_position; // current offset of the file
+    uint32_t offset = running_task()->file_array.opened_files[fd].file_position; // current offset of the file
 
     // Place the data into buffer
-    ret = read_data(cur_process()->file_array.opened_files[fd].inode, offset, buf, nbytes);
+    ret = read_data(running_task()->file_array.opened_files[fd].inode, offset, buf, nbytes);
     // Check if success
     if (ret == -1)
         return -1;
 
     // Update the file position
-    cur_process()->file_array.opened_files[fd].file_position += ret;
+    running_task()->file_array.opened_files[fd].file_position += ret;
 
     return ret;
 }
@@ -501,10 +501,10 @@ int32_t dir_open(const uint8_t *filename) {
     int32_t fd = get_free_fd();
 
     // Init the file_array
-    cur_process()->file_array.opened_files[fd].file_op_table_p = &dir_op_table;
-    cur_process()->file_array.opened_files[fd].inode = 0;
-    cur_process()->file_array.opened_files[fd].file_position = 0; // the beginning of the file
-    cur_process()->file_array.opened_files[fd].flags = FD_IN_USE;
+    running_task()->file_array.opened_files[fd].file_op_table_p = &dir_op_table;
+    running_task()->file_array.opened_files[fd].inode = 0;
+    running_task()->file_array.opened_files[fd].file_position = 0; // the beginning of the file
+    running_task()->file_array.opened_files[fd].flags = FD_IN_USE;
 
     return fd;
 }
@@ -546,7 +546,7 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
     // Since only one dir exist, just get from boot block
 
     // Check if reach the end
-    if (cur_process()->file_array.opened_files[fd].file_position >= boot_block.dir_num) {
+    if (running_task()->file_array.opened_files[fd].file_position >= boot_block.dir_num) {
         // DEBUG_WARN("dir_read(): already reach the end\n");
         return 0;
     }
@@ -554,7 +554,7 @@ int32_t dir_read(int32_t fd, void *buf, int32_t nbytes) {
     // Copy the file name into buf
     int32_t buf_size = (nbytes > FILE_NAME_LENGTH ? FILE_NAME_LENGTH : nbytes);
     strncpy(buf,
-            (int8_t *) (boot_block.dir_entries[cur_process()->file_array.opened_files[fd].file_position++].file_name),
+            (int8_t *) (boot_block.dir_entries[running_task()->file_array.opened_files[fd].file_position++].file_name),
             buf_size);
 
     return buf_size;
@@ -596,10 +596,10 @@ int32_t local_rtc_open(const uint8_t *filename) {
     int32_t fd = get_free_fd();
 
     // Init the file_array, guarantee by system_open that have space
-    cur_process()->file_array.opened_files[fd].file_op_table_p = &rtc_op_table;
-    cur_process()->file_array.opened_files[fd].inode = 0;
-    cur_process()->file_array.opened_files[fd].file_position = 0; // the beginning of the file
-    cur_process()->file_array.opened_files[fd].flags = FD_IN_USE;
+    running_task()->file_array.opened_files[fd].file_op_table_p = &rtc_op_table;
+    running_task()->file_array.opened_files[fd].inode = 0;
+    running_task()->file_array.opened_files[fd].file_position = 0; // the beginning of the file
+    running_task()->file_array.opened_files[fd].flags = FD_IN_USE;
 
     return fd;
 }
@@ -655,8 +655,8 @@ int32_t get_file_size(uint32_t inode) {
 int32_t get_free_fd() {
     int fd;
     for (fd = 2; fd < MAX_OPEN_FILE; fd++) {
-        if (cur_process()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-            cur_process()->file_array.opened_files[fd].flags = FD_IN_USE;
+        if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
+            running_task()->file_array.opened_files[fd].flags = FD_IN_USE;
             break;
         }
     }

@@ -531,7 +531,7 @@ void checkpoint_task_paging_consistent() {
     // check 128M - 132M maps to current process correctly
 
     uint32_t user_paging_idx = ((kernel_page_directory.entry[32] & 0xFFC00000) >> 22) - 2;
-    uint32_t pcb_idx = (PKM_STARTING_ADDR - (uint32_t) cur_process()) / PKM_SIZE_IN_BYTES - 1;
+    uint32_t pcb_idx = (PKM_STARTING_ADDR - (uint32_t) running_task()) / PKM_SIZE_IN_BYTES - 1;
 
     if (user_paging_idx == pcb_idx) {
         printf("[PASS] system_execute/halt(): user paging consistent.\n");
@@ -564,5 +564,5 @@ void launch_tests() {
 
     printf("\nTests complete.\n");
 
-    task_run_initial_process();  // run shell
+    task_run_initial_task();  // run shell
 }

@@ -7,18 +7,24 @@
 #include "sync.h"
 #include "file_system.h"
 #include "task_paging.h"
+#include "task_sched.h"
 
 #define TASK_ENABLE_CHECKPOINT    0
 #if TASK_ENABLE_CHECKPOINT
 #include "tests.h"
 #endif
 
+
+#define task_slot(idx) ((task_t *) (PKM_STARTING_ADDR - (idx + 1) * PKM_SIZE_IN_BYTES))  // address of idx-th PCB
+uint32_t task_count = 0;  // count of tasks that has started
+
 #define USER_STACK_STARTING_ADDR  (0x8400000 - 1)  // User stack starts at 132MB - 1 (with paging enabled)
 
-uint32_t process_cnt = 0;
+// Wait list of tasks that are waiting for child to halt
+task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
 /**
- * This macro yield CPU from current process (_prev_) to new process (_next_) and return after _next_ terminate
+ * This macro yield CPU from current task (_prev_) to new task (_next_) and return after _next_ terminate
  * @param kesp_save_to    Save ESP of kernel stack of _prev_ to this address
  * @param new_esp         Starting ESP of _next_
  * @param new_eip         Starting EIP of _next_
@@ -52,10 +58,10 @@ uint32_t process_cnt = 0;
 
 /**
  * This jump back to label 1 in execute_launch
- * @param old_esp    ESP of parent process. On the top of parent's stack should be return address to parent's code
+ * @param old_esp    ESP of parent task. On the top of parent's stack should be return address to parent's code
  * @param ret        Return value of current thread. Will be stored to EAX
- * @note Make sure paging of the destination process is all set
- * @note Make sure TSS is set to kernel stack of the destination process
+ * @note Make sure paging of the destination task is all set
+ * @note Make sure TSS is set to kernel stack of the destination task
  */
 #define halt_backtrack(old_esp, ret) asm volatile ("                                        \
     movl %0, %%esp  /* load back old ESP */                                      \n\
@@ -66,70 +72,70 @@ uint32_t process_cnt = 0;
     : "cc", "memory"                                                               \
 )
 
-static task_t *process_remove_from_list(task_t *proc);
+static task_t *task_remove_from_slot(task_t *task);
 
 /**
- * Get current process based on ESP. Only for usage in kernel state.
- * @return Pointer to current process
+ * Get current task based on ESP. Only for usage in kernel state.
+ * @return Pointer to current task
  */
-task_t* cur_process() {
+task_t* running_task() {
     task_t* ret;
     asm volatile ("movl %%esp, %0  \n\
                    andl $0xFFFFE000, %0    /* PKM_ALIGN_MASK */" \
                    : "=r" (ret) \
                    : \
-                   : "cc", "memory" \
+                   : "cc" \
                    );
     return ret;
 }
 
 /**
- * Initialize process list
+ * Initialize task list
  */
 void task_init() {
     int i;
-    for (i = 0; i < PROCESS_MAX_CNT; i++) {
-        ptr_process(i)->valid = 0;
+    for (i = 0; i < TASK_MAX_COUNT; i++) {
+        task_slot(i)->valid = 0;
     }
 }
 
 /**
  * Run shell
  */
-void task_run_initial_process() {
+void task_run_initial_task() {
     system_execute((uint8_t *) "shell");
 }
 
 /**
- * Find an available slot in process list, mark as valid and return. If no available, return NULL
- * @return Pointer to newly allocated process_t, or NULL is no available
+ * Find an available slot in task list, mark as valid and return. If no available, return NULL
+ * @return Pointer to newly allocated task_t, or NULL is no available
  */
-static task_t *process_allocate_new_slot() {
+static task_t *task_allocate_new_slot() {
     int i;
 
-    if (process_cnt >= PROCESS_MAX_CNT) return NULL;
+    if (task_count >= TASK_MAX_COUNT) return NULL;
 
-    process_cnt++;
-    for (i = 0; i < PROCESS_MAX_CNT; i++) {
-        if (!ptr_process(i)->valid) {
-            ptr_process(i)->valid = 1;
-            return ptr_process(i);
+    task_count++;
+    for (i = 0; i < TASK_MAX_COUNT; i++) {
+        if (!task_slot(i)->valid) {
+            task_slot(i)->valid = 1;
+            return task_slot(i);
         }
     }
 
-    DEBUG_ERR( "process_cnt is inconsistent");
+    DEBUG_ERR( "task_count is inconsistent");
     return NULL;
 }
 
 /**
- * Remove a process from process list
- * @param proc    Pointer to process_t of the process to be removed
- * @return Pointer to its parent process
+ * Remove a task from task list
+ * @param task    Pointer to task_t of the task to be removed
+ * @return Pointer to its parent task
  */
-static task_t *process_remove_from_list(task_t *proc) {
-    task_t *ret = proc->parent;
-    proc->valid = 0;
-    process_cnt--;
+static task_t *task_remove_from_slot(task_t *task) {
+    task_t *ret = task->parent;
+    task->valid = 0;
+    task_count--;
     return ret;
 }
 
@@ -163,73 +169,98 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  */
 int32_t system_execute(uint8_t *command) {
 
-    task_t *proc;
+    task_t *task;
     uint32_t start_eip;
     int32_t program_ret;
     uint32_t temp;
 
+    /** --------------- Phase 1. Setup kernel data structure of new task --------------- */
+
     // Allocate a new PCB
-    if (NULL == (proc = process_allocate_new_slot())) return -1;  // no available slot
+    if (NULL == (task = task_allocate_new_slot())) return -1;  // no available slot
 
     // Setup flags and parent
-    proc->flags = 0;
-    if (process_cnt == 1) {  // this is the initial process
-        proc->flags |= TASK_FLAG_INITIAL;
-        proc->parent = NULL;
+    task->flags = 0;
+    if (task_count == 1) {  // this is the initial task
+        task->flags |= TASK_FLAG_INITIAL;
+        task->parent = NULL;
     } else {
-        proc->parent = cur_process();
+        task->parent = running_task();
     }
 
     // Initialize kernel ESP to the bottom of PKM
-    proc->kesp = ((uint32_t) proc) + PKM_SIZE_IN_BYTES - 1;
+    task->kesp = ((uint32_t) task) + PKM_SIZE_IN_BYTES - 1;
 
     // Parse executable name and arguments
-    if (execute_parse_command(command, &proc->args) != 0) {
-        process_remove_from_list(proc);
+    if (execute_parse_command(command, &task->args) != 0) {
+        task_remove_from_slot(task);
         return -1;  // invalid command
     }
-    proc->executable_name = command;
+    task->executable_name = command;
 
     // Store the executable name and argument string to the kernel stack of new program, or they will be inaccessible
-    temp = strlen((int8_t *) proc->executable_name);
-    proc->kesp -= temp;
-    proc->executable_name = (uint8_t *) strcpy((int8_t *) proc->kesp, (int8_t *) proc->executable_name);
+    temp = strlen((int8_t *) task->executable_name);
+    task->kesp -= temp;
+    task->executable_name = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->executable_name);
 
-    if (proc->args != NULL){
-        temp = strlen((int8_t *) proc->args);
-        proc->kesp -= temp;
-        proc->args = (uint8_t *) strcpy((int8_t *) proc->kesp, (int8_t *) proc->args);
+    if (task->args != NULL){
+        temp = strlen((int8_t *) task->args);
+        task->kesp -= temp;
+        task->args = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->args);
     }
 
     // Setup paging, run program loader, get new EIP
     // NOTICE: after setting up paging for new program, command become useless
-    if ((proc->page_id = task_set_up_memory(command, &start_eip)) < 0) {
-        process_remove_from_list(proc);
+    if ((task->page_id = task_set_up_memory(command, &start_eip)) < 0) {
+        task_remove_from_slot(task);
         return -1;
     }
 
     // Init RTC control info
-    rtc_control_init(&proc->rtc);
+    rtc_control_init(&task->rtc);
 
     // Init terminal control info
-    terminal_control_init(&proc->terminal);
+    terminal_control_init(&task->terminal);
 
     // Init opened file list
-    init_file_array(&proc->file_array);
+    init_file_array(&task->file_array);
 
-    // Set tss to new process's kernel stack to make sure system calls use correct stack
-    tss.ss0 = KERNEL_DS;
-    tss.esp0 = proc->kesp;
+    // Init virtual screen control
+    virtual_screen_init(&task->screen);
+
+    /** --------------- Phase 2. Ready to go. Setup scheduler --------------- */
+
+    // Put current task into list for parents
+    running_task()->flags |= TASK_WAITING_CHILD;
+    move_task_after_node(running_task(), &wait4child_list);
+
+    // Put child task into run queue
+    sched_refill_time(task);
+    sched_insert_to_head(task);
+
+    /** --------------- Phase 3. Very ready to go. Do assembly level switch --------------- */
+    // Set tss to new task's kernel stack to make sure system calls use correct stack
+    tss.esp0 = task->kesp;
 
     // Jump to user program entry
-    if (proc->flags & TASK_FLAG_INITIAL) {
+    if (task->flags & TASK_FLAG_INITIAL) {
         execute_launch(temp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
     } else {
-        execute_launch(cur_process()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+        execute_launch(running_task()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+    }
+
+    // The child task running...
+
+    /** --------------- Phase 4. Ready to go. Insert the new task into schedule --------------- */
+
+    // Sanity check. TASK_WAITING_CHILD should be cleared when this thread is re-activated
+    if (running_task()->flags & TASK_WAITING_CHILD) {
+        DEBUG_ERR("task of %s is still waiting for exit of child and should not be waken up!",
+                running_task()->executable_name);
     }
 
 #if TASK_ENABLE_CHECKPOINT
-    checkpoint_task_paging_consistent();  // check paging is recovered to current process
+    checkpoint_task_paging_consistent();  // check paging is recovered to current task
 #endif
 
     return program_ret;
@@ -237,42 +268,68 @@ int32_t system_execute(uint8_t *command) {
 
 /**
  * Actual implementation of halt() system call
- * @param status    Exit code of current process (size are enlarged to support 256 return from exception)
+ * @param status    Exit code of current task (size are enlarged to support 256 return from exception)
  * @return This function should never return
  */
 int32_t system_halt(int32_t status) {
 
-    if (process_cnt == 0) {   // pure kernel state
+    task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
+    task_t *parent = running_task()->parent;
+
+    if (task_count == 0) {   // pure kernel state
         DEBUG_ERR("Can't halt pure kernel state!");
         return -1;
     }
+
+    /** --------------- Phase 1. Remove current task from scheduler --------------- */
+
+#if _SCHED_ENABLE_RUN_QUEUE_CHECK
+    if (running_task()->list_node.prev != &run_queue) {
+        DEBUG_ERR("Sched run queue is inconsistent!");
+    }
+#endif
+
+    // Remove task from run queue
+    move_task_after_node(running_task(), &temp_list);
+
+    // Re-activate parent
+    parent->flags &= ~TASK_WAITING_CHILD;
+    sched_refill_time(parent);
+    sched_insert_to_head(parent);
+
+    /** --------------- Phase 2. Tear down kernel data structure --------------- */
 
 #if TASK_ENABLE_CHECKPOINT
     checkpoint_task_paging_consistent();  // check paging is consistent
 #endif
 
-    clear_file_array(&cur_process()->file_array);
+    clear_file_array(&running_task()->file_array);
 
 #if TASK_ENABLE_CHECKPOINT
     checkpoint_task_closed_all_files();
 #endif
 
-    if (cur_process()->parent == NULL) {  // the last program has been halt
-        int page_id = cur_process()->page_id;
-        process_remove_from_list(cur_process());
+    if (running_task()->parent == NULL) {  // the last program has been halt
+        /** --------------- Phase X. Special procedure of handling halting of initial shell --------------- */
+        int page_id = running_task()->page_id;
+        task_remove_from_slot(running_task());
         printf("Initial shell halt with status %u. Restarting...", status);
         task_reset_paging(page_id, page_id);  // do nothing to paging, but decrease count
-        task_run_initial_process();  // execute shell again
+        task_run_initial_task();  // execute shell again
         // Will not reach here
     }
 
-    task_t *parent = process_remove_from_list(cur_process());
+    task_remove_from_slot(running_task());
 
-    task_reset_paging(cur_process()->page_id, parent->page_id);  // switch page to parent
+    /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
+
+    task_reset_paging(running_task()->page_id, parent->page_id);  // switch page to parent
 
     tss.esp0 = parent->kesp;  // set tss to parent's kernel stack to make sure system calls use correct stack
 
     halt_backtrack(parent->kesp, status);
+
+    // Goodbye world...
 
     DEBUG_ERR( "halt() should never return");
 
@@ -286,7 +343,7 @@ int32_t system_halt(int32_t status) {
  * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
  */
 int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
-    uint8_t* args = cur_process()->args;
+    uint8_t* args = running_task()->args;
     if (args == NULL) return -1;  // no args
     if (strlen((int8_t *) args) >= nbytes) return -1;  // can not fit into buf (including ending NULL char)
     strncpy((int8_t *) buf, (int8_t *) args, nbytes);
