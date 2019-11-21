@@ -11,6 +11,10 @@ unsigned int TEST_RTC_ECHO_COUNTER;
 
 static volatile int rtc_interrupt_occured;
 
+void rtc_control_init(rtc_control_t* rtc_control){
+    // TODO: implement this function
+}
+
 // Helper function to check whether the input is power of two
 int is_power_of_two(int32_t input);
 

@@ -35,7 +35,6 @@ struct terminal_control_t {
     uint8_t keyboard_buf_counter;
 };
 
-// TODO: implement this function
 void terminal_control_init(terminal_control_t* terminal_control);
 
 #endif //TERMINAL_H

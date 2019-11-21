@@ -28,16 +28,16 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 #define DEBUG_VERBOSE   0
 #if DEBUG
 #if DEBUG_VERBOSE
-#define DEBUG_PRINT(fmt, ...)    do { printf("%s:%d:%s(): " fmt, \
+#define DEBUG_PRINT(fmt, ...)    do { printf("%s:%d:%s(): " fmt "\n", \
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
-#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR]" "%s:%d:%s(): " fmt, \
+#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR]" "%s:%d:%s(): " fmt "\n", \
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
-#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING]" "%s:%d:%s(): " fmt, \
+#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING]" "%s:%d:%s(): " fmt "\n", \
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
 #else
-#define DEBUG_PRINT(fmt, ...)    do { printf(fmt, ##__VA_ARGS__); } while (0)
-#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR] " fmt, ##__VA_ARGS__); } while (0)
-#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING] " fmt, ##__VA_ARGS__); } while (0)
+#define DEBUG_PRINT(fmt, ...)    do { printf(fmt "\n", ##__VA_ARGS__); } while (0)
+#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR] " fmt "\n", ##__VA_ARGS__); } while (0)
+#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING] " fmt "\n", ##__VA_ARGS__); } while (0)
 #endif
 #else
 #define DEBUG_PRINT(fmt, ...)    do {} while (0)

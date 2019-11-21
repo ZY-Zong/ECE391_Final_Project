@@ -89,13 +89,13 @@ void idt_init() {
  */
 void print_exception(uint32_t vec_num) {
 
-    if (process_cnt == 0) {
+    if (task_count == 0) {
         clear();
         reset_cursor();
         printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", vec_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
-        DEBUG_ERR("EXCEPTION %u OCCUR!\n", vec_num);
+        DEBUG_ERR("EXCEPTION %u OCCUR!", vec_num);
         system_halt(256);
     }
 
@@ -134,7 +134,7 @@ asmlinkage long sys_not_implemented() {
     :
     : "memory", "cc"
     );
-    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d\n",
+    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d",
            eax_val, ebx_val, ecx_val, edx_val);
     return -1;
 }

@@ -80,6 +80,10 @@ static uint8_t keyboard_buf_counter = 0;
 
 task_list_node_t wait_list_sentinel;
 
+void terminal_control_init(terminal_control_t* terminal_control) {
+    // TODO: implement this function
+}
+
 /*
  * keyboard_interrupt
  *   REFERENCE: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
@@ -257,7 +261,7 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     int32_t to_continue = 1;
 
     if (fd != 0) {
-        DEBUG_ERR("terminal_read(): invalid fd %d for terminal read\n", fd);
+        DEBUG_ERR("terminal_read(): invalid fd %d for terminal read", fd);
         return -1;
     }
 
@@ -309,7 +313,7 @@ int32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
     int i;
 
     if (fd != 1) {
-        DEBUG_ERR("terminal_write(): invalid fd %d for terminal write\n", fd);
+        DEBUG_ERR("terminal_write(): invalid fd %d for terminal write", fd);
         return -1;
     }
 

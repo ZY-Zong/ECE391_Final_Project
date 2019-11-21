@@ -228,11 +228,16 @@ int32_t system_execute(uint8_t *command) {
     // Init virtual screen control
     virtual_screen_init(&task->screen);
 
+    // Setup some initial value of task list, in order for sched_insert_to_head() to work correctly.
+    task->list_node.prev = task->list_node.next = &task->list_node;
+
     /** --------------- Phase 2. Ready to go. Setup scheduler --------------- */
 
     // Put current task into list for parents
-    running_task()->flags |= TASK_WAITING_CHILD;
-    move_task_after_node(running_task(), &wait4child_list);
+    if (!(task->flags & TASK_FLAG_INITIAL)) {
+        running_task()->flags |= TASK_WAITING_CHILD;
+        move_task_after_node(running_task(), &wait4child_list);
+    }
 
     // Put child task into run queue
     sched_refill_time(task);
@@ -292,10 +297,12 @@ int32_t system_halt(int32_t status) {
     // Remove task from run queue
     move_task_after_node(running_task(), &temp_list);
 
-    // Re-activate parent
-    parent->flags &= ~TASK_WAITING_CHILD;
-    sched_refill_time(parent);
-    sched_insert_to_head(parent);
+    if (running_task()->parent) {
+        // Re-activate parent
+        parent->flags &= ~TASK_WAITING_CHILD;
+        sched_refill_time(parent);
+        sched_insert_to_head(parent);
+    }
 
     /** --------------- Phase 2. Tear down kernel data structure --------------- */
 

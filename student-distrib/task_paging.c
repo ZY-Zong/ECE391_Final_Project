@@ -67,13 +67,13 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip) {
 
     // Get the task in file system 
     if (-1 == read_dentry_by_name(task_name, &task)) {
-        DEBUG_ERR("task_set_up_memory(): no such task: %s\n", task_name);
+        DEBUG_ERR("task_set_up_memory(): no such task: %s", task_name);
         return -1;
     }
 
     // Check whether the file is executable 
     if (!task_is_executable(&task)) {
-        DEBUG_ERR("task_set_up_memory(): not a executable task: %s\n", task_name);
+        DEBUG_ERR("task_set_up_memory(): not a executable task: %s", task_name);
         return -1;
     }
 
@@ -86,7 +86,7 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip) {
 
     // Get the eip of the task
     if (-1 == (i = task_get_eip(&task))) {
-        DEBUG_ERR("task_set_up_memory(): fail to get eip of task: %s\n", task_name);
+        DEBUG_ERR("task_set_up_memory(): fail to get eip of task: %s", task_name);
         return -2;
     } else {
         *eip = i;
@@ -117,11 +117,11 @@ int task_reset_paging(const int cur_id, const int pre_id) {
 
     // Check whether the id is valid 
     if (cur_id >= MAX_RUNNING_TASK) {
-        DEBUG_ERR("task_reset_paging(): invalid task id: %d\n", cur_id);
+        DEBUG_ERR("task_reset_paging(): invalid task id: %d", cur_id);
         return -1;
     }
     if (page_id_running[cur_id] == PID_FREE) {
-        DEBUG_ERR("task_reset_paging(): task %d is not running\n", cur_id);
+        DEBUG_ERR("task_reset_paging(): task %d is not running", cur_id);
         return -1;
     }
 
@@ -147,7 +147,7 @@ int task_get_vimap(uint8_t ** screen_start){
     
     // Check whether to dest to write is valid 
     if ((int)screen_start < TASK_START_MEM || (int)screen_start >= TASK_END_MEM){
-        DEBUG_ERR("screen_start out of range: %d\n", (int)screen_start);
+        DEBUG_ERR("screen_start out of range: %d", (int)screen_start);
         return -1;
     }
 
@@ -320,7 +320,7 @@ int task_init_video_memory(){
  */
 int task_clear_PDE_4MB(PDE_4MB_t* entry){
     if (entry == NULL ){
-        DEBUG_ERR("task_clear_PDE_4MB(): bad input!\n");
+        DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
         return -1;
     }
 
@@ -347,7 +347,7 @@ int task_clear_PDE_4MB(PDE_4MB_t* entry){
  */
 int task_clear_PDE_4kB(PDE_4kB_t* entry){
     if (entry == NULL ){
-        DEBUG_ERR("task_clear_PDE_4MB(): bad input!\n");
+        DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
         return -1;
     }
 
@@ -371,7 +371,7 @@ int task_clear_PDE_4kB(PDE_4kB_t* entry){
  */
 int task_clear_PTE(PTE_t* entry){
     if (entry == NULL ){
-        DEBUG_ERR("task_clear_PDE_4MB(): bad input!\n");
+        DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
         return -1;
     }
 

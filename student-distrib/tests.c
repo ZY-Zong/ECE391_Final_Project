@@ -559,8 +559,8 @@ void launch_tests() {
 //    TEST_OUTPUT("terminal_test", terminal_test());
 //    press_enter_to_continue();
 //    TEST_OUTPUT("fs_test", fs_test());
-    TEST_OUTPUT("fs_err_test", fs_err_test());
-    TEST_OUTPUT("execute_err_test", execute_err_test());
+//    TEST_OUTPUT("fs_err_test", fs_err_test());
+//    TEST_OUTPUT("execute_err_test", execute_err_test());
 
     printf("\nTests complete.\n");
 

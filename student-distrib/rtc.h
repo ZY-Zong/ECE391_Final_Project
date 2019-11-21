@@ -27,7 +27,6 @@ struct rtc_control_t {
     int32_t counter;
 };
 
-// TODO: implement this function
 void rtc_control_init(rtc_control_t* rtc_control);
 
 /* Initialize the real time clock */

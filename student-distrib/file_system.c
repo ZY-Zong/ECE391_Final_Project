@@ -62,7 +62,7 @@ int32_t system_open(const uint8_t *filename) {
             fd = file_open(filename);
             break;
         default:
-            DEBUG_ERR("system_open(): unknown file type of %s\n", filename);
+            DEBUG_ERR("system_open(): unknown file type of %s", filename);
             return -1;
     }
 
@@ -83,19 +83,19 @@ int32_t system_close(int32_t fd) {
 
     // Check whether fd is valid
     if (fd == 0) {
-        DEBUG_ERR("system_close(): cannot close stdin\n");
+        DEBUG_ERR("system_close(): cannot close stdin");
         return -1;
     }
     if (fd == 1) {
-        DEBUG_ERR("system_close(): cannot close stdout\n");
+        DEBUG_ERR("system_close(): cannot close stdout");
         return -1;
     }
     if (fd < 0 || fd >= MAX_OPEN_FILE) {
-        DEBUG_ERR("system_close(): no such fd!\n");
+        DEBUG_ERR("system_close(): no such fd!");
         return -1;
     }
     if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-        DEBUG_ERR("system_close(): file %d is not opened\n", fd);
+        DEBUG_ERR("system_close(): file %d is not opened", fd);
         return -1;
     }
 
@@ -119,19 +119,19 @@ int32_t system_read(int32_t fd, void *buf, int32_t nbytes) {
 
     // Check for invalid fd
     if (fd < 0 || fd >= MAX_OPEN_FILE) {
-        DEBUG_ERR("system_read(): invalid fd %d\n", fd);
+        DEBUG_ERR("system_read(): invalid fd %d", fd);
         return -1;
     }
 
     // Check for NULL buffer
     if (nbytes != 0 && buf == NULL) {
-        DEBUG_ERR("system_read(): the buf is NULL, cannot read from file %d\n", fd);
+        DEBUG_ERR("system_read(): the buf is NULL, cannot read from file %d", fd);
         return -1;
     }
 
     // Check whether the file is opened
     if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-        DEBUG_ERR("system_read(): fd %d is not opened\n", fd);
+        DEBUG_ERR("system_read(): fd %d is not opened", fd);
         return -1;
     }
 
@@ -150,19 +150,19 @@ int32_t system_write(int32_t fd, const void *buf, int32_t nbytes) {
 
     // Check for invalid fd
     if (fd < 0 || fd >= MAX_OPEN_FILE) {
-        DEBUG_ERR("system_write(): invalid fd %d\n", fd);
+        DEBUG_ERR("system_write(): invalid fd %d", fd);
         return -1;
     }
 
     // Check for NULL buffer
     if (nbytes != 0 && buf == NULL) {
-        DEBUG_ERR("system_write(): the buf is NULL, cannot write to file %d\n", fd);
+        DEBUG_ERR("system_write(): the buf is NULL, cannot write to file %d", fd);
         return -1;
     }
 
     // Check whether the file is opened
     if (running_task()->file_array.opened_files[fd].flags == FD_NOT_IN_USE) {
-        DEBUG_ERR("system_write(): fd %d is not opened\n", fd);
+        DEBUG_ERR("system_write(): fd %d is not opened", fd);
         return -1;
     }
 
@@ -181,7 +181,7 @@ int32_t system_write(int32_t fd, const void *buf, int32_t nbytes) {
 int32_t init_file_system(module_t *fs) {
     // Check if already inited
     if (file_system_inited == 1) {
-        DEBUG_ERR("init_file_system(): file system already inited\n");
+        DEBUG_ERR("init_file_system(): file system already inited");
         return -1;
     }
 
@@ -234,7 +234,7 @@ int32_t init_file_array(file_array_t *cur_file_array) {
 
     // Check the array pointer
     if (cur_file_array == NULL) {
-        DEBUG_ERR("init_file_array(): bad input\n");
+        DEBUG_ERR("init_file_array(): bad input");
         return -1;
     }
 
@@ -267,7 +267,7 @@ int32_t clear_file_array(file_array_t *cur_file_array) {
 
     // Check the array pointer
     if (cur_file_array == NULL) {
-        DEBUG_ERR("clear_file_array(): bad input\n");
+        DEBUG_ERR("clear_file_array(): bad input");
         return -1;
     }
 
@@ -290,7 +290,7 @@ int32_t set_file_array(file_array_t *cur_file_array) {
 
     // Check the array pointer
     if (cur_file_array == NULL) {
-        DEBUG_ERR("set_file_array(): bad input\n");
+        DEBUG_ERR("set_file_array(): bad input");
         return -1;
     }
 
@@ -483,7 +483,7 @@ int32_t file_write(int32_t fd, const void *buf, int32_t nBytes) {
     (void) buf;
     (void) nBytes;
 
-    DEBUG_ERR("file_write(): the file system is read only\n");
+    DEBUG_ERR("file_write(): the file system is read only");
     return -1;
 }
 
@@ -574,7 +574,7 @@ int32_t dir_write(int32_t fd, const void *buf, int32_t nBytes) {
     (void) buf;
     (void) nBytes;
 
-    DEBUG_ERR("dir_write(): the file system is read only\n");
+    DEBUG_ERR("dir_write(): the file system is read only");
     return -1;
 }
 
@@ -642,7 +642,7 @@ int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
  */
 int32_t get_file_size(uint32_t inode) {
     if (inode >= boot_block.inode_num) {
-        DEBUG_ERR("get_file_size(): no such inode\n");
+        DEBUG_ERR("get_file_size(): no such inode");
         return -1;
     }
     return inodes[inode].length_in_bytes;

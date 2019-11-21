@@ -15,8 +15,8 @@
 /** --------------- Process Control Block (PCB) --------------- */
 
 struct task_list_node_t {
-    task_list_node_t* next;
-    task_list_node_t* prev;
+    struct task_list_node_t* next;
+    struct task_list_node_t* prev;
 };
 typedef struct task_list_node_t task_list_node_t;
 
@@ -39,7 +39,7 @@ struct task_t {
     uint8_t* args;
 
     uint32_t flags;  // flags for current task
-    task_t* parent;
+    struct task_t* parent;
 
     uint32_t kesp;  // kernel stack ESP
     int32_t page_id;  // id for memory management
@@ -72,6 +72,7 @@ union process_kernel_memory_t {
 /** --------------- Task Managements --------------- */
 
 #define TASK_MAX_COUNT    6  // maximum number of processes running at the same time
+extern uint32_t task_count;
 
 // TODO: implement these two pointer
 task_t* running_task();
