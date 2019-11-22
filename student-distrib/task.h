@@ -2,6 +2,10 @@
 // Created by liuzikai on 11/2/19.
 //
 
+/**
+ * Some terminology
+ */
+
 #ifndef _TASK_H
 #define _TASK_H
 
@@ -95,7 +99,6 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 
 /** --------------- Task List Related Helpers  --------------- */
 
-
 /**
  * Initialization value of sentinel node of a task list
  * @param node    Name of the sentinel
@@ -115,24 +118,22 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes);
  * @param task        Pointer to the task to be moved
  * @param new_prev    Pointer to the new prev node of the task
  * @param new_next    Pointer to the new next node of the task
+ * @note Will disable interrupt when performing work
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       are still those BEFORE extracting the task.
  */
-static inline void move_task_to_list(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next) {
-    task_list_node_t* n = &task->list_node;
-    n->next->prev = n->prev;
-    n->prev->next = n->next;
-    n->prev = new_prev; new_prev->next = n;
-    n->next = new_next; new_next->prev = n;
-}
+inline void move_task_to_list(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next);
 
 /**
  * Move a task to the list after the given node
  * @param task    Pointer to the task to be moved
  * @param node    Pointer to the new prev node of the task
+ * @note Will disable interrupt when performing work
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       are still those BEFORE extracting the task.
  */
 
-static inline void move_task_after_node(task_t* task, task_list_node_t* node) {
-    move_task_to_list(task, node, node->next);
-}
+inline void move_task_after_node(task_t* task, task_list_node_t* node);
 
 /**
  * Iterate through a task_list

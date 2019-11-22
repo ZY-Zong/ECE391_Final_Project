@@ -11,18 +11,17 @@
 #include "task.h"
 
 #define _SCHED_ENABLE_RUN_QUEUE_CHECK    1
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-extern task_list_node_t run_queue;
-#endif
 
 #define SCHED_PIT_FREQUENCY    100  // Hz
 #define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // ms
-#define SCHED_TASK_TIME        10  // ms
+#define SCHED_TASK_TIME        50  // ms
 
 void sched_init();
 void sched_refill_time(task_t* task);
 void sched_insert_to_head(task_t* task);
-void sched_pit_callback();
+void sched_move_running_to_list(task_list_node_t* new_prev, task_list_node_t* new_next);
+void sched_move_running_after_node(task_list_node_t* node);
+void sched_launch_to_current_head();
 
 #endif // ASM
 #endif // _TASK_SCHED_H

@@ -4,7 +4,6 @@
 
 #include "task.h"
 #include "lib.h"
-#include "sync.h"
 #include "file_system.h"
 #include "task_paging.h"
 #include "task_sched.h"
@@ -72,7 +71,7 @@ task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
     : "cc", "memory"                                                               \
 )
 
-static task_t *task_remove_from_slot(task_t *task);
+static task_t *task_deallocate(task_t *task);
 
 /**
  * Get current task based on ESP. Only for usage in kernel state.
@@ -133,11 +132,11 @@ static task_t *task_allocate_new_slot() {
 }
 
 /**
- * Remove a task from task list
+ * Deallocate a task from task slot
  * @param task    Pointer to task_t of the task to be removed
  * @return Pointer to its parent task
  */
-static task_t *task_remove_from_slot(task_t *task) {
+static task_t *task_deallocate(task_t *task) {
     task_t *ret = task->parent;
     task->valid = 0;
     task_count--;
@@ -198,7 +197,7 @@ int32_t system_execute(uint8_t *command) {
 
     // Parse executable name and arguments
     if (execute_parse_command(command, &task->args) != 0) {
-        task_remove_from_slot(task);
+        task_deallocate(task);
         return -1;  // invalid command
     }
     task->executable_name = command;
@@ -217,7 +216,7 @@ int32_t system_execute(uint8_t *command) {
     // Setup paging, run program loader, get new EIP
     // NOTICE: after setting up paging for new program, command become useless
     if ((task->page_id = task_set_up_memory(command, &start_eip)) < 0) {
-        task_remove_from_slot(task);
+        task_deallocate(task);
         return -1;
     }
 
@@ -241,12 +240,13 @@ int32_t system_execute(uint8_t *command) {
     // Put current task into list for parents
     if (!(task->flags & TASK_FLAG_INITIAL)) {
         running_task()->flags |= TASK_WAITING_CHILD;
-        move_task_after_node(running_task(), &wait4child_list);
+        sched_move_running_after_node(&wait4child_list);
     }
 
     // Put child task into run queue
     sched_refill_time(task);
     sched_insert_to_head(task);
+    // Not an context switch. Don't use launch function of sched
 
     /** --------------- Phase 3. Very ready to go. Do assembly level switch --------------- */
     // Set tss to new task's kernel stack to make sure system calls use correct stack
@@ -293,14 +293,8 @@ int32_t system_halt(int32_t status) {
 
     /** --------------- Phase 1. Remove current task from scheduler --------------- */
 
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-    if (running_task()->list_node.prev != &run_queue) {
-        DEBUG_ERR("Sched run queue is inconsistent!");
-    }
-#endif
-
     // Remove task from run queue
-    move_task_after_node(running_task(), &temp_list);
+    sched_move_running_after_node(&temp_list);
 
     if (running_task()->parent) {
         // Re-activate parent
@@ -324,14 +318,14 @@ int32_t system_halt(int32_t status) {
     if (running_task()->parent == NULL) {  // the last program has been halt
         /** --------------- Phase X. Special procedure of handling halting of initial shell --------------- */
         int page_id = running_task()->page_id;
-        task_remove_from_slot(running_task());
+        task_deallocate(running_task());
         printf("Initial shell halt with status %u. Restarting...", status);
         task_reset_paging(page_id, page_id);  // do nothing to paging, but decrease count
         task_run_initial_task();  // execute shell again
         // Will not reach here
     }
 
-    task_remove_from_slot(running_task());
+    task_deallocate(running_task());
 
     /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
 
@@ -360,4 +354,19 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
     if (strlen((int8_t *) args) >= nbytes) return -1;  // can not fit into buf (including ending NULL char)
     strncpy((int8_t *) buf, (int8_t *) args, nbytes);
     return 0;
+}
+
+inline void move_task_to_list(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next) {
+    uint32_t flags;
+    cli_and_save(flags); {
+        task_list_node_t* n = &task->list_node;
+        n->next->prev = n->prev;
+        n->prev->next = n->next;
+        n->prev = new_prev; new_prev->next = n;
+        n->next = new_next; new_next->prev = n;
+    } restore_flags(flags);
+}
+
+inline void move_task_after_node(task_t* task, task_list_node_t* node) {
+    move_task_to_list(task, node, node->next);
 }

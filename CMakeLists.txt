@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(UnnamedOS)
+project(AuroraOS)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR i386)
