@@ -136,12 +136,12 @@
         4kB align 
         modify vidmap:
             create user VRAM only when they call vidmap 
-            mapping it to its termial VRAM 
-        for each termial, has its own page mapping 
-            note: the tasks under the same termial use the same VRAM 
+            mapping it to its terminal VRAM
+        for each terminal, has its own page mapping
+            note: the tasks under the same terminal use the same VRAM
             How to know which task correspond to which termail ???
                 add an array to indicate 
-        deal with termial video memory 
+        deal with terminal video memory
             open/close?
             acctive/nonactive 
         

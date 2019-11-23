@@ -38,16 +38,15 @@
 #define     TERMINAL_VID_NOT_OPENED 0
 #define     MAGIC_NO_TERMINAL_OPENED    0xECE666    // used for ter_id indicating no opened terminal
 
-int task_set_up_memory(const uint8_t* task_name, uint32_t* eip, const int ter_id); // called by system call execute
-int task_reset_paging(const int cur_id, const int pre_id); // called by system call halt 
+int task_set_up_memory(const uint8_t* task_name, uint32_t* eip, const int ter_id);  // called by system call execute
+int task_reset_paging(const int new_id, const int pre_id);  // called by system call halt
 
-int task_vidmap(uint8_t ** screen_start);
+int system_vidmap(uint8_t ** screen_start);
 
-// active termial switching 
-int terminal_vid_open(const int ter_id);
-int terminal_vid_close(const int ter_id);
-int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id);
-int terminal_vid_set(const int ter_id);
+int vidmem_allocate(const int vidmem_id);
+int vidmem_deallocate(const int vidmem_id);
+int vidmap_switch_active(const int new_vidmem_id, const int pre_vidmem_id);
+int vidmem_map_to(const int vidmem_id);
 
 
 #endif /*_TASK_PAHING_H*/

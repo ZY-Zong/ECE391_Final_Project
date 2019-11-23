@@ -168,10 +168,12 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
 /**
  * Actual implementation of execute() system call
  * @param command    Command to be executed
+ * @param wait_for_return    If set to 1, this function will return after new program halt() with its halt state.
+ *                           If set to 0, this function will return -1
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  */
-int32_t system_execute(uint8_t *command) {
+int32_t system_execute(uint8_t *command, uint32_t wait_for_return) {
 
     task_t *task;
     uint32_t start_eip;

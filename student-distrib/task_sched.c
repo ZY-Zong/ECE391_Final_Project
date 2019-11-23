@@ -9,6 +9,25 @@
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
+uint32_t switch_asap_count = 0;
+
+// TODO: confirm sync of run_queue carefully
+
+#if _SCHED_ENABLE_RUN_QUEUE_CHECK
+void _sched_check_run_queue() {
+    if (task_count == 0) {
+        DEBUG_ERR("No running task!");
+    }
+    if (switch_asap_count == 0) {  // if an interrupt request to switch to a task asap, it will be insert to the head
+        if (running_task()->list_node.prev != &run_queue || run_queue.next != &running_task()->list_node) {
+            DEBUG_ERR("Sched run queue is inconsistent!");
+        }
+    }
+}
+#else
+#define _sched_check_run_queue()    do {} while(0)
+#endif
+
 /**
  * This macro yield CPU from current process (_prev_) to new process (_next_) and prepare kernel stack for return
  * @param kesp_save_to    Save ESP of kernel stack of _prev_ to this address
@@ -43,6 +62,28 @@ void sched_init() {
 }
 
 /**
+ * Move current running task to an external list, mostly a wait list
+ * @param new_prev    Pointer to new prev node
+ * @param new_next    Pointer to new next node
+ * @note Not includes performing low-level context switch
+ */
+void sched_move_running_to_list(task_list_node_t* new_prev, task_list_node_t* new_next) {
+    _sched_check_run_queue();
+    move_task_to_list(running_task(), new_prev, new_next);
+}
+
+/**
+ * Move current running task after a node, mostly in a wait list
+ * @param node    Pointer to the new prev node
+ * @note Not includes performing low-level context switch
+ */
+void sched_move_running_after_node(task_list_node_t* node) {
+    _sched_check_run_queue();
+    sched_move_running_to_list(node, node->next);
+}
+
+
+/**
  * Refill remain time of a task
  * @param task   The task to be refilled
  */
@@ -57,46 +98,28 @@ void sched_refill_time(task_t* task) {
  * @note Not includes performing low-level context switch
  */
 void sched_insert_to_head(task_t* task) {
-    move_task_after_node(task, &run_queue);  // move the task from whatever list to run queue
+    _sched_check_run_queue();
+    move_task_after_node(task, &run_queue);  // move the task from whatever list to run queue head
 }
 
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-void sched_run_queue_check() {
-    if (task_count == 0) {
-        DEBUG_ERR("No running task!");
-    }
-    if (running_task()->list_node.prev != &run_queue || run_queue.next != &running_task()->list_node) {
-        DEBUG_ERR("Sched run queue is inconsistent!");
-    }
-}
-#endif
 
-/**
- * Move current running task to an external list, mostly a wait list
- * @param new_prev    Pointer to new prev node
- * @param new_next    Pointer to new next node
- * @note Not includes performing low-level context switch
- */
-void sched_move_running_to_list(task_list_node_t* new_prev, task_list_node_t* new_next) {
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-    sched_run_queue_check();
-#endif
-    move_task_to_list(running_task(), new_prev, new_next);
+void sched_launch_to_current_head() {
+    // If they are the same, do nothing
+    if (running_task() == task_from_node(run_queue.next)) return;
+
+    sched_launch_to(running_task()->kesp, task_from_node(run_queue.next)->kesp);
+    // Another task running... Until this task get running again!
 }
 
-/**
- * Move current running task after a node, mostly in a wait list
- * @param node    Pointer to the new prev node
- * @note Not includes performing low-level context switch
- */
-void sched_move_running_after_node(task_list_node_t* node) {
-    sched_move_running_to_list(node, node->next);
+void sched_request_run_head_asap() {
+    uint32_t flags;
+    cli_and_save(flags); {
+        switch_asap_count++;
+    } restore_flags(flags);
 }
 
 void sched_move_running_to_last() {
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-    sched_run_queue_check();
-#endif
+    _sched_check_run_queue();
     /*
      * Be very careful since it moves task in the same list. Without this if, when run_queue has only current running
      * task, run_queue.prev will be running_task itself, and it will be completely detached from run queue.
@@ -107,28 +130,29 @@ void sched_move_running_to_last() {
 
 }
 
-void sched_launch_to_current_head() {
-    if (running_task() != task_from_node(run_queue.next)) {
-        // Now the first task in run queue should not be the same as running_task(). Do no perform consistent check.
-        sched_launch_to(running_task()->kesp, task_from_node(run_queue.next)->kesp);
-        // Another task running... Until this task get running again!
-    }  // if they are the same, do not switch
-}
-
 /**
  * Interrupt handler for PIT
  * @usage Used in idt_asm.S
  */
 void sched_pit_interrupt_handler() {
 #if _SCHED_ENABLE_RUN_QUEUE_CHECK
-    sched_run_queue_check();
+
 #endif
     task_t* running = running_task();
 
     // Decrease available time of current running task
     running->sched_ctrl.remain_time -= SCHED_PIT_INTERVAL;
 
+    while (switch_asap_count > 0) {
+
+
+
+        switch_asap_count--;
+    }
+
     if (running->sched_ctrl.remain_time <= 0) {  // running_task runs out of its time
+
+        _sched_check_run_queue();
 
         /*
          *  Re-fill remain time when putting a task to the end, instead of when getting it to running.
