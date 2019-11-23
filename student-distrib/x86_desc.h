@@ -190,6 +190,7 @@ typedef struct __attribute__((packed)) {
     uint32_t entry[KERNEL_PAGE_TABLE_SIZE];
 } page_table_t;
 extern page_table_t kernel_page_table_0;
+extern page_table_t kernel_page_table_1;
 extern page_table_t user_page_table_0;
 
 
