@@ -10,7 +10,7 @@
 // Global variables
 static int page_id_count = 0; // the ID for new task, also the count of running tasks
 static int page_id_running[MAX_RUNNING_TASK] = {0};
-static int page_id_terminal[MAX_RUNNING_TASK]; // indicating the termial that the task coorespond to
+static int page_id_terminal[MAX_RUNNING_TASK]; // indicating the terminal that the task coorespond to
 static int page_id_active;
 
 // video memory 
@@ -31,9 +31,9 @@ static int user_video_mapped[MAX_NUM_TERMINAL];
  * kernel_video_memory_pt: PDE 0~4MB 
  *      the page for inactive terminal, mapping to its buffer 
  * user_page_table_0: PDE 132~136MB 
- *      the page for user process on active termial, mapping directly to physical VRAM 
+ *      the page for user process on active terminal, mapping directly to physical VRAM
  * user_video_memory_pt: PDE 132~136MB 
- *      the page for user process on inactive termial, mapping to its buffer 
+ *      the page for user process on inactive terminal, mapping to its buffer
  */
 
 // Helper functions
@@ -177,8 +177,8 @@ int task_reset_paging(const int cur_id, const int pre_id) {
     // Close the user video memory map 
     /* Note: assuming the pre_id task didn't call vidmap, which is always the case 
      * The tasks that call vidmap never execute other task on it 
-     * For now, TASK_VRAM_MAPPED is only useful for restoring when switching termial 
-     * To improve: remember each task: whether map/ which termial 
+     * For now, TASK_VRAM_MAPPED is only useful for restoring when switching terminal
+     * To improve: remember each task: whether map/ which terminal
      */
     task_set_user_video_map(-2);
     user_video_mapped[terminal_active]= TASK_VRAM_NOT_MAPPED;
@@ -200,7 +200,7 @@ int task_reset_paging(const int cur_id, const int pre_id) {
  * @return      0 for success, -1 for fail
  * @effect      *screen_start will be changed
  */
-int task_vidmap(uint8_t ** screen_start){
+int system_vidmap(uint8_t ** screen_start){
     
     // Check whether to dest to write is valid 
     if ((int)screen_start < TASK_START_MEM || (int)screen_start >= TASK_END_MEM){
@@ -210,11 +210,11 @@ int task_vidmap(uint8_t ** screen_start){
 
     // check whether the current task ter_id correct 
     if (page_id_terminal[page_id_active] < 0 || page_id_terminal[page_id_active] >= MAX_NUM_TERMINAL){
-        DEBUG_ERR("task_get_vidmap(): HUGE MISTAKE! task's termial not set!\n");
+        DEBUG_ERR("task_get_vidmap(): HUGE MISTAKE! task's terminal not set!\n");
         return -1;
     }
 
-    // Map the page according to task's termial
+    // Map the page according to task's terminal
     if (page_id_terminal[page_id_active] == terminal_active){
         // Set to active
         if (-1 ==task_set_user_video_map(-1) ) return -1;  
@@ -229,13 +229,13 @@ int task_vidmap(uint8_t ** screen_start){
     return 0;
 }
 
-/************************* Active termial operations ***************************/
+/************************* Active terminal operations ***************************/
 
 /**
  * Open a video memory that is not yet opened 
- * Set up the paging maping for it 
+ * Set up the paging mapping for it
  * But not set it to active 
- * @param ter_id    the termial to be open , 0 <= ter_id < MAX_NUM_TERMINAL
+ * @param ter_id    the terminal to be open , 0 <= ter_id < MAX_NUM_TERMINAL
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed
  */
@@ -255,9 +255,9 @@ int terminal_vid_open(const int ter_id){
 
 /**
  * Close a terminal video memory that is opened 
- * IMPORTANT: the termial to close should not be active 
- * if want to close a termial, please call switch first 
- * @param ter_id    the termial to be open , 0 <= ter_id < MAX_NUM_TERMINAL
+ * IMPORTANT: the terminal to close should not be active
+ * if want to close a terminal, please call switch first
+ * @param ter_id    the terminal to be open , 0 <= ter_id < MAX_NUM_TERMINAL
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed
  */
@@ -280,22 +280,22 @@ int terminal_vid_close(const int ter_id){
 }
 
 /**
- * Set a opened termial video memory to be active, i.e. change the screen 
+ * Set a opened terminal video memory to be active, i.e. change the screen
  * and store the old one to its buffer 
- * @param cur_ter_id    the termial to be set active 
- * @param pre_ter_id    the termial to be stored, or MAGIC_NO_TERMINAL_OPENED 
+ * @param new_ter_id    the terminal to be set active
+ * @param pre_ter_id    the terminal to be stored, or MAGIC_NO_TERMINAL_OPENED
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed, the screen will be changed 
  */
-int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id){
+int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id){
     // Error checking 
     // cur_ter_id
-    if (cur_ter_id < 0 || cur_ter_id >= MAX_NUM_TERMINAL){
-        DEBUG_ERR("terminal_active_vid_switch(): bad cur_ter_id: %d\n", cur_ter_id);
+    if (new_ter_id < 0 || new_ter_id >= MAX_NUM_TERMINAL){
+        DEBUG_ERR("terminal_active_vid_switch(): bad cur_ter_id: %d\n", new_ter_id);
         return -1;
     }
-    if (terminal_opened[cur_ter_id] == TERMINAL_VID_NOT_OPENED) {
-        DEBUG_ERR("terminal_active_vid_switch(): not opened cur_ter_id: %d\n", cur_ter_id);
+    if (terminal_opened[new_ter_id] == TERMINAL_VID_NOT_OPENED) {
+        DEBUG_ERR("terminal_active_vid_switch(): not opened cur_ter_id: %d\n", new_ter_id);
         return -1;
     }
     // pre_ter_id
@@ -304,7 +304,7 @@ int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id){
         return -1;
     }
     if (pre_ter_id != MAGIC_NO_TERMINAL_OPENED && terminal_opened[pre_ter_id] == TERMINAL_VID_NOT_OPENED){
-        DEBUG_ERR("terminal_active_vid_switch(): not opened pre_ter_id: %d\n", cur_ter_id);
+        DEBUG_ERR("terminal_active_vid_switch(): not opened pre_ter_id: %d\n", new_ter_id);
         return -1;
     }
 
@@ -317,7 +317,7 @@ int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id){
     terminal_copy_from_physical(pre_ter_id);
 
     // Copy the current terminal VRAM from its buffer to physical VRAM
-    terminal_copy_to_physcial(cur_ter_id);
+    terminal_copy_to_physcial(new_ter_id);
 
     // Turn on active kernel paging 
     pde = (PDE_4kB_t*)(&kernel_page_directory.entry[0]);
@@ -325,12 +325,12 @@ int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id){
     if (-1 == set_PDE_4kB(pde, (uint32_t)kernel_page_table_1.entry, 1, 0, 1)) return -1;
    
     // set user vidmap if necessary 
-    if (user_video_mapped[cur_ter_id]==TASK_VRAM_MAPPED){
+    if (user_video_mapped[new_ter_id] == TASK_VRAM_MAPPED){
         task_set_user_video_map(-1);
     }
      
     // Set global variables 
-    terminal_active = cur_ter_id;
+    terminal_active = new_ter_id;
 
     FLUSH_TLB();
     return 0;
@@ -338,7 +338,7 @@ int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id){
 
 /**
  * Set current paging pointing VRAM to buffer for inactive terminal 
- * @param ter_id    the termial to be set 
+ * @param ter_id    the terminal to be set
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed
  */
@@ -376,7 +376,7 @@ int terminal_vid_set(const int ter_id){
 
 /**
  * Turn on the paging for specific task (privilege = 3)
- * Specificly, map 128MB~132MB to start at 8MB + pid*(4MB) 
+ * Specifically, map 128MB~132MB to start at 8MB + pid*(4MB)
  * @param id    the pid of the task
  * @return      always 0 
  * @effect      The PD will be changed 
@@ -506,7 +506,7 @@ int task_init_video_memory(){
     int j=0; // loop counter 
     PTE_t* cur_pte = NULL; 
     
-    // Set global variables of PT for each termial's video memory 
+    // Set global variables of PT for each terminal's video memory
     // Set (0xB9+pid)*4kB in the 0-4MB page to be present
     for (i=0; i< MAX_NUM_TERMINAL; i++){
         
@@ -548,7 +548,7 @@ int task_init_video_memory(){
 /**
  * Set the PDE for 132MB-136MB to be 4kB page, pointing to corresponding PT 
  * The active PT map directly to physical VRAM
- * @param       id: the id of the inactive termial VRAM buffer, -1 indicates active, -2 indicates close
+ * @param       id: the id of the inactive terminal VRAM buffer, -1 indicates active, -2 indicates close
  * @return      0 for success, -1 for bad id 
  * @effect      PDE will be changed 
  */
@@ -580,7 +580,7 @@ int task_set_user_video_map(const int id){
 
 /**
  * Copy the whole physical video memory to dest_id terminal buffer 
- * @param       dest_id: the destination termial id
+ * @param       dest_id: the destination terminal id
  * @return      0 for success, -1 for bad id 
  * @effect      the oringinal buffer will be covered 
  * @note        the paging setting must turn on all buffer, i.e. use kernel_page_table_0
@@ -609,7 +609,7 @@ int terminal_copy_from_physical(const int dest_id){
 
 /**
  * Copy the whole src_id terminal buffer to physical video memory
- * @param       src_id: the destination termial id
+ * @param       src_id: the destination terminal id
  * @return      0 for success, -1 for bad id 
  * @effect      the screen will be changed 
  * @note        the paging setting must turn on all buffer, i.e. use kernel_page_table_0
