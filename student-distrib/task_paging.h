@@ -17,6 +17,9 @@
  * 
  * Version 4.0 Tingkai Liu 2019.11.17
  * Support system call: vidmap 
+ * 
+ * Version 5.0 Tingkai Liu 2019.11.27
+ * Support multi-terminal and scheduling 
  */
 
 #define     MAX_RUNNING_TASK    2           // for cp3 

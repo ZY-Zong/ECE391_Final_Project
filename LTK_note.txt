@@ -144,4 +144,7 @@
         deal with termial video memory 
             open/close?
             acctive/nonactive 
+
+2019.11.27
+    the address of page table?
         

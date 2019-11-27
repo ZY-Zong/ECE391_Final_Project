@@ -20,6 +20,7 @@ static page_table_t user_video_memory_pt[MAX_NUM_TERMINAL] __attribute__((aligne
 static page_table_t kernel_video_memory_pt[MAX_NUM_TERMINAL] __attribute__((aligned (SIZE_4K)));
 static int user_video_mapped[MAX_NUM_TERMINAL];
 
+
 /*
  * Reference for page tables 
  * kernel_page_table_0: PDE 0~4MB 
@@ -38,17 +39,23 @@ static int user_video_mapped[MAX_NUM_TERMINAL];
 // Helper functions
 int task_turn_on_paging(const int id);
 int task_turn_off_paging(const int id, const int pre_id);
+int task_get_page_id();
 
 int task_load(dentry_t *task);
 int task_is_executable(dentry_t *task);
 uint32_t task_get_eip(dentry_t *task);
-int task_get_page_id();
 
 int task_init_video_memory();
+int task_set_user_video_map(const int id);
+int terminal_copy_from_physical(const int dest_id);
+int terminal_copy_to_physcial(const int src_id);
+
 int task_clear_PDE_4MB(PDE_4MB_t* entry);
 int task_clear_PDE_4kB(PDE_4kB_t* entry); 
 int task_clear_PTE(PTE_t* entry);
-int task_set_video_map(const int id);
+int set_PDE_4kB(PDE_4kB_t* pde, uint32_t pt, uint8_t can_write, uint8_t user, uint8_t present);
+int set_PTE(PTE_t* pte, uint32_t page, uint8_t can_write, uint8_t user, uint8_t present);
+int is_flag(uint8_t flag);
 
 #define FLUSH_TLB()  asm volatile ("  \
     movl    %%cr3, %%eax            \n\
@@ -87,7 +94,7 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip, const int ter_id
         }
         // video memory 
         task_init_video_memory();
-        terminal_vid_open(0);
+        terminal_vid_open(0); // TODO: ???
         for (i=0; i<MAX_NUM_TERMINAL; i++){
             terminal_opened[i]=TERMINAL_VID_NOT_OPENED;
         }
@@ -173,7 +180,7 @@ int task_reset_paging(const int cur_id, const int pre_id) {
      * For now, TASK_VRAM_MAPPED is only useful for restoring when switching termial 
      * To improve: remember each task: whether map/ which termial 
      */
-    task_set_video_map(-2);
+    task_set_user_video_map(-2);
     user_video_mapped[terminal_active]= TASK_VRAM_NOT_MAPPED;
 
 
@@ -210,10 +217,10 @@ int task_vidmap(uint8_t ** screen_start){
     // Map the page according to task's termial
     if (page_id_terminal[page_id_active] == terminal_active){
         // Set to active
-        if (-1 ==task_set_video_map(-1) ) return -1;  
+        if (-1 ==task_set_user_video_map(-1) ) return -1;  
     } else {
         // Set to corresponding buf
-        if (-1 == task_set_video_map(page_id_terminal[page_id_active]) ) return -1; 
+        if (-1 == task_set_user_video_map(page_id_terminal[page_id_active]) ) return -1; 
     }
     user_video_mapped[terminal_active] = TASK_VRAM_MAPPED;
 
@@ -282,17 +289,49 @@ int terminal_vid_close(const int ter_id){
  */
 int terminal_active_vid_switch(const int cur_ter_id, const int pre_ter_id){
     // Error checking 
+    // cur_ter_id
+    if (cur_ter_id < 0 || cur_ter_id >= MAX_NUM_TERMINAL){
+        DEBUG_ERR("terminal_active_vid_switch(): bad cur_ter_id: %d\n", cur_ter_id);
+        return -1;
+    }
+    if (terminal_opened[cur_ter_id] == TERMINAL_VID_NOT_OPENED) {
+        DEBUG_ERR("terminal_active_vid_switch(): not opened cur_ter_id: %d\n", cur_ter_id);
+        return -1;
+    }
+    // pre_ter_id
+    if (( pre_ter_id < 0 || pre_ter_id >= MAX_NUM_TERMINAL ) && pre_ter_id != MAGIC_NO_TERMINAL_OPENED){
+        DEBUG_ERR("terminal_active_vid_switch(): bad pre_ter_id: %d\n", pre_ter_id);
+        return -1;
+    }
+    if (pre_ter_id != MAGIC_NO_TERMINAL_OPENED && terminal_opened[pre_ter_id] == TERMINAL_VID_NOT_OPENED){
+        DEBUG_ERR("terminal_active_vid_switch(): not opened pre_ter_id: %d\n", cur_ter_id);
+        return -1;
+    }
 
     // Turn on the kernel page for copy 
+    PDE_4kB_t* pde = (PDE_4kB_t*)(&kernel_page_directory.entry[0]);
+    if (-1 == task_clear_PDE_4kB(pde) ) return -1;
+    if (-1 == set_PDE_4kB(pde, (uint32_t)kernel_page_table_0.entry, 1, 0, 1)) return -1;
 
     // Copy the previous terminal VRAM from physical VRAM to its buffer 
+    terminal_copy_from_physical(pre_ter_id);
 
     // Copy the current terminal VRAM from its buffer to physical VRAM
+    terminal_copy_to_physcial(cur_ter_id);
 
     // Turn on active kernel paging 
-    
+    pde = (PDE_4kB_t*)(&kernel_page_directory.entry[0]);
+    if (-1 == task_clear_PDE_4kB(pde) ) return -1;
+    if (-1 == set_PDE_4kB(pde, (uint32_t)kernel_page_table_1.entry, 1, 0, 1)) return -1;
+   
+    // set user vidmap if necessary 
+    if (user_video_mapped[cur_ter_id]==TASK_VRAM_MAPPED){
+        task_set_user_video_map(-1);
+    }
+     
     // Set global variables 
-    
+    terminal_active = cur_ter_id;
+
     FLUSH_TLB();
     return 0;
 }
@@ -320,9 +359,12 @@ int terminal_vid_set(const int ter_id){
     if (-1 == task_clear_PDE_4kB(kernel_vram_pde)) return -1;
 
     // set it pointing to corresponding PT 
-    kernel_page_directory.entry[0] |= (uint32_t) &kernel_video_memory_pt[ter_id];
-    kernel_vram_pde->can_write = 1;
-    kernel_vram_pde->present = 1;
+    if ( -1 == set_PDE_4kB(kernel_vram_pde, (uint32_t) &kernel_video_memory_pt[ter_id], 1, 0, 1)) return -1;
+
+    // set user vidmap if necessary 
+    if (user_video_mapped[ter_id] == TASK_VRAM_MAPPED){
+        task_set_user_video_map(ter_id);
+    }
 
     FLUSH_TLB();
     return 0;
@@ -369,6 +411,20 @@ int task_turn_off_paging(const int cur_id, const int pre_id) {
     (void) cur_id;  // seems not useful, avoid warning
     return task_turn_on_paging(pre_id);
 }
+
+/**
+ * Get a free pid 
+ * @return      the pid got for success , -1 for fail
+ */
+int task_get_page_id() {
+    int page_id = 0;
+    for (page_id = 0; page_id < MAX_RUNNING_TASK; page_id++) {
+        if (page_id_running[page_id] == PID_FREE) return page_id;
+    }
+    return -1;
+}
+
+/**************** executable file operations ************/
 
 /**
  * Load the whole module at virtual memory TASK_START_MEM (128MB)
@@ -434,17 +490,7 @@ uint32_t task_get_eip(dentry_t *task) {
     return eip;
 }
 
-/**
- * Get a free pid 
- * @return      the pid got for success , -1 for fail
- */
-int task_get_page_id() {
-    int page_id = 0;
-    for (page_id = 0; page_id < MAX_RUNNING_TASK; page_id++) {
-        if (page_id_running[page_id] == PID_FREE) return page_id;
-    }
-    return -1;
-}
+/**************** video memory operations ************/
 
 /**
  * Initialize the pages for holding user video memory 
@@ -476,19 +522,13 @@ int task_init_video_memory(){
         // Get PTE at 0xB8 
         cur_pte = (PTE_t*)(&user_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]);
         // Map the PTE to corresponding page at (0xB9+pid)*4kB
-        cur_pte->base_address = (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K;
-        cur_pte->can_write = 1;
-        cur_pte->present = 1;
-        cur_pte->user_or_super = 1; // user
+        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K, 1, 1, 1)) return -1;
 
         // Kernel video memory page 
         // Get PTE at 0xB8 
         cur_pte = (PTE_t*)(&kernel_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]);
         // Map the PTE to corresponding page at (0xB9+pid)*4kB
-        cur_pte->base_address = (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K;
-        cur_pte->can_write = 1;
-        cur_pte->present = 1;
-        cur_pte->user_or_super = 0; // kernel 
+        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K, 1, 0, 1)) return -1;
 
         // update 0~4MB kernel page 
         PTE_t* cur_kernel_pte = NULL;
@@ -504,6 +544,99 @@ int task_init_video_memory(){
     FLUSH_TLB();
     return 0;
 }
+
+/**
+ * Set the PDE for 132MB-136MB to be 4kB page, pointing to corresponding PT 
+ * The active PT map directly to physical VRAM
+ * @param       id: the id of the inactive termial VRAM buffer, -1 indicates active, -2 indicates close
+ * @return      0 for success, -1 for bad id 
+ * @effect      PDE will be changed 
+ */
+int task_set_user_video_map(const int id){
+    if (id < -2 || id >= MAX_NUM_TERMINAL){
+        DEBUG_ERR("task_set_user_video_map(): bad id: %d\n", id);
+        return -1;
+    }
+    
+    // Get the PDE for 132~136MB
+    PDE_4kB_t* user_vram_pde = NULL;
+    user_vram_pde = (PDE_4kB_t*)(&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1]);
+    // Clear to PDE 
+    if (-1 == task_clear_PDE_4kB(user_vram_pde)) return -1;
+
+    // finish if closing the page 
+    if (id == -2) return 0;
+
+    // Set the fields (for active id (-1), physical VRAM)
+    if (id == -1) {
+        if ( -1 == set_PDE_4kB(user_vram_pde, (uint32_t)(&user_page_table_0), 1, 1, 1)) return -1;
+    } else {
+        if ( -1 == set_PDE_4kB(user_vram_pde, (uint32_t)(&user_video_memory_pt[id]), 1, 1, 1)) return -1;
+    }
+
+    FLUSH_TLB();
+    return 0;
+}
+
+/**
+ * Copy the whole physical video memory to dest_id terminal buffer 
+ * @param       dest_id: the destination termial id
+ * @return      0 for success, -1 for bad id 
+ * @effect      the oringinal buffer will be covered 
+ * @note        the paging setting must turn on all buffer, i.e. use kernel_page_table_0
+ */
+int terminal_copy_from_physical(const int dest_id){
+    // Error checking
+    if (dest_id < 0 || dest_id >= MAX_NUM_TERMINAL){
+        DEBUG_ERR("terminal_copy_from_physical(): bad dest_id: %d\n", dest_id);
+        return -1;
+    }
+    
+    int i; // loop counter 
+    // Current copying byte pointer: source (physical VRAM)
+    uint8_t* src = (uint8_t*) (TASK_VIR_VIDEO_MEM_ENTRY * SIZE_4K); 
+    // Current copying byte pointer: buffer (dest_id terminal buffer)
+    uint8_t* dest = (uint8_t*) ( (TASK_VIR_VIDEO_MEM_ENTRY + dest_id + 1) * SIZE_4K); 
+    // Copy every byte 
+    for (i=0; i<SIZE_4K; i++){
+        *dest = *src;
+        dest++;
+        src++;
+    }
+    
+    return 0;
+}
+
+/**
+ * Copy the whole src_id terminal buffer to physical video memory
+ * @param       src_id: the destination termial id
+ * @return      0 for success, -1 for bad id 
+ * @effect      the screen will be changed 
+ * @note        the paging setting must turn on all buffer, i.e. use kernel_page_table_0
+ */
+int terminal_copy_to_physcial(const int src_id){
+    // Error checking
+    if (src_id < 0 || src_id >= MAX_NUM_TERMINAL){
+        DEBUG_ERR("terminal_copy_to_physical(): bad src_id: %d\n", src_id);
+        return -1;
+    }
+    
+    int i; // loop counter 
+    // Current copying byte pointer: destination (physical VRAM)
+    uint8_t* dest = (uint8_t*) (TASK_VIR_VIDEO_MEM_ENTRY * SIZE_4K); 
+    // Current copying byte pointer: buffer (dest_id terminal buffer)
+    uint8_t* src = (uint8_t*) ( (TASK_VIR_VIDEO_MEM_ENTRY + src_id + 1) * SIZE_4K); 
+    // Copy every byte 
+    for (i=0; i<SIZE_4K; i++){
+        *dest = *src;
+        src++;
+        dest++;
+    }
+
+    return 0;
+}
+
+/**************** PDE/PTE operations ************/
 
 /**
  * Clear a 4MB PDE by setting all the flags to 0 and address to 0 
@@ -584,46 +717,78 @@ int task_clear_PTE(PTE_t* entry){
 
 
 /**
- * Set the PDE for 132MB-136MB to be 4kB page, pointing to corresponding PT 
- * The active PT map directly to physical VRAM
- * @param       id: the id of the inactive termial VRAM buffer, -1 indicates active, -2 indicates close
- * @return      0 for success, -1 for bad id 
- * @effect      PDE will be changed 
+ * Helper function for setting 4kB PDE 
+ * only care about base address and can_write, user, and present flag
+ * @param       pde: the pde to be set 
+ * @param       pt: the address of the page table that this pde pointing to 
+ * @param       can_write: can_write flag 
+ * @param       user: user_or_super flag 
+ * @param       present: present flag 
+ * @return      0 for success, -1 for failure 
  */
-int task_set_video_map(const int id){
-    if (id < -2 || id >= MAX_NUM_TERMINAL){
-        DEBUG_ERR("task_set_video_map(): bad id: %d\n", id);
+int set_PDE_4kB(PDE_4kB_t* pde, uint32_t pt, uint8_t can_write, uint8_t user, uint8_t present){
+    // Error checking
+    if (pde == NULL || pt == NULL){
+        DEBUG_ERR("set_PDE_4kB(): bad pde ot pt!\n");
         return -1;
     }
-    
-    // Get the PDE for 132~136MB
-    PDE_4kB_t* user_vram_pde = NULL;
-    user_vram_pde = (PDE_4kB_t*)(&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1]);
-    // Clear to PDE 
-    if (-1 == task_clear_PDE_4kB(user_vram_pde)) return -1;
-
-    // finish if closing the page 
-    if (id == -2) return -1;
-
-    // Set the fields (for active id (-1), physical VRAM)
-    if (id == -1) {
-        kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1] |= (uint32_t) &user_page_table_0;
-    } else {
-        kernel_page_directory.entry[TASK_VIR_MEM_ENTRY+1] |= (uint32_t) &user_video_memory_pt[id];
+    if (pt & PAGE_4KB_ALIGN_TEST) {
+        DEBUG_ERR("set_PDE_4kB(): pt not align! pt:%x\n", pt);
+        return -1;
+    }
+    if ( !( is_flag(can_write) && is_flag(user) && is_flag(present) )){
+        DEBUG_ERR("set_PDE_4kB(): bad flag(s)\n");
+        return -1;
     }
 
-    user_vram_pde->can_write = 1;
-    user_vram_pde->present = 1;
-    user_vram_pde->user_or_super = 1;
+    // Set the fields 
+    pde->base_address = pt >> 12; // 12: the offset of 4kB address 
+    pde->can_write = can_write;
+    pde->user_or_super = user;
+    pde->present = present;
 
-    FLUSH_TLB();
     return 0;
 }
 
-int terminal_copy_from_physical(const int dest_id){
+/**
+ * Helper function for setting PTE
+ * only care about base address and can_write, user, and present flag
+ * @param       pte: the pte to be set 
+ * @param       page: the address of the 4kB page that this pde pointing to 
+ * @param       can_write: can_write flag 
+ * @param       user: user_or_super flag 
+ * @param       present: present flag 
+ * @return      0 for success, -1 for failure 
+ */
+int set_PTE(PTE_t* pte, uint32_t page, uint8_t can_write, uint8_t user, uint8_t present){
+    // Error checking
+    if (pte == NULL || page == NULL){
+        DEBUG_ERR("set_PTE(): bad pde ot pt!\n");
+        return -1;
+    }
+    if (page & PAGE_4KB_ALIGN_TEST) {
+        DEBUG_ERR("set_PTE(): page not align! pt:%x\n", pt);
+        return -1;
+    }
+    if ( !( is_flag(can_write) && is_flag(user) && is_flag(present) )){
+        DEBUG_ERR("set_PTE(): bad flag(s)\n");
+        return -1;
+    }
+
+    // Set the fields 
+    pte->base_address = page >> 12; // 12: the offset of 4kB address 
+    pte->can_write = can_write;
+    pte->user_or_super = user;
+    pte->present = present;
+
     return 0;
 }
 
-int terminal_copy_to_physcial(const int src_id){
-    return 0;
+/**
+ * Helper function for checking whether flag is 0 or 1 
+ * @param       flag: the flag to be checked 
+ * @return      1 for yes, 0 for no 
+ */
+int is_flag(uint8_t flag){
+    return (flag==0 || flag==1);
 }
