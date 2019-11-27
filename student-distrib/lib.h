@@ -45,15 +45,17 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 #endif
 
 int32_t printf(int8_t *format, ...);
-void putc(uint8_t c);
-void virtual_putc(uint8_t c, virtual_screen_t* virtual_screen);
+void putc_focus(uint8_t c);
+void putc_running(uint8_t c);
+//void virtual_putc(uint8_t c, virtual_screen_t* virtual_screen);
 int32_t puts(int8_t *s);
 int8_t *itoa(uint32_t value, int8_t* buf, int32_t radix);
 int8_t *strrev(int8_t* s);
 uint32_t strlen(const int8_t* s);
 void clear(void);
 void reset_cursor();
-void scroll_up();
+void scroll_up_focus();
+void scroll_up_running();
 
 void* memset(void* s, int32_t c, uint32_t n);
 void* memset_word(void* s, int32_t c, uint32_t n);

@@ -9,34 +9,32 @@
 #define NUM_ROWS    25
 #define ATTRIB      0x7
 
-static int screen_x;
-static int screen_y;
-static char* video_mem = (char *)VIDEO;
 
 /**
- * Reset input point to the upper left corner of the screen
+ * Reset input point of the focused task's screen to the upper left corner of the screen
  * @input: None
  * @output: None
  * @return: None
  */
 void reset_cursor() {
-    screen_x = 0;
-    screen_y = 0;
+    focus_task()->screen.screen_x = 0;
+    focus_task()->screen.screen_y = 0;
 }
 
 /* void clear(void);
  * Inputs: void
  * Return Value: none
- * Function: Clears video memory */
+ * Function: Clears focus_task's video memory */
 void clear(void) {
     int32_t i;
-    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
-        *(uint8_t *)(video_mem + (i << 1)) = ' ';
-        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+    for (i = 0; i < (focus_task()->screen.screen_height) * (focus_task()->screen.screen_width); i++) {
+        *(uint8_t *)(focus_task()->screen.video_mem + (i << 1)) = ' ';
+        *(uint8_t *)(focus_task()->screen.video_mem + (i << 1) + 1) = ATTRIB;
     }
 }
 
 /* Standard printf().
+ * Print to the running_task's screen.
  * Only supports the following format strings:
  * %%  - print a literal '%' character
  * %x  - print a number in hexadecimal
@@ -74,7 +72,7 @@ format_char_switch:
                     switch (*buf) {
                         /* Print a literal '%' character */
                         case '%':
-                            putc('%');
+                            putc_running('%');
                             break;
 
                         /* Use alternate formatting */
@@ -136,7 +134,7 @@ format_char_switch:
 
                         /* Print a single character */
                         case 'c':
-                            putc((uint8_t) *((int32_t *)esp));
+                            putc_running((uint8_t) *((int32_t *)esp));
                             esp++;
                             break;
 
@@ -154,7 +152,7 @@ format_char_switch:
                 break;
 
             default:
-                putc(*buf);
+                putc_running(*buf);
                 break;
         }
         buf++;
@@ -165,94 +163,94 @@ format_char_switch:
 /* int32_t puts(int8_t* s);
  *   Inputs: int_8* s = pointer to a string of characters
  *   Return Value: Number of bytes written
- *    Function: Output a string to the console */
+ *    Function: Output a string to the running console */
 int32_t puts(int8_t* s) {
     register int32_t index = 0;
     while (s[index] != '\0') {
-        putc(s[index]);
+        putc_running(s[index]);
         index++;
     }
     return index;
 }
 
-/* void putc(uint8_t c);
+/* void putc_running(uint8_t c);
  * Inputs: uint_8* c = character to print
  * Return Value: void
- *  Function: Output a character to the console */
-void putc(uint8_t c) {
+ *  Function: Output a character to the focused console */
+void putc_running(uint8_t c) {
     if(c == '\n' || c == '\r') {
-        screen_x = 0;
-        screen_y++;
-        if (NUM_ROWS == screen_y) {
-            scroll_up();
+        running_task()->screen.screen_x = 0;
+        running_task()->screen.screen_y++;
+        if (running_task()->screen.screen_height == running_task()->screen.screen_y) {
+            scroll_up_running();
         }
     } else if ('\b' == c) {
         // If user types backspace
-        if (0 == screen_x) {
-            if (0 == screen_y) { // At the top left corner of the screen
+        if (0 == running_task()->screen.screen_x) {
+            if (0 == running_task()->screen.screen_y) { // At the top left corner of the screen
                 return;
             } else { // Originally at the start of a new line, now at the end of last line
-                screen_x = NUM_COLS - 1;
-                screen_y--;
+                running_task()->screen.screen_x = running_task()->screen.screen_width - 1;
+                running_task()->screen.screen_y--;
             }
         } else { // Normal cases for backspace
-            screen_x--;
+            running_task()->screen.screen_x--;
         }
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * running_task()->screen.screen_y + running_task()->screen.screen_x) << 1)) = ' ';
+        *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * running_task()->screen.screen_y + running_task()->screen.screen_x) << 1) + 1) = ATTRIB;
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
-        screen_x++;
-        if (NUM_COLS == screen_x) {
+        *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * running_task()->screen.screen_y + running_task()->screen.screen_x) << 1)) = c;
+        *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * running_task()->screen.screen_y + running_task()->screen.screen_x) << 1) + 1) = ATTRIB;
+        running_task()->screen.screen_x++;
+        if (running_task()->screen.screen_width == running_task()->screen.screen_x) {
             // We need a new line
-            screen_x %= NUM_COLS;
-            screen_y++;
-            if (NUM_ROWS == screen_y) {
-                scroll_up();
+            running_task()->screen.screen_x %= running_task()->screen.screen_width;
+            running_task()->screen.screen_y++;
+            if (running_task()->screen.screen_height == running_task()->screen.screen_y) {
+                scroll_up_running();
             }
         }
     }
 }
-/* void putc(uint8_t c);
+/* void putc_focus(uint8_t c);
  * Inputs: uint_8* c = character to print
  * Return Value: void
- *  Function: Output a character to the console */
-void virtual_putc(uint8_t c, virtual_screen_t* virtual_screen) {
+ *  Function: Output a character to the running console */
+void putc_focus(uint8_t c) {
     if(c == '\n' || c == '\r') {
-        virtual_screen -> screen_x = 0;
-        virtual_screen -> screen_y++;
-        if (virtual_screen -> screen_height == virtual_screen -> screen_y) {
-            scroll_up();
+        focus_task()->screen.screen_x = 0;
+        focus_task()->screen.screen_y++;
+        if (focus_task()->screen.screen_height == focus_task()->screen.screen_y) {
+            scroll_up_focus();
         }
     } else if ('\b' == c) {
         // If user types backspace
-        if (0 == virtual_screen -> screen_x) {
-            if (0 == virtual_screen -> screen_y) { // At the top left corner of the screen
+        if (0 == focus_task()->screen.screen_x) {
+            if (0 == focus_task()->screen.screen_y) { // At the top left corner of the screen
                 return;
             } else { // Originally at the start of a new line, now at the end of last line
-                virtual_screen -> screen_x = virtual_screen -> screen_width - 1;
-                virtual_screen -> screen_y--;
+                focus_task()->screen.screen_x = focus_task()->screen.screen_width - 1;
+                focus_task()->screen.screen_y--;
             }
         } else { // Normal cases for backspace
-            virtual_screen -> screen_x--;
+            focus_task()->screen.screen_x--;
         }
-        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1)) = ' ';
-        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1) + 1) = ATTRIB;
+        *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * focus_task()->screen.screen_y + focus_task()->screen.screen_x) << 1)) = ' ';
+        *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * focus_task()->screen.screen_y + focus_task()->screen.screen_x) << 1) + 1) = ATTRIB;
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1)) = c;
-        *(uint8_t *)(virtual_screen -> video_mem + (((virtual_screen -> screen_width) * (virtual_screen -> screen_y) + virtual_screen -> screen_x) << 1) + 1) = ATTRIB;
-        virtual_screen -> screen_x++;
-        if ((virtual_screen -> screen_width) == virtual_screen -> screen_x) {
+        *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * focus_task()->screen.screen_y + focus_task()->screen.screen_x) << 1)) = c;
+        *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * focus_task()->screen.screen_y + focus_task()->screen.screen_x) << 1) + 1) = ATTRIB;
+        focus_task()->screen.screen_x++;
+        if (focus_task()->screen.screen_width == focus_task()->screen.screen_x) {
             // We need a new line
-            virtual_screen -> screen_x %= (virtual_screen -> screen_width);
-            virtual_screen -> screen_y++;
-            if ((virtual_screen -> screen_height) == virtual_screen -> screen_y) {
-                scroll_up();
+            focus_task()->screen.screen_x %= focus_task()->screen.screen_width;
+            focus_task()->screen.screen_y++;
+            if (focus_task()->screen.screen_height == focus_task()->screen.screen_y) {
+                scroll_up_focus();
             }
         }
     }
@@ -263,26 +261,45 @@ void virtual_putc(uint8_t c, virtual_screen_t* virtual_screen) {
  * Then we move the screen one line up so that we can continuously type words.
  * Side Effect: Discard the top most line of the screen.
  */
-void scroll_up() {
+void scroll_up_focus() {
     int x,y;
     // Move up the last NUM_ROWS - 1 lines
-    for (y = 0; y < NUM_ROWS - 1; y++) {
-        for (x = 0; x < NUM_COLS; x++) {
-            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
-            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+    for (y = 0; y < focus_task()->screen.screen_height - 1; y++) {
+        for (x = 0; x < focus_task()->screen.screen_width; x++) {
+            *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * y + x) << 1)) = *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * (y + 1) + x) << 1));
+            *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * y + x) << 1) + 1) = ATTRIB;
         }
     }
     // Clean up the last line
-    y = NUM_ROWS - 1;
-    for (x = 0; x < NUM_COLS; x++) {
-        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
-        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+    y = focus_task()->screen.screen_height - 1;
+    for (x = 0; x < focus_task()->screen.screen_width; x++) {
+        *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * y + x) << 1)) = ' ';
+        *(uint8_t *)(focus_task()->screen.video_mem + ((focus_task()->screen.screen_width * y + x) << 1) + 1) = ATTRIB;
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)
-    screen_y = NUM_ROWS - 1;
-    screen_x = 0;
+    focus_task()->screen.screen_y = focus_task()->screen.screen_height - 1;
+    focus_task()->screen.screen_x = 0;
 }
 
+void scroll_up_running() {
+    int x,y;
+    // Move up the last NUM_ROWS - 1 lines
+    for (y = 0; y < running_task()->screen.screen_height - 1; y++) {
+        for (x = 0; x < running_task()->screen.screen_width; x++) {
+            *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * y + x) << 1)) = *(uint8_t *)(focus_task()->screen.video_mem + ((running_task()->screen.screen_width * (y + 1) + x) << 1));
+            *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * y + x) << 1) + 1) = ATTRIB;
+        }
+    }
+    // Clean up the last line
+    y = running_task()->screen.screen_height - 1;
+    for (x = 0; x < running_task()->screen.screen_width; x++) {
+        *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * y + x) << 1)) = ' ';
+        *(uint8_t *)(running_task()->screen.video_mem + ((running_task()->screen.screen_width * y + x) << 1) + 1) = ATTRIB;
+    }
+    // Reset the cursor to the column 0, row (NUM_ROWS - 1)
+    running_task()->screen.screen_y = running_task()->screen.screen_height - 1;
+    running_task()->screen.screen_x = 0;
+}
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
  * Inputs: uint32_t value = number to convert
  *            int8_t* buf = allocated buffer to place string in

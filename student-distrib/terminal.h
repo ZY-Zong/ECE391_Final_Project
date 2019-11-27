@@ -17,7 +17,7 @@ int32_t terminal_open(const uint8_t* filename);
 int32_t terminal_close(int32_t fd);
 
 // Declaration of keyboard related functions
-void keyboard_init();
+//void keyboard_init();
 void keyboard_interrupt_handler();
 void handle_scan_code(uint8_t scan_code);
 

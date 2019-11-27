@@ -4,6 +4,7 @@
 #include "terminal.h"
 
 #include "task.h"
+#include "task_sched.h"
 
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
 #define KEYBOARD_FLAG_SIZE 128
@@ -70,19 +71,10 @@ static const char caps_scan_code_table[128] = {
 static uint8_t key_flags[KEYBOARD_FLAG_SIZE];
 // Bit vector used to check whether the CapsLock is on
 static uint8_t capslock_status = 0;
-// Bit vector used to check whether someone is reading from the keyboard
-static uint8_t whether_read = 0;
-// Keyboard buffer of size 128 and a counter to store the current position in the buffer
-static char keyboard_buf[KEYBOARD_BUF_SIZE];
-static uint8_t keyboard_buf_counter = 0;
-//static uint8_t backspace_counter;
 
+// Local wait list for the terminals
+task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
-task_list_node_t wait_list_sentinel;
-
-void terminal_control_init(terminal_control_t* terminal_control) {
-    // TODO: implement this function
-}
 
 /*
  * keyboard_interrupt
@@ -130,16 +122,16 @@ void handle_scan_code(uint8_t scan_code) {
         key_flags[scan_code] = 1;
 //        printf("(%x)", scan_code);
         // If Enter and someone is reading from the keyboard, just let the read function handle \n
-        if ((1 == whether_read) && (ENTER_PRESS == scan_code)) {
-            keyboard_buf[keyboard_buf_counter] = '\n';
-            putc(keyboard_buf[keyboard_buf_counter]);
-            keyboard_buf_counter++;
+        if ((1 == focus_task()->terminal.whether_read) && (ENTER_PRESS == scan_code)) {
+            focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = '\n';
+            putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+            focus_task()->terminal.keyboard_buf_counter++;
             return;
         }
         // If Enter and no one is reading from the keyboard, clear the keyboard buffer
-        if ((0 == whether_read) && (ENTER_PRESS == scan_code)) {
-            keyboard_buf_counter = 0;
-            putc('\n');
+        if ((0 == focus_task()->terminal.whether_read) && (ENTER_PRESS == scan_code)) {
+            focus_task()->terminal.keyboard_buf_counter = 0;
+            putc_focus('\n');
             return;
         }
         // If CapsLock
@@ -151,51 +143,57 @@ void handle_scan_code(uint8_t scan_code) {
         if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[L_SCANCODE_PRESSED]) {
             clear(); // clear the screen
             reset_cursor(); // reset the cursor to up-left corner
+            // Keep the last typed line
+            printf("390OS>");
+            int i;
+            for (i = 0; i < focus_task()->terminal.keyboard_buf_counter; i++) {
+                putc_focus(focus_task()->terminal.keyboard_buf[i]);
+            }
             return;
         }
         // If backspace
         // Just putc then delete the char in the keyboard_buf
         if (1 == key_flags[BACKSPACE_SCAN_CODE]) {
-            if (0 < keyboard_buf_counter) {
-                putc('\b');
-                keyboard_buf_counter--;
+            if (0 < focus_task()->terminal.keyboard_buf_counter) {
+                putc_focus('\b');
+                focus_task()->terminal.keyboard_buf_counter--;
             }
         } else {
             // If shift is pressed
             if ((0 == capslock_status) && ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS]))) {
                 // If CapsLock but shift is pressed
                 if (0 != shift_scan_code_table[scan_code]) {
-                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
-                        keyboard_buf[keyboard_buf_counter] = shift_scan_code_table[scan_code];
-                        putc(keyboard_buf[keyboard_buf_counter]);
-                        keyboard_buf_counter++;
+                    if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                        focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = shift_scan_code_table[scan_code];
+                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
             } else if ((0 == capslock_status) && ((0 == key_flags[LEFT_SHIFT_PRESS]) && (0 == key_flags[RIGHT_SHIFT_PRESS]))){
                 // If not CapsLock and shift is not pressed
                 if (0 != scan_code_table[scan_code]) {
-                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
-                        keyboard_buf[keyboard_buf_counter] = scan_code_table[scan_code];
-                        putc(keyboard_buf[keyboard_buf_counter]);
-                        keyboard_buf_counter++;
+                    if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                        focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = scan_code_table[scan_code];
+                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
             } else if ((1 == capslock_status) && ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS]))) {
                 // If CapsLock and shift is pressed
                 if (0 != scan_code_table[scan_code]) {
-                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
-                        keyboard_buf[keyboard_buf_counter] = caps_shift_scan_code_table[scan_code];
-                        putc(keyboard_buf[keyboard_buf_counter]);
-                        keyboard_buf_counter++;
+                    if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                        focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = caps_shift_scan_code_table[scan_code];
+                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
             } else {
                 // If CapsLock but shift is not pressed
                 if (0 != scan_code_table[scan_code]) {
-                    if (keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
-                        keyboard_buf[keyboard_buf_counter] = caps_scan_code_table[scan_code];
-                        putc(keyboard_buf[keyboard_buf_counter]);
-                        keyboard_buf_counter++;
+                    if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
+                        focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = caps_scan_code_table[scan_code];
+                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
             }
@@ -211,19 +209,31 @@ void handle_scan_code(uint8_t scan_code) {
  * Output: None.
  * Side Effect: Modify keyboard's static variables.
  */
-void keyboard_init() {
-    int i;
-    // Initialize the keyboard flags
-    for (i = 0; i < KEYBOARD_FLAG_SIZE; i++) {
-        key_flags[i] = 0;
-    }
-    // Initialize the keyboard buffer
-    for (i = 0; i < KEYBOARD_BUF_SIZE; i++) {
-        keyboard_buf[i] = 0;
-    }
-    keyboard_buf_counter = 0;
-}
+//void keyboard_init() {
+//    int i;
+//    // Initialize the keyboard flags
+//    for (i = 0; i < KEYBOARD_FLAG_SIZE; i++) {
+//        key_flags[i] = 0;
+//    }
+//    // Initialize the keyboard buffer
+//    for (i = 0; i < KEYBOARD_BUF_SIZE; i++) {
+//        keyboard_buf[i] = 0;
+//    }
+//    keyboard_buf_counter = 0;
+//}
 
+/**
+ * Initialize the corresponding keyboard buffer for the terminal
+ * @param terminal_control - Pointer to the corresponding terminal's keyboard
+ */
+void terminal_control_init(terminal_control_t* terminal_control) {
+    int i;
+    terminal_control->whether_read = 0;
+    for (i = 0; i < KEYBOARD_BUF_SIZE; i++) {
+        terminal_control->keyboard_buf[i] = 0;
+    }
+    terminal_control->keyboard_buf_counter = 0;
+}
 /*
  * terminal_open
  * Description: This function initializes key_flag and keyboard_buf.
@@ -254,6 +264,7 @@ int32_t terminal_close(int32_t fd) {
  * Output: Returns the number of bytes read.
  * Side Effect: Modify both keyboard's static variables.
  */
+// TODO: Modify read to a virtualized version
 int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     int32_t i = 0;  // record how many characters are read from the keyboard buffer before we reach count, keyboard_buf_size or '\n'
     int32_t to_delete = 0;
@@ -269,33 +280,41 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     if (nbytes > KEYBOARD_BUF_SIZE) {
         nbytes = KEYBOARD_BUF_SIZE;
     }
-    whether_read = 1;
-    while (to_continue) {
-        cli();
-        {
-            // Perform full scan, in case key buffer changes in an unexpected way.
-            // For example, an backspace and an enter are pressed during two loops, we need to identify that enter.
-            for (i = 0; (i < keyboard_buf_counter) && (i < nbytes); i++) {
-                if (keyboard_buf[i] == '\n') {
-                    to_continue = 0;
-                    break;  // exit for
-                }
-            }
-            if (i == nbytes) {  // already fulfill buffer given by user, return immediately
-                to_continue = 0;
-            }
-        }
-        sti();
-    }
-    whether_read = 0;
+    running_task()->terminal.whether_read = 1;
+
     cli();
     {
-        memcpy(buf, keyboard_buf, i);
-        to_delete = i + (keyboard_buf[i] == '\n');
-        for (j = to_delete; j < keyboard_buf_counter; j++) {
-            keyboard_buf[j - to_delete] = keyboard_buf[j];
+        // Perform full scan, in case key buffer changes in an unexpected way.
+        // For example, an backspace and an enter are pressed during two loops, we need to identify that enter.
+        for (i = 0; (i < running_task()->terminal.keyboard_buf_counter) && (i < nbytes); i++) {
+            if (running_task()->terminal.keyboard_buf[i] == '\n') {
+                to_continue = 0;
+                break;  // exit for
+            }
         }
-        keyboard_buf_counter -= to_delete;
+        if (i == nbytes) {  // already fulfill buffer given by user, return immediately
+            to_continue = 0;
+        }
+
+    }
+    sti();
+
+    if (1 == to_continue) {
+        // Set the task to sleep
+        running_task()->flags |= TASK_WAITING_CHILD;
+        sched_move_running_after_node(&wait4child_list);
+        sched_launch_to_current_head();
+    }
+
+    running_task()->terminal.whether_read = 0;
+    cli();
+    {
+        memcpy(buf, running_task()->terminal.keyboard_buf, i);
+        to_delete = i + (running_task()->terminal.keyboard_buf[i] == '\n');
+        for (j = to_delete; j < running_task()->terminal.keyboard_buf_counter; j++) {
+            running_task()->terminal.keyboard_buf[j - to_delete] = running_task()->terminal.keyboard_buf[j];
+        }
+        running_task()->terminal.keyboard_buf_counter -= to_delete;
     }
     sti();
 
@@ -326,7 +345,7 @@ int32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
 //                // If current character is '\0', stop
 //                break;
 //            }
-            putc(((uint8_t *) buf)[i]);
+            putc_running(((uint8_t *) buf)[i]);
         }
     }
     sti();
