@@ -52,7 +52,7 @@ struct task_t {
     sched_control_t sched_ctrl;
 
     rtc_control_t rtc;
-    terminal_control_t terminal;
+    terminal_t terminal;
     virtual_screen_t screen;
     file_array_t file_array;
 };
@@ -92,7 +92,7 @@ void task_run_initial_task();
 
 /** --------------- System Calls Implementations --------------- */
 
-int32_t system_execute(uint8_t *command, uint32_t wait_for_return);
+int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal);
 int32_t system_halt(int32_t status);
 int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 

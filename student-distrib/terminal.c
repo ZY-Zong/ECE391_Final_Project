@@ -74,6 +74,7 @@ static uint8_t capslock_status = 0;
 
 // Local wait list for the terminals
 task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
+terminal_t terminal_slot[MAX_TERMINAL_COUNT];
 
 
 /*
@@ -222,18 +223,6 @@ void handle_scan_code(uint8_t scan_code) {
 //    keyboard_buf_counter = 0;
 //}
 
-/**
- * Initialize the corresponding keyboard buffer for the terminal
- * @param terminal_control - Pointer to the corresponding terminal's keyboard
- */
-void terminal_control_init(terminal_control_t* terminal_control) {
-    int i;
-    terminal_control->whether_read = 0;
-    for (i = 0; i < KEYBOARD_BUF_SIZE; i++) {
-        terminal_control->keyboard_buf[i] = 0;
-    }
-    terminal_control->keyboard_buf_counter = 0;
-}
 /*
  * terminal_open
  * Description: This function initializes key_flag and keyboard_buf.
@@ -350,5 +339,43 @@ int32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
     }
     sti();
     return i;
+}
+
+void terminal_init() {
+    int i;
+    for (i = 0; i < MAX_TERMINAL_COUNT; i++) {
+        terminal_slot[i].valid = 0;
+    }
+}
+
+terminal_t *terminal_allocate() {
+    int i;
+
+    // Find available slot
+    for (i = 0; i < MAX_TERMINAL_COUNT; i++) {
+        if (terminal_slot[i].valid == 0) break;
+    }
+
+    if (i >= MAX_TERMINAL_COUNT) {
+        DEBUG_ERR("terminal_allocate(): no available slot for new terminal");
+        return NULL;
+    }
+
+    terminal_t *terminal = &terminal_slot[i];
+    terminal->valid = 1;
+
+    memset(terminal->keyboard_buf, 0, sizeof(terminal->keyboard_buf));
+    terminal->keyboard_buf_counter = 0;
+
+    terminal->screen_width = TEXT_MODE_WIDTH;
+    terminal->screen_height = TEXT_MODE_HEIGHT;
+    terminal->screen_x = 0;
+    terminal->screen_y = 0;
+
+    return terminal;
+}
+
+void terminal_deallocate(terminal_t* terminal) {
+    terminal->valid = 0;
 }
 

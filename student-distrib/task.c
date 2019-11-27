@@ -107,7 +107,7 @@ void task_init() {
  * Run shell
  */
 void task_run_initial_task() {
-    system_execute((uint8_t *) "shell");
+    system_execute((uint8_t *) "shell", 0, 0);
 }
 
 /**
@@ -170,10 +170,12 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  * @param command    Command to be executed
  * @param wait_for_return    If set to 1, this function will return after new program halt() with its halt state.
  *                           If set to 0, this function will return -1
+ * @param new_terminal       If set to 1, a new terminal will be assigned to the task.
+ *                           If set to 0, the new task will share terminal with running_task
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  */
-int32_t system_execute(uint8_t *command, uint32_t wait_for_return) {
+int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal) {
 
     task_t *task;
     uint32_t start_eip;
