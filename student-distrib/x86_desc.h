@@ -29,9 +29,10 @@
 #define SIZE_BYTE_IN_BITS       8 
 #define SIZE_INT_IN_BYTES       4 
 
-#define KERNEL_PAGE_DIRECTORY_SIZE    1024
-#define KERNEL_PAGE_TABLE_SIZE    1024
-#define VIDEO_MEMORY_START_PAGE    0xB8
+#define KERNEL_PAGE_DIRECTORY_SIZE      1024
+#define KERNEL_PAGE_TABLE_SIZE          1024
+#define VIDEO_MEMORY_START_PAGE         0xB8
+#define PAGE_4KB_ALIGN_TEST           0x00FFF
 
 #ifndef ASM
 
