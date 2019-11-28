@@ -156,26 +156,65 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 #define task_from_node(ptr_node)    ((task_t *) (((char *) (ptr_node)) - __builtin_offsetof(task_t, list_node)))
 
 /**
- * Move a task to a new list
+ * Move a task to a new list (lock needed)
  * @param task        Pointer to the task to be moved
  * @param new_prev    Pointer to the new prev node of the task
  * @param new_next    Pointer to the new next node of the task
- * @note Will disable interrupt when performing work
+ * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
+ *       interrupts happens between
  * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
  *       are still those BEFORE extracting the task.
  */
-inline void move_task_to_list(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next);
+inline void move_task_to_list_unsafe(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next);
 
 /**
- * Move a task to the list after the given node
+ * Move a task to the list after the given node (lock needed)
  * @param task    Pointer to the task to be moved
  * @param node    Pointer to the new prev node of the task
- * @note Will disable interrupt when performing work
+ * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
+ *       interrupts happens between
  * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
  *       are still those BEFORE extracting the task.
  */
+inline void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
 
-inline void move_task_after_node(task_t* task, task_list_node_t* node);
+/**
+ * Move a task to a new list (lock free)
+ * @param task        Pointer to the task to be moved
+ * @param new_prev    Pointer to the new prev node of the task
+ * @param new_next    Pointer to the new next node of the task
+ * @note A lock is placed inside the macro. Since macro expands as code and no variables are stored, the lock is
+ *       expected to take effect immediately.
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       may still be those BEFORE extracting the task due to potential compiler optimization
+ */
+#define move_task_to_list(task, new_prev, new_next) {  \
+    uint32_t flags;                                    \
+    cli_and_save(flags);                               \
+    {                                                  \
+        task_list_node_t *n = &(task)->list_node;      \
+        n->next->prev = n->prev;                       \
+        n->prev->next = n->next;                       \
+        n->prev = (new_prev);                          \
+        (new_prev)->next = n;                          \
+        n->next = (new_next);                          \
+        (new_next)->prev = n;                          \
+    }                                                  \
+    restore_flags(flags);                              \
+}
+
+/**
+ * Move a task to the list after the given node (lock free)
+ * @param task    Pointer to the task to be moved
+ * @param node    Pointer to the new prev node of the task
+ * @note A lock is placed inside the macro. Since macro expands as code and no variables are stored, the lock is
+ *       expected to take effect immediately.
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       may still be those BEFORE extracting the task due to potential compiler optimization
+ */
+#define move_task_after_node(task, node) {             \
+    move_task_to_list((task), (node), (node)->next);   \
+}
 
 /**
  * Iterate through a task_list

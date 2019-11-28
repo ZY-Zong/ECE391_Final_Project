@@ -21,8 +21,8 @@ uint32_t task_count = 0;  // count of tasks that has started
 // Wait list of tasks that are waiting for child to halt
 task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
-task_t* terminal_user_task[TERMINAL_MAX_COUNT];
-task_t* focus_task_ = NULL;
+task_t *terminal_user_task[TERMINAL_MAX_COUNT];
+task_t *focus_task_ = NULL;
 
 /** ================ Function Declarations =============== */
 
@@ -107,7 +107,7 @@ void task_init() {
     task_count = 0;
 
     // Initialize terminal user list
-    for (i = 0 ; i < TERMINAL_MAX_COUNT; i++) {
+    for (i = 0; i < TERMINAL_MAX_COUNT; i++) {
         terminal_user_task[i] = NULL;
     }
 
@@ -369,7 +369,7 @@ int32_t system_halt(int32_t status) {
 
     if (task->flags & TASK_INIT_TASK) {
         printf("Init task halt with status %d. OS halt.", status);
-        while(1) {}
+        while (1) {}
     }
 
     /** --------------- Phase 1. Remove current task from scheduler --------------- */
@@ -442,23 +442,18 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
     return 0;
 }
 
-inline void move_task_to_list(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
-    uint32_t flags;
-    cli_and_save(flags);
-    {
-        task_list_node_t *n = &task->list_node;
-        n->next->prev = n->prev;
-        n->prev->next = n->next;
-        n->prev = new_prev;
-        new_prev->next = n;
-        n->next = new_next;
-        new_next->prev = n;
-    }
-    restore_flags(flags);
+inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
+    task_list_node_t *n = &task->list_node;
+    n->next->prev = n->prev;
+    n->prev->next = n->next;
+    n->prev = new_prev;
+    new_prev->next = n;
+    n->next = new_next;
+    new_next->prev = n;
 }
 
-inline void move_task_after_node(task_t *task, task_list_node_t *node) {
-    move_task_to_list(task, node, node->next);
+inline void move_task_after_node_unsafe(task_t *task, task_list_node_t *node) {
+    move_task_to_list_unsafe(task, node, node->next);
 }
 
 static void init_thread_main() {
@@ -474,7 +469,7 @@ static void init_thread_main() {
     system_halt(0);
 }
 
-task_t* focus_task() {
+task_t *focus_task() {
 #if TASK_ENABLE_CHECKPOINT
     if (focus_task_ == NULL) {
         DEBUG_ERR("focus_task is NULL!");
@@ -491,7 +486,8 @@ void task_change_focus(int32_t terminal_id) {
 
     uint32_t flags;
 
-    cli_and_save(flags); {
+    cli_and_save(flags);
+    {
 
         focus_task_->terminal->screen_x = screen_x;
         focus_task_->terminal->screen_y = screen_y;
@@ -502,5 +498,6 @@ void task_change_focus(int32_t terminal_id) {
         screen_x = focus_task_->terminal->screen_x;
         screen_y = focus_task_->terminal->screen_y;
 
-    } restore_flags(flags);
+    }
+    restore_flags(flags);
 }

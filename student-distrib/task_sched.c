@@ -12,6 +12,7 @@
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
 #if _SCHED_ENABLE_RUN_QUEUE_CHECK
+
 void _sched_check_run_queue() {
     if (task_count == 0) {
         DEBUG_ERR("No running task!");
@@ -60,25 +61,39 @@ void sched_init() {
 }
 
 /**
- * Move current running task to an external list, mostly a wait list
+ * Move current running task to an external list, mostly a wait list (lock needed)
  * @param new_prev    Pointer to new prev node
  * @param new_next    Pointer to new next node
+ * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
+ *       interrupts happens between
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       are still those BEFORE extracting the task.
  * @note Not includes performing low-level context switch
+ * @note Always use running_task() instead of first element in run queue, to allow lock-free
  */
-void sched_move_running_to_list(task_list_node_t *new_prev, task_list_node_t *new_next) {
-//    _sched_check_run_queue();
-    move_task_to_list(running_task(), new_prev, new_next);
-    while (run_queue.next == &run_queue) {}  // loop in kernel until there is at least one runnable task
+void sched_move_running_to_list_unsafe(task_list_node_t *new_prev, task_list_node_t *new_next) {
+    move_task_to_list_unsafe(running_task(), new_prev, new_next);
+    // Loop in kernel until there is at least one runnable task. Use inline asm for volatile runqueue.next
+    asm volatile ("                                                           \
+    1:  cmpl %0, %1                                                         \n\
+        je 1b"                                                                \
+        :                                                                     \
+        : "m" (run_queue.next) /* must read from memory */, "r" (&run_queue)  \
+        : "cc", "memory"                                                      \
+        );
 }
 
 /**
- * Move current running task after a node, mostly in a wait list
+ * Move current running task after a node, mostly in a wait list (lock needed)
  * @param node    Pointer to the new prev node
  * @note Not includes performing low-level context switch
+ * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
+ *       interrupts happens between
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       are still those BEFORE extracting the task.
  */
-void sched_move_running_after_node(task_list_node_t *node) {
-//    _sched_check_run_queue();
-    sched_move_running_to_list(node, node->next);
+void sched_move_running_after_node_unsafe(task_list_node_t *node) {
+    sched_move_running_to_list_unsafe(node, node->next);
 }
 
 
@@ -97,8 +112,7 @@ void sched_refill_time(task_t *task) {
  * @note Not includes performing low-level context switch
  */
 void sched_insert_to_head(task_t *task) {
-//    _sched_check_run_queue();
-    move_task_after_node(task, &run_queue);  // move the task from whatever list to run queue head
+    move_task_after_node_unsafe(task, &run_queue);  // move the task from whatever list to run queue head
 }
 
 
@@ -106,26 +120,36 @@ void sched_insert_to_head(task_t *task) {
  * Perform low-level context switch to current head. Return after caller to this function is active again.
  */
 void sched_launch_to_current_head() {
+
+    uint32_t flags;
+    task_t *to_run;
+
+    cli_and_save(flags);
+    {
+        to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
+    }
+    restore_flags(flags);
+
     // If they are the same, do nothing
-    if (running_task() == task_from_node(run_queue.next)) return;
+    if (running_task() == to_run) return;
 
-    terminal_vid_set(task_from_node(run_queue.next)->terminal->terminal_id);
+    terminal_vid_set(to_run->terminal->terminal_id);
 
-    sched_launch_to(running_task()->kesp, task_from_node(run_queue.next)->kesp);
+    sched_launch_to(running_task()->kesp, to_run->kesp);
     // Another task running... Until this task get running again!
 }
 
 /**
  * Move running task to the end of the run queue
+ * @note Always use running_task() instead of first element in run queue, to allow lock-free
  */
 void sched_move_running_to_last() {
-//    _sched_check_run_queue();
     /*
      * Be very careful since it moves task in the same list. Without this if, when run_queue has only current running
      * task, run_queue.prev will be running_task itself, and it will be completely detached from run queue.
      */
     if (run_queue.prev != &running_task()->list_node) {
-        move_task_after_node(running_task(), run_queue.prev);
+        move_task_after_node_unsafe(running_task(), run_queue.prev);
     }
 
 }
@@ -133,13 +157,12 @@ void sched_move_running_to_last() {
 /**
  * Interrupt handler for PIT
  * @usage Used in idt_asm.S
+ * @note Always use running_task() instead of first element in run queue, to allow lock-free
  */
 asmlinkage void sched_pit_interrupt_handler(uint32_t irq_num) {
     if (run_queue.next == &run_queue) {  // no runnable task
         return;
     }
-
-//    _sched_check_run_queue();
 
     task_t *running = running_task();
 
