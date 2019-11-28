@@ -2,10 +2,11 @@
 */
 
 #include "rtc.h"
+
 #include "lib.h"
 #include "i8259.h"
-
 #include "task.h"
+#include "idt.h"
 
 unsigned int TEST_RTC_ECHO_COUNTER;
 
@@ -54,11 +55,13 @@ void rtc_init() {
  *                telling which interrupt happened.
  * @reference https://wiki.osdev.org/RTC
  */
-void rtc_interrupt_handler() {
+asmlinkage void rtc_interrupt_handler(uint32_t irq_num) {
 
     rtc_interrupt_occured = 1;  // interrupt happens, set flag to 1
 
     rtc_restart_interrupt();  // get another interrupt
+
+    send_eoi(irq_num)
 }
 
 /**

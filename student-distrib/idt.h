@@ -9,6 +9,7 @@
 #ifndef ASM
 
 #include "types.h"
+#include "linkage.h"
 
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
 #define IDT_ENTRY_PIT            0x20  // the vector number of PIT
