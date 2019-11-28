@@ -31,12 +31,11 @@ typedef struct sched_control_t sched_control_t;
 
 
 #define TASK_INIT_TASK           1U  // initial process
-#define TASK_FLAG_KERNEL_TASK    2U  // kernel thread (no user paging, no terminal)
+#define TASK_FLAG_KERNEL_TASK    2U  // kernel thread (no user paging, no terminal, should not return but can halt)
 #define TASK_WAITING_CHILD       4U  // waiting for child task to halt
 #define TASK_WAITING_RTC         8U  // in waiting list of RTC
 #define TASK_WAITING_TERMINAL    16U // in waiting list of terminal
-#define TASK_IDLE_TASK           32U // idle thread (run only when no other task is runnable, and have minimal time)
-#define TASK_TERMINAL_OWNER      64U // own terminal
+#define TASK_TERMINAL_OWNER      32U // own terminal
 
 struct task_t {
     uint8_t valid;  // 1 if current task_t is in use, 0 if not

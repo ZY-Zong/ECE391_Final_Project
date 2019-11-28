@@ -9,25 +9,6 @@
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
-uint32_t switch_asap_count = 0;
-
-// TODO: confirm sync of run_queue carefully
-
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-void _sched_check_run_queue() {
-    if (task_count == 0) {
-        DEBUG_ERR("No running task!");
-    }
-    if (switch_asap_count == 0) {  // if an interrupt request to switch to a task asap, it will be insert to the head
-        if (running_task()->list_node.prev != &run_queue || run_queue.next != &running_task()->list_node) {
-            DEBUG_ERR("Sched run queue is inconsistent!");
-        }
-    }
-}
-#else
-#define _sched_check_run_queue()    do {} while(0)
-#endif
-
 /**
  * This macro yield CPU from current process (_prev_) to new process (_next_) and prepare kernel stack for return
  * @param kesp_save_to    Save ESP of kernel stack of _prev_ to this address
@@ -68,8 +49,8 @@ void sched_init() {
  * @note Not includes performing low-level context switch
  */
 void sched_move_running_to_list(task_list_node_t* new_prev, task_list_node_t* new_next) {
-    _sched_check_run_queue();
     move_task_to_list(running_task(), new_prev, new_next);
+    while (run_queue.next == &run_queue) {}  // loop in kernel until there is at least one runnable task
 }
 
 /**
@@ -78,7 +59,6 @@ void sched_move_running_to_list(task_list_node_t* new_prev, task_list_node_t* ne
  * @note Not includes performing low-level context switch
  */
 void sched_move_running_after_node(task_list_node_t* node) {
-    _sched_check_run_queue();
     sched_move_running_to_list(node, node->next);
 }
 
@@ -98,7 +78,6 @@ void sched_refill_time(task_t* task) {
  * @note Not includes performing low-level context switch
  */
 void sched_insert_to_head(task_t* task) {
-    _sched_check_run_queue();
     move_task_after_node(task, &run_queue);  // move the task from whatever list to run queue head
 }
 
@@ -112,14 +91,10 @@ void sched_launch_to_current_head() {
 }
 
 void sched_request_run_head_asap() {
-    uint32_t flags;
-    cli_and_save(flags); {
-        switch_asap_count++;
-    } restore_flags(flags);
+
 }
 
 void sched_move_running_to_last() {
-    _sched_check_run_queue();
     /*
      * Be very careful since it moves task in the same list. Without this if, when run_queue has only current running
      * task, run_queue.prev will be running_task itself, and it will be completely detached from run queue.
@@ -135,25 +110,20 @@ void sched_move_running_to_last() {
  * @usage Used in idt_asm.S
  */
 void sched_pit_interrupt_handler() {
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
+    if (run_queue.next == &run_queue) {  // no runnable task
+        return;
+    }
 
-#endif
     task_t* running = running_task();
 
     // Decrease available time of current running task
     running->sched_ctrl.remain_time -= SCHED_PIT_INTERVAL;
 
-    while (switch_asap_count > 0) {
-
-
-
-        switch_asap_count--;
+    if (run_queue.next != &running_task()->list_node) {  // there are task that requests to run asap
+        sched_launch_to_current_head();  // return after this thread get running again
     }
 
     if (running->sched_ctrl.remain_time <= 0) {  // running_task runs out of its time
-
-        _sched_check_run_queue();
-
         /*
          *  Re-fill remain time when putting a task to the end, instead of when getting it to running.
          *  For example, task A have 30 ms left, but task B was inserted to the head of run queue because of rtc read()
@@ -172,8 +142,7 @@ void sched_pit_interrupt_handler() {
  * @note Reference: http://www.osdever.net/bkerndev/Docs/pit.htm
 
  */
-static void setup_pit(uint16_t hz)
-{
+static void setup_pit(uint16_t hz) {
     uint16_t divisor = 1193180 / hz;
     outb(0x36, 0x34);  // set command byte 0x36
     outb(divisor & 0xFF, 0x40);   // Set low byte of divisor
