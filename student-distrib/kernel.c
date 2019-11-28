@@ -148,8 +148,14 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
 
-    /* Init the keyboard */
-    keyboard_init();
+    /* Setup IDT table */
+    idt_init();
+
+    /* Init the PIT for scheduler */
+    enable_irq(0);
+
+    /* Init the terminal and keyboard */
+    terminal_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
     /* Init the RTC */
@@ -161,11 +167,8 @@ void entry(unsigned long magic, unsigned long addr) {
     if (mbi->mods_count == 0){
         printf("WARNING: no file system loaded\n");
     } else {
-         init_file_system((module_t *)mbi->mods_addr);
+        file_system_init((module_t *) mbi->mods_addr);
     }
-
-    /* Enable interrupts */
-    idt_init();
 
     /* Enable paging */
     enable_paging();

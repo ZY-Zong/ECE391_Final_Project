@@ -2,9 +2,11 @@
 */
 
 #include "idt.h"
+
 #include "x86_desc.h"
 #include "lib.h"
 #include "linkage.h"
+#include "i8259.h"
 #include "file_system.h"
 #include "task.h"
 #include "task_paging.h"
@@ -66,6 +68,10 @@ void idt_init() {
     SET_IDT_ENTRY(idt[20], exception_entry_20);
     SET_IDT_ENTRY(idt[30], exception_entry_30);
 
+    // Set PIT handler (defined in idt_asm.S)
+    SET_IDT_ENTRY(idt[IDT_ENTRY_PIT], interrupt_entry_0);
+    idt[IDT_ENTRY_PIT].present = 1;
+
     // Set keyboard handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
     idt[IDT_ENTRY_KEYBOARD].present = 1;
@@ -83,19 +89,23 @@ void idt_init() {
     lidt(idt_desc_ptr);
 }
 
+void idt_send_eoi(uint32_t irq_num) {
+    send_eoi(irq_num);
+}
+
 /**
  * This function is used to print out the given interrupt number in the interrupt descriptor table.
  * @param vec_num    vector number of the interrupt/exception
  */
 void print_exception(uint32_t vec_num) {
 
-    if (process_cnt == 0) {
+    if (task_count == 0) {
         clear();
         reset_cursor();
         printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", vec_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
-        DEBUG_ERR("EXCEPTION %u OCCUR!\n", vec_num);
+        DEBUG_ERR("EXCEPTION %u OCCUR!", vec_num);
         system_halt(256);
     }
 
@@ -108,13 +118,8 @@ void print_exception(uint32_t vec_num) {
  * Print message that an interrupt handler is not implemented
  * @param irq    IRQ number
  */
-void null_interrupt_handler(uint32_t irq) {
-
-    cli();
-    {
-        DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
-    }
-    sti();
+asmlinkage void null_interrupt_handler(uint32_t irq) {
+    DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
 }
 
 /**
@@ -134,7 +139,7 @@ asmlinkage long sys_not_implemented() {
     :
     : "memory", "cc"
     );
-    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d\n",
+    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d",
            eax_val, ebx_val, ecx_val, edx_val);
     return -1;
 }
@@ -148,7 +153,7 @@ asmlinkage long sys_not_implemented() {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
-    return system_execute(command);
+    return system_execute(command, 1, 0, NULL);
 }
 
 /**
@@ -222,6 +227,13 @@ asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
     return system_getargs(buf, nbytes);
 }
 
+/**
+ * Low-level system call handler for vidmap()
+ * @param screen_start    Starting address of mapped video memory in user memory
+ * @return 0 on success
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
+ */
 asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
-    return task_get_vimap(screen_start);
+    return system_vidmap(screen_start);
 }

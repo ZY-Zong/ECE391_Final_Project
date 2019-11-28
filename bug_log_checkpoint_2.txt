@@ -5,10 +5,10 @@ RTC:
             in while loop.
 
             2. The frequency is changed in the rtc interrupt handler, but not the write function, so it will not
-            be set immediately. Should modify the frequency in the rtc_write function.
+            be set immediately. Should modify the frequency in the system_rtc_write function.
 
             3. Add rtc_restart_interrupt in rtc_read, because it needs to take another interrupt to
-            make interrupt available 0.5s after rtc_read. Or the interrupt may happen at a random
+            make interrupt available 0.5s after system_rtc_read. Or the interrupt may happen at a random
             time.
 
     Description: Setting works now. Test with thirty interrupts, and frequencies with 2, 4, 8, 16, 32 Hz.
