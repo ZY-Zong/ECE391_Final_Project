@@ -153,7 +153,7 @@ asmlinkage long sys_not_implemented() {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
-    return system_execute(command, 0, 0, NULL);
+    return system_execute(command, 1, 0, NULL);
 }
 
 /**
@@ -227,6 +227,13 @@ asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
     return system_getargs(buf, nbytes);
 }
 
+/**
+ * Low-level system call handler for vidmap()
+ * @param screen_start    Starting address of mapped video memory in user memory
+ * @return 0 on success
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
+ */
 asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
     return system_vidmap(screen_start);
 }

@@ -84,7 +84,7 @@
 2019.10.27
     countinue with the functions 
         open close may be used in cp3, for fd 
-        init_file_system()
+        file_system_init()
             save inodes pointer and data block pointer 
         public functions 
             read_data()

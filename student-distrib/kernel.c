@@ -154,8 +154,8 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the PIT for scheduler */
     enable_irq(0);
 
-    /* Init the keyboard */
-    //keyboard_init();
+    /* Init the terminal and keyboard */
+    terminal_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
     /* Init the RTC */
@@ -167,7 +167,7 @@ void entry(unsigned long magic, unsigned long addr) {
     if (mbi->mods_count == 0){
         printf("WARNING: no file system loaded\n");
     } else {
-         init_file_system((module_t *)mbi->mods_addr);
+        file_system_init((module_t *) mbi->mods_addr);
     }
 
     /* Enable paging */

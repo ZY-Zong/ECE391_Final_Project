@@ -107,7 +107,7 @@ int32_t system_write(int32_t fd, const void* buf, int32_t nbytes);
 /***************************** Public Functions *********************************/
 
 
-int32_t init_file_system(module_t * file_system);
+int32_t file_system_init(module_t * fs);
 
 int32_t init_file_array(file_array_t* cur_file_array);
 int32_t clear_file_array(file_array_t* cur_file_array);

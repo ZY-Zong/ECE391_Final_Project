@@ -10,11 +10,16 @@
 #include "types.h"
 #include "task.h"
 
+/**
+ * SCHEDULING
+ *  
+ */
+
 #define _SCHED_ENABLE_RUN_QUEUE_CHECK    1
 
-#define SCHED_PIT_FREQUENCY    100  // Hz
-#define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // ms
-#define SCHED_TASK_TIME        50  // ms
+#define SCHED_PIT_FREQUENCY    100  // frequency of PIT [Hz]
+#define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // time quantum of scheduler [ms]
+#define SCHED_TASK_TIME        50  // full available time for each task [ms]
 
 void sched_init();
 void sched_refill_time(task_t* task);

@@ -12,7 +12,6 @@
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
 #if _SCHED_ENABLE_RUN_QUEUE_CHECK
-
 void _sched_check_run_queue() {
     if (task_count == 0) {
         DEBUG_ERR("No running task!");
@@ -34,8 +33,9 @@ void _sched_check_run_queue() {
  * @note Make sure TSS is set to kernel stack of _next_
  * @note After switching, the top of _prev_ stack is the return address (label 1)
  * @note To switch back, switch stack to kernel stack of _prev_, and run `ret` on _prev_ stack
+ * @note This function works even called when IF = 0, since all flags will be saved and restored. But make sure
+ *       there is no other mechanism that prevent interrupts from happening, such as EOI of i8259.
  */
-// TODO: confirm IF is persistent after switch
 #define sched_launch_to(kesp_save_to, new_kesp) asm volatile ("                                             \
     pushfl          /* save flags on the stack */                                                         \n\
     pushl %%ebp     /* save EBP on the stack */                                                           \n\
@@ -102,6 +102,9 @@ void sched_insert_to_head(task_t *task) {
 }
 
 
+/**
+ * Perform low-level context switch to current head. Return after caller to this function is active again.
+ */
 void sched_launch_to_current_head() {
     // If they are the same, do nothing
     if (running_task() == task_from_node(run_queue.next)) return;
@@ -112,6 +115,9 @@ void sched_launch_to_current_head() {
     // Another task running... Until this task get running again!
 }
 
+/**
+ * Move running task to the end of the run queue
+ */
 void sched_move_running_to_last() {
 //    _sched_check_run_queue();
     /*

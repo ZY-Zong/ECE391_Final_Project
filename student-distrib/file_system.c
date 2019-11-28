@@ -178,10 +178,10 @@ int32_t system_write(int32_t fd, const void *buf, int32_t nbytes) {
  * @param fs    The file system image that is loaded as module
  * @return    0 for success, -1 for the file system already inited
  */
-int32_t init_file_system(module_t *fs) {
+int32_t file_system_init(module_t *fs) {
     // Check if already inited
     if (file_system_inited == 1) {
-        DEBUG_ERR("init_file_system(): file system already inited");
+        DEBUG_ERR("file_system_init(): file system already inited");
         return -1;
     }
 
@@ -195,10 +195,10 @@ int32_t init_file_system(module_t *fs) {
     data_blocks = ((data_block_t *) fs->mod_start) + boot_block.inode_num + 1;
 
     // Init operation table for terminal
-    terminal_op_table.open = terminal_open;
-    terminal_op_table.close = terminal_close;
-    terminal_op_table.read = terminal_read;
-    terminal_op_table.write = terminal_write;
+    terminal_op_table.open = system_terminal_open;
+    terminal_op_table.close = system_terminal_close;
+    terminal_op_table.read = system_terminal_read;
+    terminal_op_table.write = system_terminal_write;
 
     // Init operation table for RTC
     rtc_op_table.open = local_rtc_open;
@@ -589,7 +589,7 @@ int32_t local_rtc_open(const uint8_t *filename) {
 
     (void) filename; // no need to use, avoid warning
 
-    if (rtc_open(filename) != 0)
+    if (system_rtc_open(filename) != 0)
         return -1;
 
     // Get a file_array, guarantee by system_open that have space
@@ -610,7 +610,7 @@ int32_t local_rtc_open(const uint8_t *filename) {
  * @return Return from rtc_close(fd)
  */
 int32_t local_rtc_close(int32_t fd) {
-    return rtc_close(fd);
+    return system_rtc_close(fd);
 }
 
 /**
@@ -621,7 +621,7 @@ int32_t local_rtc_close(int32_t fd) {
  * @return Return from rtc_read(fd, buf, nbytes)
  */
 int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
-    return rtc_read(fd, buf, nbytes);
+    return system_rtc_read(fd, buf, nbytes);
 }
 
 /**
@@ -632,7 +632,7 @@ int32_t local_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
  * @return Return from rtc_write(fd, buf, nbytes)
  */
 int32_t local_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
-    return rtc_write(fd, buf, nbytes);
+    return system_rtc_write(fd, buf, nbytes);
 }
 
 /**

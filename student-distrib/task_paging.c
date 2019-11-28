@@ -1,24 +1,46 @@
 
 #include "task_paging.h"
-#include "file_system.h"
+
+
 #include "lib.h"
 #include "x86_desc.h"
+#include "file_system.h"
+#include "task.h"
+#include "terminal.h"
+
+#define     PID_USED            666  // good number
+#define     PID_FREE            0
+
+#define     TASK_VRAM_MAPPED        88  // interesting number
+#define     TASK_VRAM_NOT_MAPPED    0
+
+#define     TASK_START_MEM      0x08000000  // 128MB
+#define     TASK_END_MEM        0x08400000  // 132MB
+#define     TASK_IMG_LOAD_ADDR  0x08048000
+#define     TASK_PAGE_FLAG      0x00000087  // flags for a user level task
+#define     TASK_VIR_MEM_ENTRY  32          // 128MB / 4MB
+#define     TASK_VIR_VIDEO_MEM_ENTRY    0xB8
+
+#define     TERMINAL_VID_OPENED         777     // funny number
+#define     TERMINAL_VID_NOT_OPENED     0
+
+#define     MAGIC_NO_TERMINAL_OPENED    0xECE666  // used for ter_id indicating no opened terminal
 
 #define ELF_MAGIC_SIZE_IN_BYTE  4
 #define TASK_USER_VRAM_START_INDEX    0xB9    // real VRAM is at 0xB8
 
 // Global variables
 static int page_id_count = 0; // the ID for new task, also the count of running tasks
-static int page_id_running[MAX_RUNNING_TASK] = {0};
-static int page_id_terminal[MAX_RUNNING_TASK]; // indicating the terminal that the task coorespond to
+static int page_id_running[TASK_MAX_COUNT] = {0};
+static int page_id_terminal[TASK_MAX_COUNT]; // indicating the terminal that the task correspond to
 static int page_id_active;
 
-// video memory 
+// Video memory 
 static int terminal_active;
-static int terminal_opened[MAX_NUM_TERMINAL];
-static page_table_t user_video_memory_pt[MAX_NUM_TERMINAL] __attribute__((aligned (SIZE_4K)));
-static page_table_t kernel_video_memory_pt[MAX_NUM_TERMINAL] __attribute__((aligned (SIZE_4K)));
-static int user_video_mapped[MAX_NUM_TERMINAL];
+static int terminal_opened[TERMINAL_MAX_COUNT];
+static page_table_t user_video_memory_pt[TERMINAL_MAX_COUNT];
+static page_table_t kernel_video_memory_pt[TERMINAL_MAX_COUNT];
+static int user_video_mapped[TERMINAL_MAX_COUNT];
 
 
 /*
@@ -84,40 +106,43 @@ int is_valid_flag(uint8_t flag);
 
 
 /**
+ * Initialize task paging related things
+ */
+void task_paging_init() {
+    int i;  // loop counter and temp use
+
+    // Init task queues
+    for (i = 0; i < TASK_MAX_COUNT; i++) {
+        // init the global var
+        page_id_running[i] = PID_FREE;
+        page_id_terminal[i] = TERMINAL_VID_NOT_OPENED; // indicating not used
+        page_id_active = -1;
+    }
+    // Video memory
+    task_init_video_memory();
+    for (i = 0; i < TERMINAL_MAX_COUNT; i++) {
+        terminal_opened[i] = TERMINAL_VID_NOT_OPENED;
+    }
+}
+
+/**
  * Set up paging for a task that is going to run and get its eip
- * @param task_name    the name of the task
- * @param eip          the pointer to store eip of the task 
- * @return             pid for success, -1 for no such task, -2 for fail to get eip 
- * @effect             The paging setting will be changed, para eip may be set 
+ * @param task_name    The name of the task
+ * @param eip          The pointer to store eip of the task
+ * @return             Page ID for success, -1 for no such task, -2 for fail to get eip
+ * @effect             The paging setting will be changed, arg eip may be set
  */
 int task_set_up_memory(const uint8_t *task_name, uint32_t *eip, const int ter_id) {
 
     int i;  // loop counter and temp use 
-    dentry_t task; // the dentry of the tasks in the file system
+    dentry_t task;  // the dentry of the tasks in the file system
 
-    // When first run, do some init work
-    if (page_id_count == 0) {
-        // init task queues 
-        for (i = 0; i < MAX_RUNNING_TASK; i++) {
-            // init the global var 
-            page_id_running[i] = PID_FREE;
-            page_id_terminal[i] = TERMINAL_VID_NOT_OPENED; // indicating not used
-            page_id_active = -1;
-        }
-        // video memory 
-        task_init_video_memory();
-        terminal_vid_open(0); // TODO: ???
-        for (i = 0; i < MAX_NUM_TERMINAL; i++) {
-            terminal_opened[i] = TERMINAL_VID_NOT_OPENED;
-        }
-    }
-
-    // check the input 
+    // Check the input 
     if (eip == NULL) {
         DEBUG_ERR("task_set_up_memory(): NULL eip!");
         return -1;
     }
-    if (ter_id < 0 || ter_id >= MAX_NUM_TERMINAL) {
+    if (ter_id < 0 || ter_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("task_set_up_memory(): bad ter_id: %d", ter_id);
         return -1;
     }
@@ -134,7 +159,7 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip, const int ter_id
         return -1;
     }
 
-    // Get a pid for the task
+    // Get a page id for the task
     int page_id = task_get_page_id();
     if (page_id == -1) {
         DEBUG_WARN("task_set_up_memory(): max task reached, cannot open task: %s\n", task_name);
@@ -155,7 +180,7 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip, const int ter_id
     // Load the file
     task_load(&task);
 
-    // Update the pid 
+    // Update the page_id 
     page_id_running[page_id] = PID_USED;
     page_id_terminal[page_id] = ter_id;
     page_id_active = page_id;
@@ -165,16 +190,17 @@ int task_set_up_memory(const uint8_t *task_name, uint32_t *eip, const int ter_id
 }
 
 /**
- * Reset the paging setting when halt a task 
- * Should only called on the latest running task
- * @param id    the id of the task
- * @return      0 for success , -1 for fail
- * @effect      The paging setting will be changed 
+ * Reset the paging setting when halt a task
+ * @param cur_id    The page id of the task to halt
+ * @param pre_id    The page id of its parent
+ * @return 0 for success , -1 for fail
+ * @effect The paging setting will be changed
+ * @note Now this function assume the parent didn't call vidmap(). See comment below.
  */
 int task_reset_paging(const int cur_id, const int pre_id) {
 
     // Check whether the id is valid 
-    if (cur_id >= MAX_RUNNING_TASK) {
+    if (cur_id >= TASK_MAX_COUNT) {
         DEBUG_ERR("task_reset_paging(): invalid task id: %d", cur_id);
         return -1;
     }
@@ -186,17 +212,18 @@ int task_reset_paging(const int cur_id, const int pre_id) {
     // Turn off the paging for cur_id, replace it with pre_id 
     task_turn_off_paging(cur_id, pre_id);
 
-    // Close the user video memory map 
+    // Close the user video memory map
+
     /* Note: assuming the pre_id task didn't call vidmap, which is always the case 
      * The tasks that call vidmap never execute other task on it 
      * For now, TASK_VRAM_MAPPED is only useful for restoring when switching terminal
-     * To improve: remember each task: whether map/ which terminal
+     * To improve: remember each task: whether map / which terminal
      */
     task_set_user_video_map(-2);
     user_video_mapped[terminal_active] = TASK_VRAM_NOT_MAPPED;
 
 
-    // Release the pid 
+    // Release the page id 
     page_id_running[cur_id] = PID_FREE;
     page_id_terminal[cur_id] = TERMINAL_VID_NOT_OPENED;
     page_id_active = pre_id;
@@ -220,8 +247,8 @@ int system_vidmap(uint8_t **screen_start) {
         return -1;
     }
 
-    // check whether the current task ter_id correct 
-    if (page_id_terminal[page_id_active] < 0 || page_id_terminal[page_id_active] >= MAX_NUM_TERMINAL) {
+    // Check whether the current task ter_id correct
+    if (page_id_terminal[page_id_active] < 0 || page_id_terminal[page_id_active] >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("task_get_vidmap(): HUGE MISTAKE! task's terminal not set!");
         return -1;
     }
@@ -241,18 +268,18 @@ int system_vidmap(uint8_t **screen_start) {
     return 0;
 }
 
-/************************* Active terminal operations ***************************/
+/************************* Active Terminal Operations ***************************/
 
 /**
  * Open a video memory that is not yet opened 
  * Set up the paging mapping for it
  * But not set it to active 
- * @param ter_id    the terminal to be open , 0 <= ter_id < MAX_NUM_TERMINAL
+ * @param ter_id    the terminal to be open , 0 <= ter_id < TERMINAL_MAX_COUNT
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed
  */
 int terminal_vid_open(const int ter_id) {
-    if (ter_id < 0 || ter_id >= MAX_NUM_TERMINAL) {
+    if (ter_id < 0 || ter_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_vid_open(): no such ter_id: %d", ter_id);
         return -1;
     }
@@ -269,12 +296,12 @@ int terminal_vid_open(const int ter_id) {
  * Close a terminal video memory that is opened 
  * IMPORTANT: the terminal to close should not be active
  * if want to close a terminal, please call switch first
- * @param ter_id    the terminal to be open , 0 <= ter_id < MAX_NUM_TERMINAL
+ * @param ter_id    the terminal to be open , 0 <= ter_id < TERMINAL_MAX_COUNT
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed
  */
 int terminal_vid_close(const int ter_id) {
-    if (ter_id < 0 || ter_id >= MAX_NUM_TERMINAL) {
+    if (ter_id < 0 || ter_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_vid_close(): no such ter_id: %d", ter_id);
         return -1;
     }
@@ -301,17 +328,17 @@ int terminal_vid_close(const int ter_id) {
  */
 int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     // Error checking 
-    // cur_ter_id
-    if (new_ter_id < 0 || new_ter_id >= MAX_NUM_TERMINAL) {
-        DEBUG_ERR("terminal_active_vid_switch(): bad cur_ter_id: %d", new_ter_id);
+    // Check new_ter_id
+    if (new_ter_id < 0 || new_ter_id >= TERMINAL_MAX_COUNT) {
+        DEBUG_ERR("terminal_active_vid_switch(): bad new_ter_id: %d", new_ter_id);
         return -1;
     }
     if (terminal_opened[new_ter_id] == TERMINAL_VID_NOT_OPENED) {
-        DEBUG_ERR("terminal_active_vid_switch(): not opened cur_ter_id: %d", new_ter_id);
+        DEBUG_ERR("terminal_active_vid_switch(): not opened new_ter_id: %d", new_ter_id);
         return -1;
     }
-    // pre_ter_id
-    if ((pre_ter_id < 0 || pre_ter_id >= MAX_NUM_TERMINAL) && pre_ter_id != MAGIC_NO_TERMINAL_OPENED) {
+    // Check pre_ter_id
+    if ((pre_ter_id < 0 || pre_ter_id >= TERMINAL_MAX_COUNT) && pre_ter_id != MAGIC_NO_TERMINAL_OPENED) {
         DEBUG_ERR("terminal_active_vid_switch(): bad pre_ter_id: %d", pre_ter_id);
         return -1;
     }
@@ -336,7 +363,7 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     if (-1 == task_clear_PDE_4kB(pde)) return -1;
     if (-1 == set_PDE_4kB(pde, (uint32_t) kernel_page_table_1.entry, 1, 0, 1)) return -1;
 
-    // set user vidmap if necessary 
+    // Set user vidmap if necessary
     if (user_video_mapped[new_ter_id] == TASK_VRAM_MAPPED) {
         task_set_user_video_map(-1);
     }
@@ -356,7 +383,7 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
  */
 int terminal_vid_set(const int ter_id) {
     // Error checking
-    if (ter_id < -2 || ter_id >= MAX_NUM_TERMINAL) {
+    if (ter_id < -2 || ter_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_vid_set(): bad ter_id: %d", ter_id);
         return -1;
     }
@@ -430,7 +457,7 @@ int task_turn_off_paging(const int cur_id, const int pre_id) {
  */
 int task_get_page_id() {
     int page_id = 0;
-    for (page_id = 0; page_id < MAX_RUNNING_TASK; page_id++) {
+    for (page_id = 0; page_id < TASK_MAX_COUNT; page_id++) {
         if (page_id_running[page_id] == PID_FREE) return page_id;
     }
     return -1;
@@ -520,7 +547,7 @@ int task_init_video_memory() {
 
     // Set global variables of PT for each terminal's video memory
     // Set (0xB9+pid)*4kB in the 0-4MB page to be present
-    for (i = 0; i < MAX_NUM_TERMINAL; i++) {
+    for (i = 0; i < TERMINAL_MAX_COUNT; i++) {
 
         // Clear the PTE 
         for (j = 0; j < SIZE_K; j++) {
@@ -542,12 +569,12 @@ int task_init_video_memory() {
         // Map the PTE to corresponding page at (0xB9+pid)*4kB
         if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K, 1, 0, 1)) return -1;
 
-        // update 0~4MB kernel page 
+        // Update 0~4MB kernel page
         PTE_t *cur_kernel_pte = NULL;
         cur_kernel_pte = (PTE_t *) (&kernel_page_table_0.entry[TASK_VIR_VIDEO_MEM_ENTRY + i]);
         *cur_kernel_pte = *cur_pte;
 
-        // update map flag array 
+        // Update map flag array
         user_video_mapped[i] = TASK_VRAM_NOT_MAPPED;
 
     }
@@ -565,18 +592,18 @@ int task_init_video_memory() {
  * @effect      PDE will be changed 
  */
 int task_set_user_video_map(const int id) {
-    if (id < -2 || id >= MAX_NUM_TERMINAL) {
+    if (id < -2 || id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("task_set_user_video_map(): bad id: %d", id);
         return -1;
     }
 
     // Get the PDE for 132~136MB
-    PDE_4kB_t *user_vram_pde = NULL;
-    user_vram_pde = (PDE_4kB_t *) (&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY + 1]);
+    PDE_4kB_t *user_vram_pde = (PDE_4kB_t *) (&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY + 1]);
+
     // Clear to PDE 
     if (-1 == task_clear_PDE_4kB(user_vram_pde)) return -1;
 
-    // finish if closing the page 
+    // Finish if closing the page
     if (id == -2) return 0;
 
     // Set the fields (for active id (-1), physical VRAM)
@@ -599,7 +626,7 @@ int task_set_user_video_map(const int id) {
  */
 int terminal_copy_from_physical(const int dest_id) {
     // Error checking
-    if (dest_id < 0 || dest_id >= MAX_NUM_TERMINAL) {
+    if (dest_id < 0 || dest_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_copy_from_physical(): bad dest_id: %d", dest_id);
         return -1;
     }
@@ -628,7 +655,7 @@ int terminal_copy_from_physical(const int dest_id) {
  */
 int terminal_copy_to_physical(const int src_id) {
     // Error checking
-    if (src_id < 0 || src_id >= MAX_NUM_TERMINAL) {
+    if (src_id < 0 || src_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_copy_to_physical(): bad src_id: %d", src_id);
         return -1;
     }

@@ -21,7 +21,7 @@ uint32_t task_count = 0;  // count of tasks that has started
 // Wait list of tasks that are waiting for child to halt
 task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
-task_t* terminal_user_task[MAX_TERMINAL_COUNT];
+task_t* terminal_user_task[TERMINAL_MAX_COUNT];
 task_t* focus_task_ = NULL;
 
 /** ================ Function Declarations =============== */
@@ -107,9 +107,12 @@ void task_init() {
     task_count = 0;
 
     // Initialize terminal user list
-    for (i = 0 ; i < MAX_TERMINAL_COUNT; i++) {
+    for (i = 0 ; i < TERMINAL_MAX_COUNT; i++) {
         terminal_user_task[i] = NULL;
     }
+
+    // Initialize paging related things
+    task_paging_init();
 
     // Initialize scheduler
     sched_init();
@@ -177,8 +180,6 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
     return 0;
 }
 
-// TODO: evaluate whether locks are needed with scheduling
-
 /**
  * Actual implementation of execute() system call
  * @param command    Command to be executed
@@ -193,7 +194,7 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  */
-int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, int (*kernel_thread_eip)()) {
+int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, void (*kernel_thread_eip)()) {
 
     task_t *task;
     uint32_t start_eip;
@@ -483,13 +484,12 @@ task_t* focus_task() {
 }
 
 void task_change_focus(int32_t terminal_id) {
-    if (terminal_id >= MAX_TERMINAL_COUNT) {
+    if (terminal_id < 0 || terminal_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("task_change_focus(): invalid terminal_id");
         return;
     }
 
     uint32_t flags;
-    uint8_t old_terminal_id = focus_task_->terminal->terminal_id;
 
     cli_and_save(flags); {
 
