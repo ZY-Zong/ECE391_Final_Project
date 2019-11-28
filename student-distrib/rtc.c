@@ -3,14 +3,20 @@
 
 #include "rtc.h"
 #include "lib.h"
+#include "task_sched.h"
 #include "i8259.h"
-
-#include "task.h"
 
 unsigned int TEST_RTC_ECHO_COUNTER;
 
 static volatile int rtc_interrupt_occured;
 
+// Declare a wait list variable for RTC
+task_list_node_t rtc_wait_list = TASK_LIST_SENTINEL(rtc_wait_list);
+
+/**
+ *
+ * @param rtc_control
+ */
 void rtc_control_init(rtc_control_t* rtc_control){
     // TODO: implement this function
 }
@@ -27,26 +33,26 @@ void rtc_init() {
     rtc_interrupt_occured = 0;  // reset flag to be 0, no interrupt happens
 
     // Turn on IRQ 8
-    cli();  // disable interrupts
-    {
+//    cli();  // disable interrupts
+//    {
         outb(RTC_STATUS_REGISTER_B, RTC_REGISTER_PORT);  // select register B and disable NMI
         char prev = inb(RTC_RW_DATA_PORT);  // read the current value of register B
         outb(RTC_STATUS_REGISTER_B,
              RTC_REGISTER_PORT);  // set the index again (a read will reset the index to register D)
         outb (prev | 0x40,
               RTC_RW_DATA_PORT);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
-    }
-    sti();
+//    }
+//    sti();
 
     // Default frequency is 2 Hz
-    cli();  // disable interrupts
-    {
+//    cli();  // disable interrupts
+//    {
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // set index to register A, disable NMI
         char prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
         outb((prev & 0xF0) | RTC_MAX_RATE, RTC_RW_DATA_PORT);   // write rate 2 Hz to A
-    }
-    sti();
+//    }
+//    sti();
 }
 
 /**
@@ -77,7 +83,7 @@ void rtc_restart_interrupt() {
  * @effect         Initialize RTC
  */
 int32_t rtc_open(const uint8_t* filename) {
-    rtc_init();  // initialize RTC, set default frequency to 2 Hz
+//    rtc_init();  // initialize RTC, set default frequency to 2 Hz
 
     return 0;
 }
