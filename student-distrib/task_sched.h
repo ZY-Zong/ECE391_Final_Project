@@ -10,6 +10,8 @@
 #include "types.h"
 #include "task.h"
 
+#define _SCHED_ENABLE_RUN_QUEUE_CHECK    1
+
 #define SCHED_PIT_FREQUENCY    100  // Hz
 #define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // ms
 #define SCHED_TASK_TIME        50  // ms

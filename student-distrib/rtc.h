@@ -32,9 +32,6 @@ void rtc_control_init(rtc_control_t* rtc_control);
 /* Initialize the real time clock */
 void rtc_init();
 
-/* Handle the RTC interrupt */
-void rtc_interrupt_handler();
-
 /* Read register C after an IRQ 8, or interrupt will not happen again. */
 void rtc_restart_interrupt();
 
