@@ -62,6 +62,38 @@ static void init_thread_main();
     : "cc", "memory"                                                                  \
 )
 
+/**
+ * This macro yield CPU from current task (_prev_) to new KERNEL task (_next_) and return after _next_ terminate
+ * @param kesp_save_to    Save ESP of kernel stack of _prev_ to this address
+ * @param new_esp         Starting ESP of _next_
+ * @param new_eip         Starting EIP of _next_
+ * @param ret             After _next_ terminate, return value is written to this address, and this macro returns
+ * @note Make sure paging of _next_ is all set
+ * @note Make sure TSS is set to kernel stack of _next_
+ * @note After switching, the top of _prev_ stack is the return address (label 1)
+ * @note To switch back, load the return value in EAX, switch stack to _prev_, and run `ret` on _prev_ stack
+ */
+#define execute_launch_in_kernel(kesp_save_to, new_esp, new_eip, ret) asm volatile (" \
+    pushfl          /* save flags on the stack */                                   \n\
+    pushl %%ebp     /* save EBP on the stack */                                     \n\
+    pushl $1f       /* return address to label 1, on top of the stack after iret */ \n\
+    movl %%esp, %0  /* save current ESP */                                          \n\
+    /* The following stack linkage is for IRET */                                   \n\
+    pushl $0x0018   /* kernel SS - KERNEL_DS */                                     \n\
+    pushl %2        /* user ESP */                                                  \n\
+    pushf           /* flags (new program should not care) */                       \n\
+    pushl $0x0010   /* kernel CS - KERNEL_CS  */                                    \n\
+    pushl %3        /* user EIP */                                                  \n\
+    iret            /* enter user program */                                        \n\
+1:  popl %%ebp      /* restore EBP, must before following instructions */           \n\
+    movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
+    popfl           /* restore flags */"                                              \
+    : "=m" (kesp_save_to), /* must write to memory, or halt() will not get it */      \
+      "=m" (ret)                                                                      \
+    : "rm" (new_esp), "rm" (new_eip)                                                  \
+    : "cc", "memory"                                                                  \
+)
+
 
 /**
  * This jump back to label 1 in execute_launch
@@ -186,7 +218,8 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  * @param wait_for_return    If set to 1, this function will return after new program halt() with its halt state.
  *                           If set to 0, this function will return -1
  *                           Must be 0 for init task, which will never return
- * @param new_terminal       If set to 1, a new terminal will be assigned to the task.
+ * @param new_terminal       If set to 1, a new terminal will be assigned to the task, and it will become the new
+ *                           focus task
  *                           If set to 0, the new task will share terminal with running_task
  * @param kernel_thread_eip  If set to NULL, this function will execute user program by arg command.
  *                           If set to a function, a kernel thread will be created (no paging, no terminal, should never
@@ -267,6 +300,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
             task->flags |= TASK_TERMINAL_OWNER;
             task->terminal = terminal_allocate();
             terminal_user_task[task->terminal->terminal_id] = task;
+            focus_task_ = task;
             if (task->terminal == NULL) {
                 DEBUG_ERR("system_execute(): fail to allocate new terminal");
                 task_deallocate(task);
@@ -285,6 +319,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
                 task->terminal = running_task()->terminal;  // inherent terminal from caller
                 if (wait_for_return) {  // new task will be the actual user of the terminal until it halt
                     terminal_user_task[task->terminal->terminal_id] = task;
+                    focus_task_ = task;
                 }
             }
         }
@@ -296,7 +331,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     // Init opened file list
     init_file_array(&task->file_array);
 
-    if (task->flags & TASK_FLAG_KERNEL_TASK) {
+    if (!(task->flags & TASK_FLAG_KERNEL_TASK)) {
         // Setup paging, run program loader, get new EIP
         // NOTICE: after setting up paging for new program, arg command become useless
         if ((task->page_id = task_set_up_memory(command, &start_eip, task->terminal->terminal_id)) < 0) {
@@ -311,6 +346,11 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
 
     /** --------------- Phase 2. Ready to go. Setup scheduler --------------- */
 
+    // Put child task into run queue
+    sched_refill_time(task);
+    sched_insert_to_head(task);
+    // Don't use launch() function of sched, perform context switch manually as follows
+
     // Put current task into list for parents that wait for child to return
     if (wait_for_return) {
         // Safe to use running_task() since init task should not wait for return, which has been checked above
@@ -318,20 +358,23 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
         sched_move_running_after_node(&wait4child_list);
     }
 
-    // Put child task into run queue
-    sched_refill_time(task);
-    sched_insert_to_head(task);
-    // Don't use launch() function of sched, perform context switch manually as follows
-
     /** --------------- Phase 3. Very ready to go. Do assembly level switch --------------- */
     // Set tss to new task's kernel stack to make sure system calls use correct stack
     tss.esp0 = task->kesp;
 
     // Jump to user program entry
-    if (task->flags & TASK_INIT_TASK) {
-        execute_launch(temp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+    if (task->flags & TASK_FLAG_KERNEL_TASK) {
+        if (task->flags & TASK_INIT_TASK) {
+            execute_launch_in_kernel(temp, task->kesp, start_eip, program_ret);
+        } else {
+            execute_launch_in_kernel(running_task()->kesp, task->kesp, start_eip, program_ret);
+        }
     } else {
-        execute_launch(running_task()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+        if (task->flags & TASK_INIT_TASK) {
+            execute_launch(temp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+        } else {
+            execute_launch(running_task()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
+        }
     }
 
     // The child task running...
@@ -408,6 +451,9 @@ int32_t system_halt(int32_t status) {
                       task->terminal->terminal_id, parent->terminal->terminal_id);
         }
         terminal_user_task[parent->terminal->terminal_id] = parent;
+        if (focus_task_->terminal->terminal_id == parent->terminal->terminal_id) {
+            focus_task_ = parent;
+        }
     }
 
     // Deallocate task

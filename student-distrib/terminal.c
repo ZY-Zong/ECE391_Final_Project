@@ -234,7 +234,7 @@ void handle_scan_code(uint8_t scan_code) {
 
         }
         // If we reached the length user wants, return
-        if (focus_term->key_buf_cnt >= focus_term->user_ask_len) {
+        if (focus_term->user_ask_len > 0 && focus_term->key_buf_cnt >= focus_term->user_ask_len) {
             // Wake up the sleep task
             // No lock is needed, since this function is already placed in a lock
             focus_task()->flags &= ~TASK_WAITING_TERMINAL;

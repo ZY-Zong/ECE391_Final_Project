@@ -13,6 +13,10 @@ define lc
 layout src
 end
 
-define print-stack
+define print_stack
 p/x 32 $esp
+end
+
+define load_shell
+add-symbol-file ../syscalls/shell.exe 0x8048094
 end

@@ -124,6 +124,12 @@ void sched_launch_to_current_head() {
     uint32_t flags;
     task_t *to_run;
 
+    if (run_queue.next == &run_queue) {  // nothing to run
+        DEBUG_ERR("sched_launch_to_current_head(): run queue should never be empty!");
+        return;
+    }
+
+
     cli_and_save(flags);
     {
         to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
@@ -133,7 +139,9 @@ void sched_launch_to_current_head() {
     // If they are the same, do nothing
     if (running_task() == to_run) return;
 
-    terminal_vid_set(to_run->terminal->terminal_id);
+    if (to_run->terminal) {
+        terminal_vid_set(to_run->terminal->terminal_id);
+    }
 
     sched_launch_to(running_task()->kesp, to_run->kesp);
     // Another task running... Until this task get running again!
@@ -161,6 +169,7 @@ void sched_move_running_to_last() {
  */
 asmlinkage void sched_pit_interrupt_handler(uint32_t irq_num) {
     if (run_queue.next == &run_queue) {  // no runnable task
+        idt_send_eoi(irq_num);
         return;
     }
 

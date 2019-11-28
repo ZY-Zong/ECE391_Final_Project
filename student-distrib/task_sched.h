@@ -21,6 +21,8 @@
 #define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // time quantum of scheduler [ms]
 #define SCHED_TASK_TIME        50  // full available time for each task [ms]
 
+extern task_list_node_t run_queue;
+
 void sched_init();
 void sched_refill_time(task_t* task);
 void sched_insert_to_head(task_t* task);
@@ -40,13 +42,7 @@ void sched_move_running_after_node_unsafe(task_list_node_t* node);
  */
 #define sched_move_running_to_list(new_prev, new_next) {                                                       \
     /* Must be place at first to allow lock to take effect immediately so no need to add another lock */       \
-    move_task_to_list(running_task(), new_prev, new_next);                                                     \
-    /* Loop in kernel until there is at least one runnable task. Use inline asm for volatile runqueue.next */  \
-    asm volatile ("1:  cmpl %0, %1; je 1b;"                                                                    \
-        :                                                                                                      \
-        : "m" (run_queue.next) /* must read from memory */, "r" (&run_queue)                                   \
-        : "cc", "memory"                                                                                       \
-        );                                                                                                     \
+    move_task_to_list(running_task(), (new_prev), (new_next));                                                 \
 }
 
 /**
@@ -59,7 +55,7 @@ void sched_move_running_after_node_unsafe(task_list_node_t* node);
  *       may still be those BEFORE extracting the task due to potential compiler optimization
  */
 #define sched_move_running_after_node(node) {             \
-    sched_move_running_to_list(node, node->next);         \
+    sched_move_running_to_list((node), (node)->next);     \
 }                                                         \
 
 void sched_launch_to_current_head();
