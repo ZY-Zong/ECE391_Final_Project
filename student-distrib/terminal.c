@@ -9,11 +9,8 @@
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
 #define KEYBOARD_FLAG_SIZE 128
 #define CTRL_PRESS 0x1D
-#define CTRL_RELEASE 0x9D
 #define LEFT_SHIFT_PRESS 0x2A
-#define LEFT_SHIFT_RELEASE 0xAA
 #define RIGHT_SHIFT_PRESS 0x36
-#define RIGHT_SHIFT_RELEASE 0xB6
 #define BACKSPACE_SCAN_CODE 0x0E
 #define CAPSLOCK_PRESS 0x3A
 #define ENTER_PRESS 0x1C
@@ -123,16 +120,21 @@ void handle_scan_code(uint8_t scan_code) {
         key_flags[scan_code] = 1;
 //        printf("(%x)", scan_code);
         // If Enter and someone is reading from the keyboard, just let the read function handle \n
-        if ((1 == focus_task()->terminal.whether_read) && (ENTER_PRESS == scan_code)) {
+        if ((0 != focus_task()->terminal.user_ask_len) && (ENTER_PRESS == scan_code)) {
             focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = '\n';
-            putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+            putc(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
             focus_task()->terminal.keyboard_buf_counter++;
+            // Wake up the sleep task
+            focus_task()->parent->flags &= ~TASK_WAITING_CHILD;
+            sched_refill_time(focus_task());
+            sched_insert_to_head(focus_task());
+            sched_request_run_head_asap();
             return;
         }
         // If Enter and no one is reading from the keyboard, clear the keyboard buffer
-        if ((0 == focus_task()->terminal.whether_read) && (ENTER_PRESS == scan_code)) {
+        if ((0 == focus_task()->terminal.user_ask_len) && (ENTER_PRESS == scan_code)) {
             focus_task()->terminal.keyboard_buf_counter = 0;
-            putc_focus('\n');
+            putc('\n');
             return;
         }
         // If CapsLock
@@ -148,7 +150,7 @@ void handle_scan_code(uint8_t scan_code) {
             printf("390OS>");
             int i;
             for (i = 0; i < focus_task()->terminal.keyboard_buf_counter; i++) {
-                putc_focus(focus_task()->terminal.keyboard_buf[i]);
+                putc(focus_task()->terminal.keyboard_buf[i]);
             }
             return;
         }
@@ -156,17 +158,16 @@ void handle_scan_code(uint8_t scan_code) {
         // Just putc then delete the char in the keyboard_buf
         if (1 == key_flags[BACKSPACE_SCAN_CODE]) {
             if (0 < focus_task()->terminal.keyboard_buf_counter) {
-                putc_focus('\b');
+                putc('\b');
                 focus_task()->terminal.keyboard_buf_counter--;
             }
         } else {
-            // If shift is pressed
             if ((0 == capslock_status) && ((1 == key_flags[LEFT_SHIFT_PRESS]) || (1 == key_flags[RIGHT_SHIFT_PRESS]))) {
-                // If CapsLock but shift is pressed
+                // If not CapsLock but shift is pressed
                 if (0 != shift_scan_code_table[scan_code]) {
                     if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
                         focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = shift_scan_code_table[scan_code];
-                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        putc(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
                         focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
@@ -175,7 +176,7 @@ void handle_scan_code(uint8_t scan_code) {
                 if (0 != scan_code_table[scan_code]) {
                     if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
                         focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = scan_code_table[scan_code];
-                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        putc(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
                         focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
@@ -184,7 +185,7 @@ void handle_scan_code(uint8_t scan_code) {
                 if (0 != scan_code_table[scan_code]) {
                     if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
                         focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = caps_shift_scan_code_table[scan_code];
-                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        putc(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
                         focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
@@ -193,11 +194,19 @@ void handle_scan_code(uint8_t scan_code) {
                 if (0 != scan_code_table[scan_code]) {
                     if (focus_task()->terminal.keyboard_buf_counter < KEYBOARD_BUF_SIZE - 1) {
                         focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter] = caps_scan_code_table[scan_code];
-                        putc_focus(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
+                        putc(focus_task()->terminal.keyboard_buf[focus_task()->terminal.keyboard_buf_counter]);
                         focus_task()->terminal.keyboard_buf_counter++;
                     }
                 }
             }
+        }
+        // If we reached the length user wants, return
+        if (focus_task()->terminal.keyboard_buf_counter >= focus_task()->terminal.user_ask_len) {
+            // Wake up the sleep task
+            focus_task()->parent->flags &= ~TASK_WAITING_CHILD;
+            sched_refill_time(focus_task());
+            sched_insert_to_head(focus_task());
+            sched_request_run_head_asap();
         }
     }
 }
@@ -269,7 +278,8 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
     if (nbytes > KEYBOARD_BUF_SIZE) {
         nbytes = KEYBOARD_BUF_SIZE;
     }
-    running_task()->terminal.whether_read = 1;
+    //running_task()->terminal.whether_read = 1;
+    running_task()->terminal.user_ask_len = nbytes;
 
     cli();
     {
@@ -294,8 +304,7 @@ int32_t terminal_read(int32_t fd, void *buf, int32_t nbytes) {
         sched_move_running_after_node(&wait4child_list);
         sched_launch_to_current_head();
     }
-
-    running_task()->terminal.whether_read = 0;
+    running_task()->terminal.user_ask_len = 0;  // serves the same function as whether_read
     cli();
     {
         memcpy(buf, running_task()->terminal.keyboard_buf, i);
@@ -334,7 +343,7 @@ int32_t terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
 //                // If current character is '\0', stop
 //                break;
 //            }
-            putc_running(((uint8_t *) buf)[i]);
+            putc(((uint8_t *) buf)[i]);
         }
     }
     sti();

@@ -32,6 +32,7 @@ struct terminal_t {
 
     char keyboard_buf[KEYBOARD_BUF_SIZE];
     uint8_t keyboard_buf_counter;
+    uint8_t user_ask_len;
 
     int32_t screen_width;
     int32_t screen_height;
