@@ -87,6 +87,7 @@ extern uint32_t task_count;
 task_t* running_task();
 task_t* focus_task();
 
+// TODO: Check whether the terminal is valid, terminal doesn't check
 void task_change_focus(int32_t terminal_id);
 
 /** --------------- Interface for Pure Kernel State --------------- */
