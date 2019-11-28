@@ -25,7 +25,7 @@ task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
 static task_t *task_deallocate(task_t *task);
 
-static int init_thread_main();
+static void init_thread_main();
 
 /**
  * This macro yield CPU from current task (_prev_) to new task (_next_) and return after _next_ terminate
@@ -108,10 +108,12 @@ void task_init() {
 }
 
 /**
- * Run shell
+ * Run init thread
  */
 void task_run_initial_task() {
     system_execute((uint8_t *) "initd", 0, 0, init_thread_main);
+    // Should never return
+    DEBUG_ERR("task_run_initial_task(): init thread should never return!");
 }
 
 /**
@@ -439,7 +441,7 @@ inline void move_task_after_node(task_t *task, task_list_node_t *node) {
     move_task_to_list(task, node, node->next);
 }
 
-static int init_thread_main() {
+static void init_thread_main() {
     int32_t ret;
 
     system_execute((uint8_t *) "shell", 0, 1, NULL);
@@ -450,7 +452,4 @@ static int init_thread_main() {
     }
 
     system_halt(0);
-
-    // Should never reach here
-    return 0;
 }

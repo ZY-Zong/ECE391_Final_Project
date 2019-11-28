@@ -87,8 +87,7 @@ extern uint32_t task_count;
 task_t* running_task();
 task_t* focus_task();
 
-void running_task_start_waiting(task_list_node_t* task);
-void task_terminal_read_done(task_list_node_t* task);
+void task_change_focus(int32_t terminal_id);
 
 /** --------------- Interface for Pure Kernel State --------------- */
 
