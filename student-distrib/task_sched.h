@@ -20,7 +20,6 @@ void sched_insert_to_head(task_t* task);
 void sched_move_running_to_list(task_list_node_t* new_prev, task_list_node_t* new_next);
 void sched_move_running_after_node(task_list_node_t* node);
 void sched_launch_to_current_head();
-void sched_request_run_head_asap();
 
 #endif // ASM
 #endif // _TASK_SCHED_H

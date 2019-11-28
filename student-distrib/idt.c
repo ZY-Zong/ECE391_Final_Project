@@ -2,9 +2,11 @@
 */
 
 #include "idt.h"
+
 #include "x86_desc.h"
 #include "lib.h"
 #include "linkage.h"
+#include "i8259.h"
 #include "file_system.h"
 #include "task.h"
 #include "task_paging.h"
@@ -87,6 +89,10 @@ void idt_init() {
     lidt(idt_desc_ptr);
 }
 
+void idt_send_eoi(uint32_t irq_num) {
+    send_eoi(irq_num);
+}
+
 /**
  * This function is used to print out the given interrupt number in the interrupt descriptor table.
  * @param vec_num    vector number of the interrupt/exception
@@ -112,13 +118,8 @@ void print_exception(uint32_t vec_num) {
  * Print message that an interrupt handler is not implemented
  * @param irq    IRQ number
  */
-void null_interrupt_handler(uint32_t irq) {
-
-    cli();
-    {
-        DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
-    }
-    sti();
+asmlinkage void null_interrupt_handler(uint32_t irq) {
+    DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
 }
 
 /**
@@ -227,5 +228,5 @@ asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
 }
 
 asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
-    return task_get_vimap(screen_start);
+    return system_vidmap(screen_start);
 }

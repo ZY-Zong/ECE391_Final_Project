@@ -21,6 +21,9 @@ uint32_t task_count = 0;  // count of tasks that has started
 // Wait list of tasks that are waiting for child to halt
 task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
+task_t* terminal_user_task[MAX_TERMINAL_COUNT];
+task_t* focus_task_ = NULL;
+
 /** ================ Function Declarations =============== */
 
 static task_t *task_deallocate(task_t *task);
@@ -102,6 +105,11 @@ void task_init() {
         task_slot(i)->valid = 0;
     }
     task_count = 0;
+
+    // Initialize terminal user list
+    for (i = 0 ; i < MAX_TERMINAL_COUNT; i++) {
+        terminal_user_task[i] = NULL;
+    }
 
     // Initialize scheduler
     sched_init();
@@ -257,6 +265,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
         if (new_terminal) {
             task->flags |= TASK_TERMINAL_OWNER;
             task->terminal = terminal_allocate();
+            terminal_user_task[task->terminal->terminal_id] = task;
             if (task->terminal == NULL) {
                 DEBUG_ERR("system_execute(): fail to allocate new terminal");
                 task_deallocate(task);
@@ -273,6 +282,9 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
                 task->terminal = NULL;
             } else {
                 task->terminal = running_task()->terminal;  // inherent terminal from caller
+                if (wait_for_return) {  // new task will be the actual user of the terminal until it halt
+                    terminal_user_task[task->terminal->terminal_id] = task;
+                }
             }
         }
     }
@@ -354,12 +366,17 @@ int32_t system_halt(int32_t status) {
         return -1;
     }
 
+    if (task->flags & TASK_INIT_TASK) {
+        printf("Init task halt with status %d. OS halt.", status);
+        while(1) {}
+    }
+
     /** --------------- Phase 1. Remove current task from scheduler --------------- */
 
     // Remove task from run queue
     sched_move_running_after_node(&temp_list);
 
-    if (task->parent) {
+    if (parent) {
         // Re-activate parent
         parent->flags &= ~TASK_WAITING_CHILD;
         sched_refill_time(parent);
@@ -381,13 +398,15 @@ int32_t system_halt(int32_t status) {
 
     // Deallocate terminal
     if (task->flags & TASK_TERMINAL_OWNER) {
+        terminal_user_task[task->terminal->terminal_id] = NULL;
         terminal_vid_close(task->terminal->terminal_id);  // deallocate terminal video memory
         terminal_deallocate(task->terminal);  // deallocate terminal control block
-    }
-
-    if (task->flags & TASK_INIT_TASK) {
-        printf("Init task halt with status %d. OS halt.", status);
-        while(1) {}
+    } else {
+        if (parent->terminal->terminal_id != task->terminal->terminal_id) {
+            DEBUG_ERR("system_halt(): task uses terminal %d but not own it, but its parent uses terminal %d",
+                      task->terminal->terminal_id, parent->terminal->terminal_id);
+        }
+        terminal_user_task[parent->terminal->terminal_id] = parent;
     }
 
     // Deallocate task
@@ -452,4 +471,36 @@ static void init_thread_main() {
     }
 
     system_halt(0);
+}
+
+task_t* focus_task() {
+#if TASK_ENABLE_CHECKPOINT
+    if (focus_task_ == NULL) {
+        DEBUG_ERR("focus_task is NULL!");
+    }
+#endif
+    return focus_task_;
+}
+
+void task_change_focus(int32_t terminal_id) {
+    if (terminal_id >= MAX_TERMINAL_COUNT) {
+        DEBUG_ERR("task_change_focus(): invalid terminal_id");
+        return;
+    }
+
+    uint32_t flags;
+    uint8_t old_terminal_id = focus_task_->terminal->terminal_id;
+
+    cli_and_save(flags); {
+
+        focus_task_->terminal->screen_x = screen_x;
+        focus_task_->terminal->screen_y = screen_y;
+
+        terminal_active_vid_switch(terminal_id, focus_task_->terminal->terminal_id);
+        focus_task_ = terminal_user_task[terminal_id];
+
+        screen_x = focus_task_->terminal->screen_x;
+        screen_y = focus_task_->terminal->screen_y;
+
+    } restore_flags(flags);
 }

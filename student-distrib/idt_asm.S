@@ -85,14 +85,13 @@ EXCEPTION_ENTRY_WITH_ERRCODE 30, print_exception
 /* Low-level handlers (entry points) for interrupts */
 
 /* Macro for generating code of interrupt entries */
-/* EOI will be sent after return of interrupt function */
+/* EOI must be handle manually in interrupt handler */
 .macro INTERRUPT_ENTRY irq, func
 .globl interrupt_entry_\irq
 interrupt_entry_\irq:
     SAVE_ALL_REGS
-    call \func
     pushl $\irq    /* push irq number */
-    call send_eoi  /* defined in i8259.c/h */
+    call \func
     addl $4, %esp  /* pop arg */
     RESTORE_ALL_REGS
     iret  /* return from interrupt context */

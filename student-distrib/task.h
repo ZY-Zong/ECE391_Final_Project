@@ -83,7 +83,6 @@ union process_kernel_memory_t {
 #define TASK_MAX_COUNT    6  // maximum number of processes running at the same time
 extern uint32_t task_count;
 
-// TODO: implement these two pointer
 task_t* running_task();
 task_t* focus_task();
 
