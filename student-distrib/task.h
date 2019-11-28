@@ -30,10 +30,12 @@ struct sched_control_t {
 typedef struct sched_control_t sched_control_t;
 
 
-#define TASK_FLAG_INITIAL        1U  // initial process
-#define TASK_WAITING_CHILD       2U  // waiting for child task to halt
-#define TASK_WAITING_RTC         4U  // in waiting list of RTC
-#define TASK_WAITING_TERMINAL    8U // in waiting list of terminal
+#define TASK_INIT_TASK           1U  // initial process
+#define TASK_FLAG_KERNEL_TASK    2U  // kernel thread (no user paging, no terminal, should not return but can halt)
+#define TASK_WAITING_CHILD       4U  // waiting for child task to halt
+#define TASK_WAITING_RTC         8U  // in waiting list of RTC
+#define TASK_WAITING_TERMINAL    16U // in waiting list of terminal
+#define TASK_TERMINAL_OWNER      32U // own terminal
 
 struct task_t {
     uint8_t valid;  // 1 if current task_t is in use, 0 if not
@@ -52,8 +54,11 @@ struct task_t {
     sched_control_t sched_ctrl;
 
     rtc_control_t rtc;
-    terminal_control_t terminal;
-    virtual_screen_t screen;
+
+    uint8_t is_terminal_owner;
+    terminal_t* terminal;
+
+
     file_array_t file_array;
 };
 typedef struct task_t task_t;
@@ -78,12 +83,11 @@ union process_kernel_memory_t {
 #define TASK_MAX_COUNT    6  // maximum number of processes running at the same time
 extern uint32_t task_count;
 
-// TODO: implement these two pointer
 task_t* running_task();
 task_t* focus_task();
 
-void running_task_start_waiting(task_list_node_t* task);
-void task_terminal_read_done(task_list_node_t* task);
+// TODO: Check whether the terminal is valid, terminal doesn't check
+void task_change_focus(int32_t terminal_id);
 
 /** --------------- Interface for Pure Kernel State --------------- */
 
@@ -92,7 +96,7 @@ void task_run_initial_task();
 
 /** --------------- System Calls Implementations --------------- */
 
-int32_t system_execute(uint8_t *command);
+int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, int (*kernel_thread_eip)());
 int32_t system_halt(int32_t status);
 int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 

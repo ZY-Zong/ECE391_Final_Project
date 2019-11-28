@@ -130,3 +130,21 @@
         create structs for PDE/PTE
         allocate 4kB video memory for each task 
         switch the VRAM pointer and copy when switching task (cp5)
+
+2019.11.22
+    deal with cp5 paging 
+        4kB align 
+        modify vidmap:
+            create user VRAM only when they call vidmap 
+            mapping it to its terminal VRAM
+        for each terminal, has its own page mapping
+            note: the tasks under the same terminal use the same VRAM
+            How to know which task correspond to which termail ???
+                add an array to indicate 
+        deal with terminal video memory
+            open/close?
+            acctive/nonactive 
+
+2019.11.27
+    the address of page table?
+        

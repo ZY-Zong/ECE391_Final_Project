@@ -155,7 +155,7 @@ void entry(unsigned long magic, unsigned long addr) {
     enable_irq(0);
 
     /* Init the keyboard */
-    keyboard_init();
+    //keyboard_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
     /* Init the RTC */

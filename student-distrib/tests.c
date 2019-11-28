@@ -488,7 +488,7 @@ long execute_err_test() {
     int32_t ret;
 
     printf("Try executing non-exist file...");
-    if (-1 != (ret = system_execute((uint8_t *) "non_exist"))) {
+    if (-1 != (ret = system_execute((uint8_t *) "non_exist", 0, 0, NULL))) {
         printf("error return value %d for non-exist file\n", ret);
         result = FAIL;
     } else {
@@ -496,7 +496,7 @@ long execute_err_test() {
     }
 
     printf("Try executing non-executable file...");
-    if (-1 != (ret = system_execute((uint8_t *) "frame1.txt"))) {
+    if (-1 != (ret = system_execute((uint8_t *) "frame1.txt", 0, 0, NULL))) {
         printf("error return value %d for non-executable file\n", ret);
         result = FAIL;
     } else {
