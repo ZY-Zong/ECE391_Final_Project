@@ -29,6 +29,7 @@ void handle_scan_code(uint8_t scan_code);
 typedef struct terminal_t terminal_t;
 struct terminal_t {
     uint8_t valid;
+    uint8_t terminal_id;  // equal to slot index
 
     char keyboard_buf[KEYBOARD_BUF_SIZE];
     uint8_t keyboard_buf_counter;
@@ -38,7 +39,6 @@ struct terminal_t {
     int32_t screen_height;
     int32_t screen_x;
     int32_t screen_y;
-    char* vidmem;
 };
 
 #define MAX_TERMINAL_COUNT    3

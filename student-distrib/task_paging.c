@@ -55,7 +55,7 @@ int task_set_user_video_map(const int id);
 
 int terminal_copy_from_physical(const int dest_id);
 
-int terminal_copy_to_physcial(const int src_id);
+int terminal_copy_to_physical(const int src_id);
 
 int task_clear_PDE_4MB(PDE_4MB_t *entry);
 
@@ -329,7 +329,7 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     terminal_copy_from_physical(pre_ter_id);
 
     // Copy the current terminal VRAM from its buffer to physical VRAM
-    terminal_copy_to_physcial(new_ter_id);
+    terminal_copy_to_physical(new_ter_id);
 
     // Turn on active kernel paging 
     pde = (PDE_4kB_t *) (&kernel_page_directory.entry[0]);
@@ -594,7 +594,7 @@ int task_set_user_video_map(const int id) {
  * Copy the whole physical video memory to dest_id terminal buffer 
  * @param       dest_id: the destination terminal id
  * @return      0 for success, -1 for bad id 
- * @effect      the oringinal buffer will be covered 
+ * @effect      the original buffer will be covered
  * @note        the paging setting must turn on all buffer, i.e. use kernel_page_table_0
  */
 int terminal_copy_from_physical(const int dest_id) {
@@ -626,7 +626,7 @@ int terminal_copy_from_physical(const int dest_id) {
  * @effect      the screen will be changed 
  * @note        the paging setting must turn on all buffer, i.e. use kernel_page_table_0
  */
-int terminal_copy_to_physcial(const int src_id) {
+int terminal_copy_to_physical(const int src_id) {
     // Error checking
     if (src_id < 0 || src_id >= MAX_NUM_TERMINAL) {
         DEBUG_ERR("terminal_copy_to_physical(): bad src_id: %d", src_id);

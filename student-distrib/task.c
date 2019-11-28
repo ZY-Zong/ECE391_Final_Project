@@ -13,7 +13,6 @@
 #include "tests.h"
 #endif
 
-
 #define task_slot(idx) ((task_t *) (PKM_STARTING_ADDR - (idx + 1) * PKM_SIZE_IN_BYTES))  // address of idx-th PCB
 uint32_t task_count = 0;  // count of tasks that has started
 
@@ -21,6 +20,10 @@ uint32_t task_count = 0;  // count of tasks that has started
 
 // Wait list of tasks that are waiting for child to halt
 task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
+
+/** ================ Function Declarations =============== */
+
+static task_t *task_deallocate(task_t *task);
 
 /**
  * This macro yield CPU from current task (_prev_) to new task (_next_) and return after _next_ terminate
@@ -71,14 +74,12 @@ task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
     : "cc", "memory"                                                               \
 )
 
-static task_t *task_deallocate(task_t *task);
-
 /**
  * Get current task based on ESP. Only for usage in kernel state.
  * @return Pointer to current task
  */
-task_t* running_task() {
-    task_t* ret;
+task_t *running_task() {
+    task_t *ret;
     asm volatile ("movl %%esp, %0  \n\
                    andl $0xFFFFE000, %0    /* PKM_ALIGN_MASK */" \
                    : "=r" (ret) \
@@ -107,7 +108,7 @@ void task_init() {
  * Run shell
  */
 void task_run_initial_task() {
-    system_execute((uint8_t *) "shell", 0, 0);
+    system_execute((uint8_t *) "shell", 0, 0, NULL);
 }
 
 /**
@@ -127,7 +128,7 @@ static task_t *task_allocate_new_slot() {
         }
     }
 
-    DEBUG_ERR( "task_count is inconsistent");
+    DEBUG_ERR("task_count is inconsistent");
     return NULL;
 }
 
@@ -170,12 +171,16 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  * @param command    Command to be executed
  * @param wait_for_return    If set to 1, this function will return after new program halt() with its halt state.
  *                           If set to 0, this function will return -1
+ *                           Must be 0 for init thread, which will never return
  * @param new_terminal       If set to 1, a new terminal will be assigned to the task.
  *                           If set to 0, the new task will share terminal with running_task
+ * @param kernel_thread_eip  If set to NULL, this function will execute user program by arg command.
+ *                           If set to a function, a kernel thread will be created (no paging) and command will only
+ *                           be used as strings in PCB
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  */
-int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal) {
+int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, int (*kernel_thread_eip)()) {
 
     task_t *task;
     uint32_t start_eip;
@@ -187,13 +192,17 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     // Allocate a new PCB
     if (NULL == (task = task_allocate_new_slot())) return -1;  // no available slot
 
-    // Setup flags and parent
+
+    // Setup flags and parent. Will be used in the following code
     task->flags = 0;
     if (task_count == 1) {  // this is the initial task
-        task->flags |= TASK_FLAG_INITIAL;
+        task->flags |= TASK_INIT_TASK;
         task->parent = NULL;
     } else {
         task->parent = running_task();
+    }
+    if (kernel_thread_eip != 0) {
+        task->flags |= TASK_FLAG_KERNEL_TASK;
     }
 
     // Initialize kernel ESP to the bottom of PKM
@@ -211,38 +220,71 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     task->kesp -= temp;
     task->executable_name = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->executable_name);
 
-    if (task->args != NULL){
+    if (task->args != NULL) {
         temp = strlen((int8_t *) task->args);
         task->kesp -= temp;
         task->args = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->args);
     }
 
-    // Setup paging, run program loader, get new EIP
-    // NOTICE: after setting up paging for new program, command become useless
-    if ((task->page_id = task_set_up_memory(command, &start_eip)) < 0) {
-        task_deallocate(task);
-        return -1;
-    }
-
     // Init RTC control info
     rtc_control_init(&task->rtc);
 
-    // Init terminal control info
-    terminal_control_init(&task->terminal);
-
-    // Init opened file list
-    init_file_array(&task->file_array);
-
-    // Init virtual screen control
-    virtual_screen_init(&task->screen);
+    // Assign terminal
+    if (task->flags & TASK_FLAG_KERNEL_TASK) {
+        if (new_terminal) {
+            DEBUG_ERR("system_execute(): kernel thread can't have terminal");
+            task_deallocate(task);
+            return -1;
+        }
+        task->is_terminal_owner = 0;
+        task->terminal = NULL;
+    } else {
+        if (new_terminal) {
+            task->is_terminal_owner = 1;
+            task->terminal = terminal_allocate();
+            if (task->terminal == NULL) {
+                DEBUG_ERR("system_execute(): fail to allocate new terminal");
+                task_deallocate(task);
+                return -1;
+            }
+            if (terminal_vid_open(task->terminal->terminal_id) != 0) {
+                DEBUG_ERR("system_execute(): fail to allocate video memory new terminal");
+                terminal_deallocate(task->terminal);
+                task_deallocate(task);
+                return -1;
+            }
+        } else {
+            task->is_terminal_owner = 0;
+            if (task->flags & TASK_INIT_TASK) {
+                task->terminal = NULL;
+            } else {
+                task->terminal = running_task()->terminal;  // inherent terminal from caller
+            }
+        }
+    }
 
     // Setup some initial value of task list, in order for sched_insert_to_head() to work correctly.
     task->list_node.prev = task->list_node.next = &task->list_node;
 
+    // Init opened file list
+    init_file_array(&task->file_array);
+
+    if (task->flags * TASK_FLAG_KERNEL_TASK) {
+        // Setup paging, run program loader, get new EIP
+        // NOTICE: after setting up paging for new program, arg command become useless
+        if ((task->page_id = task_set_up_memory(command, &start_eip, task->terminal->terminal_id)) < 0) {
+            task_deallocate(task);
+            return -1;
+        }
+    } else {
+        start_eip = (uint32_t) kernel_thread_eip;
+        task->page_id = -1;
+    }
+
     /** --------------- Phase 2. Ready to go. Setup scheduler --------------- */
 
-    // Put current task into list for parents
-    if (!(task->flags & TASK_FLAG_INITIAL)) {
+    // Put current task into list for parents that wait for child to return
+    if (!(task->flags & TASK_INIT_TASK) && wait_for_return) {
         running_task()->flags |= TASK_WAITING_CHILD;
         sched_move_running_after_node(&wait4child_list);
     }
@@ -250,14 +292,14 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     // Put child task into run queue
     sched_refill_time(task);
     sched_insert_to_head(task);
-    // Not an context switch. Don't use launch function of sched
+    // Don't use launch function of sched, perform context switch manually as follows
 
     /** --------------- Phase 3. Very ready to go. Do assembly level switch --------------- */
     // Set tss to new task's kernel stack to make sure system calls use correct stack
     tss.esp0 = task->kesp;
 
     // Jump to user program entry
-    if (task->flags & TASK_FLAG_INITIAL) {
+    if (task->flags & TASK_INIT_TASK) {
         execute_launch(temp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
     } else {
         execute_launch(running_task()->kesp, USER_STACK_STARTING_ADDR, start_eip, program_ret);
@@ -270,7 +312,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     // Sanity check. TASK_WAITING_CHILD should be cleared when this thread is re-activated
     if (running_task()->flags & TASK_WAITING_CHILD) {
         DEBUG_ERR("task of %s is still waiting for exit of child and should not be waken up!",
-                running_task()->executable_name);
+                  running_task()->executable_name);
     }
 
 #if TASK_ENABLE_CHECKPOINT
@@ -288,7 +330,8 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
 int32_t system_halt(int32_t status) {
 
     task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
-    task_t *parent = running_task()->parent;
+    task_t *task = running_task();  // the task to halt
+    task_t *parent = task->parent;
 
     if (task_count == 0) {   // pure kernel state
         DEBUG_ERR("Can't halt pure kernel state!");
@@ -300,7 +343,7 @@ int32_t system_halt(int32_t status) {
     // Remove task from run queue
     sched_move_running_after_node(&temp_list);
 
-    if (running_task()->parent) {
+    if (task->parent) {
         // Re-activate parent
         parent->flags &= ~TASK_WAITING_CHILD;
         sched_refill_time(parent);
@@ -313,27 +356,25 @@ int32_t system_halt(int32_t status) {
     checkpoint_task_paging_consistent();  // check paging is consistent
 #endif
 
-    clear_file_array(&running_task()->file_array);
+    // Deallocate file array
+    clear_file_array(&task->file_array);
 
 #if TASK_ENABLE_CHECKPOINT
     checkpoint_task_closed_all_files();
 #endif
 
-    if (running_task()->parent == NULL) {  // the last program has been halt
-        /** --------------- Phase X. Special procedure of handling halting of initial shell --------------- */
-        int page_id = running_task()->page_id;
-        task_deallocate(running_task());
-        printf("Initial shell halt with status %u. Restarting...", status);
-        task_reset_paging(page_id, page_id);  // do nothing to paging, but decrease count
-        task_run_initial_task();  // execute shell again
-        // Will not reach here
+    // Deallocate terminal
+    if (task->is_terminal_owner) {
+        terminal_vid_close(task->terminal->terminal_id);  // deallocate terminal video memory
+        terminal_deallocate(task->terminal);  // deallocate terminal control block
     }
 
-    task_deallocate(running_task());
+    // Deallocate task
+    task_deallocate(task);
 
     /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
 
-    task_reset_paging(running_task()->page_id, parent->page_id);  // switch page to parent
+    task_reset_paging(task->page_id, parent->page_id);  // switch page to parent
 
     tss.esp0 = parent->kesp;  // set tss to parent's kernel stack to make sure system calls use correct stack
 
@@ -341,7 +382,7 @@ int32_t system_halt(int32_t status) {
 
     // Goodbye world...
 
-    DEBUG_ERR( "halt() should never return");
+    DEBUG_ERR("halt(): should never return");
 
     return -1;
 }
@@ -353,24 +394,28 @@ int32_t system_halt(int32_t status) {
  * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
  */
 int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
-    uint8_t* args = running_task()->args;
+    uint8_t *args = running_task()->args;
     if (args == NULL) return -1;  // no args
     if (strlen((int8_t *) args) >= nbytes) return -1;  // can not fit into buf (including ending NULL char)
     strncpy((int8_t *) buf, (int8_t *) args, nbytes);
     return 0;
 }
 
-inline void move_task_to_list(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next) {
+inline void move_task_to_list(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
     uint32_t flags;
-    cli_and_save(flags); {
-        task_list_node_t* n = &task->list_node;
+    cli_and_save(flags);
+    {
+        task_list_node_t *n = &task->list_node;
         n->next->prev = n->prev;
         n->prev->next = n->next;
-        n->prev = new_prev; new_prev->next = n;
-        n->next = new_next; new_next->prev = n;
-    } restore_flags(flags);
+        n->prev = new_prev;
+        new_prev->next = n;
+        n->next = new_next;
+        new_next->prev = n;
+    }
+    restore_flags(flags);
 }
 
-inline void move_task_after_node(task_t* task, task_list_node_t* node) {
+inline void move_task_after_node(task_t *task, task_list_node_t *node) {
     move_task_to_list(task, node, node->next);
 }

@@ -372,6 +372,7 @@ terminal_t *terminal_allocate() {
 
     terminal_t *terminal = &terminal_slot[i];
     terminal->valid = 1;
+    terminal->terminal_id = i;
 
     memset(terminal->keyboard_buf, 0, sizeof(terminal->keyboard_buf));
     terminal->keyboard_buf_counter = 0;

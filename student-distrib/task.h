@@ -30,10 +30,13 @@ struct sched_control_t {
 typedef struct sched_control_t sched_control_t;
 
 
-#define TASK_FLAG_INITIAL        1U  // initial process
-#define TASK_WAITING_CHILD       2U  // waiting for child task to halt
-#define TASK_WAITING_RTC         4U  // in waiting list of RTC
-#define TASK_WAITING_TERMINAL    8U // in waiting list of terminal
+#define TASK_INIT_TASK           1U  // initial process
+#define TASK_FLAG_KERNEL_TASK    2U  // kernel thread (no user paging, no terminal)
+#define TASK_WAITING_CHILD       4U  // waiting for child task to halt
+#define TASK_WAITING_RTC         8U  // in waiting list of RTC
+#define TASK_WAITING_TERMINAL    16U // in waiting list of terminal
+#define TASK_IDLE_TASK           32U // idle thread (run only when no other task is runnable, and have minimal time)
+#define TASK_TERMINAL_OWNER      64U // own terminal
 
 struct task_t {
     uint8_t valid;  // 1 if current task_t is in use, 0 if not
@@ -52,8 +55,11 @@ struct task_t {
     sched_control_t sched_ctrl;
 
     rtc_control_t rtc;
-    terminal_t terminal;
-    virtual_screen_t screen;
+
+    uint8_t is_terminal_owner;
+    terminal_t* terminal;
+
+
     file_array_t file_array;
 };
 typedef struct task_t task_t;
@@ -92,7 +98,7 @@ void task_run_initial_task();
 
 /** --------------- System Calls Implementations --------------- */
 
-int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal);
+int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, int (*kernel_thread_eip)());
 int32_t system_halt(int32_t status);
 int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 

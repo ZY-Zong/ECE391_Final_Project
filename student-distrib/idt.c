@@ -152,7 +152,7 @@ asmlinkage long sys_not_implemented() {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
-    return system_execute(command, 0, 0);
+    return system_execute(command, 0, 0, NULL);
 }
 
 /**
