@@ -13,6 +13,7 @@
 #include "rtc.h"
 #include "terminal.h"
 #include "task.h"
+#include "modex.h"
 
 #define RUN_TESTS
 
@@ -26,6 +27,9 @@ extern void enable_paging();  // in boot.S
 void entry(unsigned long magic, unsigned long addr) {
 
     multiboot_info_t *mbi;
+
+    // Set up ModeX
+    set_mode_X();
 
     /* Clear the screen. */
     clear();

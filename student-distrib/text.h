@@ -46,7 +46,7 @@
 
 #define STATUS_BAR_WIDTH 320 /*the width of status bar*/
 #define SCROLL_WIDTH (STATUS_BAR_WIDTH / 4)
-#define STATUS_BAR_HEIGHT 18  /* the height of status bar*/
+// #define STATUS_BAR_HEIGHT 18  /* the height of status bar*/
 #define STRING_LENGTH_MAX (STATUS_BAR_WIDTH / FONT_WIDTH) /*maximum length of the output string*/
 #define OFF_PIXEL 0x0A /* The color of the off pixel in the text mode*/
 #define ON_PIXEL 0x0C /* The color of the on pixel in the text mode*/

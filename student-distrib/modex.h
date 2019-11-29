@@ -62,9 +62,8 @@
 #define IMAGE_Y_DIM     200   /* pixels                                     */
 #define IMAGE_X_WIDTH   (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 #define SCROLL_X_DIM	IMAGE_X_DIM                /* full image width      */
-#define SCROLL_Y_DIM    (IMAGE_Y_DIM - STATUS_BAR_HEIGHT)           /* full image width (reduced by the height of the status bar)     */
+#define SCROLL_Y_DIM    IMAGE_Y_DIM                /* full image width (reduced by the height of the status bar)     */
 #define SCROLL_X_WIDTH  (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
-#define STATUS_BAR_SIZE 1440
 
 /*
  * NOTES
@@ -118,10 +117,7 @@
  */
 
 /* configure VGA for mode X; initializes logical view to (0,0) */
-extern int set_mode_X (void (*horiz_fill_fn)
-        (int, int, unsigned char[SCROLL_X_DIM]),
-                       void (*vert_fill_fn)
-                               (int, int, unsigned char[SCROLL_Y_DIM]));
+extern int set_mode_X ();
 
 /* return to text mode */
 extern void clear_mode_X ();

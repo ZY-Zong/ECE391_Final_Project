@@ -48,8 +48,8 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/io.h>
-#include <sys/mman.h>
+//#include <sys/io.h>
+//#include <sys/mman.h>
 #include <unistd.h>
 
 #include "modex.h"
@@ -91,12 +91,11 @@
 static unsigned short mode_X_seq[NUM_SEQUENCER_REGS] = {
         0x0100, 0x2101, 0x0F02, 0x0003, 0x0604
 };
-// Modified the value of line compared register to (182 * 2 - 1)
 static unsigned short mode_X_CRTC[NUM_CRTC_REGS] = {
         0x5F00, 0x4F01, 0x5002, 0x8203, 0x5404, 0x8005, 0xBF06, 0x1F07,
-        0x0008, 0x0109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
+        0x0008, 0x4109, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F,
         0x9C10, 0x8E11, 0x8F12, 0x2813, 0x0014, 0x9615, 0xB916, 0xE317,
-        0x6B18
+        0xFF18
 };
 static unsigned char mode_X_attr[NUM_ATTR_REGS * 2] = {
         0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03,
@@ -112,27 +111,27 @@ static unsigned short mode_X_graphics[NUM_GRAPHICS_REGS] = {
 };
 
 /* VGA register settings for text mode 3 (color text) */
-static unsigned short text_seq[NUM_SEQUENCER_REGS] = {
-        0x0100, 0x2001, 0x0302, 0x0003, 0x0204
-};
-static unsigned short text_CRTC[NUM_CRTC_REGS] = {
-        0x5F00, 0x4F01, 0x5002, 0x8203, 0x5504, 0x8105, 0xBF06, 0x1F07,
-        0x0008, 0x4F09, 0x0D0A, 0x0E0B, 0x000C, 0x000D, 0x000E, 0x000F,
-        0x9C10, 0x8E11, 0x8F12, 0x2813, 0x1F14, 0x9615, 0xB916, 0xA317,
-        0xFF18
-};
-static unsigned char text_attr[NUM_ATTR_REGS * 2] = {
-        0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03,
-        0x04, 0x04, 0x05, 0x05, 0x06, 0x06, 0x07, 0x07,
-        0x08, 0x08, 0x09, 0x09, 0x0A, 0x0A, 0x0B, 0x0B,
-        0x0C, 0x0C, 0x0D, 0x0D, 0x0E, 0x0E, 0x0F, 0x0F,
-        0x10, 0x0C, 0x11, 0x00, 0x12, 0x0F, 0x13, 0x08,
-        0x14, 0x00, 0x15, 0x00
-};
-static unsigned short text_graphics[NUM_GRAPHICS_REGS] = {
-        0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x1005, 0x0E06, 0x0007,
-        0xFF08
-};
+//static unsigned short text_seq[NUM_SEQUENCER_REGS] = {
+//        0x0100, 0x2001, 0x0302, 0x0003, 0x0204
+//};
+//static unsigned short text_CRTC[NUM_CRTC_REGS] = {
+//        0x5F00, 0x4F01, 0x5002, 0x8203, 0x5504, 0x8105, 0xBF06, 0x1F07,
+//        0x0008, 0x4F09, 0x0D0A, 0x0E0B, 0x000C, 0x000D, 0x000E, 0x000F,
+//        0x9C10, 0x8E11, 0x8F12, 0x2813, 0x1F14, 0x9615, 0xB916, 0xA317,
+//        0xFF18
+//};
+//static unsigned char text_attr[NUM_ATTR_REGS * 2] = {
+//        0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03,
+//        0x04, 0x04, 0x05, 0x05, 0x06, 0x06, 0x07, 0x07,
+//        0x08, 0x08, 0x09, 0x09, 0x0A, 0x0A, 0x0B, 0x0B,
+//        0x0C, 0x0C, 0x0D, 0x0D, 0x0E, 0x0E, 0x0F, 0x0F,
+//        0x10, 0x0C, 0x11, 0x00, 0x12, 0x0F, 0x13, 0x08,
+//        0x14, 0x00, 0x15, 0x00
+//};
+//static unsigned short text_graphics[NUM_GRAPHICS_REGS] = {
+//        0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x1005, 0x0E06, 0x0007,
+//        0xFF08
+//};
 
 
 /* local functions--see function headers for details */
@@ -144,11 +143,11 @@ static void set_CRTC_registers (unsigned short table[NUM_CRTC_REGS]);
 static void set_attr_registers (unsigned char table[NUM_ATTR_REGS * 2]);
 static void set_graphics_registers (unsigned short table[NUM_GRAPHICS_REGS]);
 static void fill_palette_mode_x ();
-static void fill_palette_text ();
-static void write_font_data ();
-static void set_text_mode_3 (int clear_scr);
+//static void fill_palette_text ();
+//static void write_font_data ();
+//static void set_text_mode_3 (int clear_scr);
 static void copy_image (unsigned char* img, unsigned short scr_addr);
-static void copy_status_bar (unsigned char* img, unsigned short scr_addr);
+//static void copy_status_bar (unsigned char* img, unsigned short scr_addr);
 
 
 /*
@@ -286,19 +285,10 @@ do {                                                                    \
  *                 and obtains permission for VGA ports; clears video memory
  */
 int
-set_mode_X (void (*horiz_fill_fn) (int, int, unsigned char[SCROLL_X_DIM]),
-            void (*vert_fill_fn) (int, int, unsigned char[SCROLL_Y_DIM]))
+set_mode_X ()
 {
     int i; /* loop index for filling memory fence with magic numbers */
 
-    /*
-     * Record callback functions for obtaining horizontal and vertical
-     * line images.
-     */
-    if (horiz_fill_fn == NULL || vert_fill_fn == NULL)
-        return -1;
-    horiz_line_fn = horiz_fill_fn;
-    vert_line_fn = vert_fill_fn;
 
     /* Initialize the logical view window to position (0,0). */
     show_x = show_y = 0;
@@ -312,7 +302,7 @@ set_mode_X (void (*horiz_fill_fn) (int, int, unsigned char[SCROLL_X_DIM]),
     }
 
     /* One display page goes at the start of video memory. */
-    target_img = SCROLL_X_WIDTH * STATUS_BAR_HEIGHT;
+    target_img = 0;
 
     /* Map video memory and obtain permission for VGA port access. */
     if (open_memory_and_ports () == -1)
@@ -344,40 +334,40 @@ set_mode_X (void (*horiz_fill_fn) (int, int, unsigned char[SCROLL_X_DIM]),
 }
 
 
-/*
- * clear_mode_X
- *   DESCRIPTION: Puts the VGA into text mode 3 (color text).
- *   INPUTS: none
- *   OUTPUTS: none
- *   RETURN VALUE: none
- *   SIDE EFFECTS: restores font data to video memory; clears screens;
- *                 unmaps video memory; checks memory fence integrity
- */
-void
-clear_mode_X ()
-{
-    int i;   /* loop index for checking memory fence */
-
-    /* Put VGA into text mode, restore font data, and clear screens. */
-    set_text_mode_3 (1);
-
-    /* Unmap video memory. */
-    (void)munmap (mem_image, VID_MEM_SIZE);
-
-    /* Check validity of build buffer memory fence.  Report breakage. */
-    for (i = 0; i < MEM_FENCE_WIDTH; i++) {
-        if (build[i] != MEM_FENCE_MAGIC) {
-            puts ("lower build fence was broken");
-            break;
-        }
-    }
-    for (i = 0; i < MEM_FENCE_WIDTH; i++) {
-        if (build[BUILD_BUF_SIZE + MEM_FENCE_WIDTH + i] != MEM_FENCE_MAGIC) {
-            puts ("upper build fence was broken");
-            break;
-        }
-    }
-}
+///*
+// * clear_mode_X
+// *   DESCRIPTION: Puts the VGA into text mode 3 (color text).
+// *   INPUTS: none
+// *   OUTPUTS: none
+// *   RETURN VALUE: none
+// *   SIDE EFFECTS: restores font data to video memory; clears screens;
+// *                 unmaps video memory; checks memory fence integrity
+// */
+//void
+//clear_mode_X ()
+//{
+//    int i;   /* loop index for checking memory fence */
+//
+//    /* Put VGA into text mode, restore font data, and clear screens. */
+//    set_text_mode_3 (1);
+//
+//    /* Unmap video memory. */
+//    (void)munmap (mem_image, VID_MEM_SIZE);
+//
+//    /* Check validity of build buffer memory fence.  Report breakage. */
+//    for (i = 0; i < MEM_FENCE_WIDTH; i++) {
+//        if (build[i] != MEM_FENCE_MAGIC) {
+//            puts ("lower build fence was broken");
+//            break;
+//        }
+//    }
+//    for (i = 0; i < MEM_FENCE_WIDTH; i++) {
+//        if (build[BUILD_BUF_SIZE + MEM_FENCE_WIDTH + i] != MEM_FENCE_MAGIC) {
+//            puts ("upper build fence was broken");
+//            break;
+//        }
+//    }
+//}
 
 
 /*
@@ -547,50 +537,50 @@ show_screen (char* status_msg)
  * Output: None.
  * Side effect: change the video memory corresponding to the status bar.
 */
-extern void draw_status_bar (char * status_msg) {
-    // Create a 2d array represented as a 1d array
-    unsigned char array_2d[STATUS_BAR_WIDTH * STATUS_BAR_HEIGHT];
-    text_to_image(status_msg, array_2d);
-    // Separate the array into four planes
-    unsigned char plane_0[STATUS_BAR_SIZE + 1];
-    plane_0[STATUS_BAR_SIZE] = 0x00;
-    int x_scroll, y;
-    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
-        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
-            plane_0[x_scroll + y * SCROLL_X_WIDTH] = array_2d[x_scroll * 4 + y * IMAGE_X_DIM];
-        }
-    }
-    unsigned char plane_1[STATUS_BAR_SIZE + 1];
-    plane_1[STATUS_BAR_SIZE] = 0x00;
-    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
-        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
-            plane_1[x_scroll + y * SCROLL_X_WIDTH] = array_2d[1 + x_scroll * 4 + y * IMAGE_X_DIM];
-        }
-    }
-    unsigned char plane_2[STATUS_BAR_SIZE + 1];
-    plane_2[STATUS_BAR_SIZE] = 0x00;
-    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
-        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
-            plane_2[x_scroll + y * SCROLL_X_WIDTH] = array_2d[2 + x_scroll * 4 + y * IMAGE_X_DIM];
-        }
-    }
-    unsigned char plane_3[STATUS_BAR_SIZE + 1];
-    plane_3[STATUS_BAR_SIZE] = 0x00;
-    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
-        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
-            plane_3[x_scroll + y * SCROLL_X_WIDTH] = array_2d[3 + x_scroll * 4 + y * IMAGE_X_DIM];
-        }
-    }
-    // Write the planes into video memory by changing the bitmask of the planes
-    SET_WRITE_MASK(1<<8);
-    copy_status_bar (plane_0, 0);
-    SET_WRITE_MASK(1<<9);
-    copy_status_bar (plane_1, 0);
-    SET_WRITE_MASK(1<<10);
-    copy_status_bar (plane_2, 0);
-    SET_WRITE_MASK(1<<11);
-    copy_status_bar (plane_3, 0);
-}
+//extern void draw_status_bar (char * status_msg) {
+//    // Create a 2d array represented as a 1d array
+//    unsigned char array_2d[STATUS_BAR_WIDTH * STATUS_BAR_HEIGHT];
+//    text_to_image(status_msg, array_2d);
+//    // Separate the array into four planes
+//    unsigned char plane_0[STATUS_BAR_SIZE + 1];
+//    plane_0[STATUS_BAR_SIZE] = 0x00;
+//    int x_scroll, y;
+//    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
+//        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
+//            plane_0[x_scroll + y * SCROLL_X_WIDTH] = array_2d[x_scroll * 4 + y * IMAGE_X_DIM];
+//        }
+//    }
+//    unsigned char plane_1[STATUS_BAR_SIZE + 1];
+//    plane_1[STATUS_BAR_SIZE] = 0x00;
+//    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
+//        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
+//            plane_1[x_scroll + y * SCROLL_X_WIDTH] = array_2d[1 + x_scroll * 4 + y * IMAGE_X_DIM];
+//        }
+//    }
+//    unsigned char plane_2[STATUS_BAR_SIZE + 1];
+//    plane_2[STATUS_BAR_SIZE] = 0x00;
+//    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
+//        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
+//            plane_2[x_scroll + y * SCROLL_X_WIDTH] = array_2d[2 + x_scroll * 4 + y * IMAGE_X_DIM];
+//        }
+//    }
+//    unsigned char plane_3[STATUS_BAR_SIZE + 1];
+//    plane_3[STATUS_BAR_SIZE] = 0x00;
+//    for (y = 0; y < STATUS_BAR_HEIGHT; y++) {
+//        for (x_scroll = 0; x_scroll < SCROLL_X_WIDTH; x_scroll++) {
+//            plane_3[x_scroll + y * SCROLL_X_WIDTH] = array_2d[3 + x_scroll * 4 + y * IMAGE_X_DIM];
+//        }
+//    }
+//    // Write the planes into video memory by changing the bitmask of the planes
+//    SET_WRITE_MASK(1<<8);
+//    copy_status_bar (plane_0, 0);
+//    SET_WRITE_MASK(1<<9);
+//    copy_status_bar (plane_1, 0);
+//    SET_WRITE_MASK(1<<10);
+//    copy_status_bar (plane_2, 0);
+//    SET_WRITE_MASK(1<<11);
+//    copy_status_bar (plane_3, 0);
+//}
 
 
 
@@ -949,35 +939,35 @@ fill_palette_mode_x ()
  *   RETURN VALUE: none
  *   SIDE EFFECTS: changes the first 32 palette colors
  */
-static void
-fill_palette_text ()
-{
-    /* 6-bit RGB (red, green, blue) values VGA colors and grey scale */
-    static unsigned char palette_RGB[32][3] = {
-            {0x00, 0x00, 0x00}, {0x00, 0x00, 0x2A},   /* palette 0x00 - 0x0F    */
-            {0x00, 0x2A, 0x00}, {0x00, 0x2A, 0x2A},   /* basic VGA colors       */
-            {0x2A, 0x00, 0x00}, {0x2A, 0x00, 0x2A},
-            {0x2A, 0x15, 0x00}, {0x2A, 0x2A, 0x2A},
-            {0x15, 0x15, 0x15}, {0x15, 0x15, 0x3F},
-            {0x15, 0x3F, 0x15}, {0x15, 0x3F, 0x3F},
-            {0x3F, 0x15, 0x15}, {0x3F, 0x15, 0x3F},
-            {0x3F, 0x3F, 0x15}, {0x3F, 0x3F, 0x3F},
-            {0x00, 0x00, 0x00}, {0x05, 0x05, 0x05},   /* palette 0x10 - 0x1F    */
-            {0x08, 0x08, 0x08}, {0x0B, 0x0B, 0x0B},   /* VGA grey scale         */
-            {0x0E, 0x0E, 0x0E}, {0x11, 0x11, 0x11},
-            {0x14, 0x14, 0x14}, {0x18, 0x18, 0x18},
-            {0x1C, 0x1C, 0x1C}, {0x20, 0x20, 0x20},
-            {0x24, 0x24, 0x24}, {0x28, 0x28, 0x28},
-            {0x2D, 0x2D, 0x2D}, {0x32, 0x32, 0x32},
-            {0x38, 0x38, 0x38}, {0x3F, 0x3F, 0x3F}
-    };
-
-    /* Start writing at color 0. */
-    OUTB (0x03C8, 0x00);
-
-    /* Write all 32 colors from array. */
-    REP_OUTSB (0x03C9, palette_RGB, 32 * 3);
-}
+//static void
+//fill_palette_text ()
+//{
+//    /* 6-bit RGB (red, green, blue) values VGA colors and grey scale */
+//    static unsigned char palette_RGB[32][3] = {
+//            {0x00, 0x00, 0x00}, {0x00, 0x00, 0x2A},   /* palette 0x00 - 0x0F    */
+//            {0x00, 0x2A, 0x00}, {0x00, 0x2A, 0x2A},   /* basic VGA colors       */
+//            {0x2A, 0x00, 0x00}, {0x2A, 0x00, 0x2A},
+//            {0x2A, 0x15, 0x00}, {0x2A, 0x2A, 0x2A},
+//            {0x15, 0x15, 0x15}, {0x15, 0x15, 0x3F},
+//            {0x15, 0x3F, 0x15}, {0x15, 0x3F, 0x3F},
+//            {0x3F, 0x15, 0x15}, {0x3F, 0x15, 0x3F},
+//            {0x3F, 0x3F, 0x15}, {0x3F, 0x3F, 0x3F},
+//            {0x00, 0x00, 0x00}, {0x05, 0x05, 0x05},   /* palette 0x10 - 0x1F    */
+//            {0x08, 0x08, 0x08}, {0x0B, 0x0B, 0x0B},   /* VGA grey scale         */
+//            {0x0E, 0x0E, 0x0E}, {0x11, 0x11, 0x11},
+//            {0x14, 0x14, 0x14}, {0x18, 0x18, 0x18},
+//            {0x1C, 0x1C, 0x1C}, {0x20, 0x20, 0x20},
+//            {0x24, 0x24, 0x24}, {0x28, 0x28, 0x28},
+//            {0x2D, 0x2D, 0x2D}, {0x32, 0x32, 0x32},
+//            {0x38, 0x38, 0x38}, {0x3F, 0x3F, 0x3F}
+//    };
+//
+//    /* Start writing at color 0. */
+//    OUTB (0x03C8, 0x00);
+//
+//    /* Write all 32 colors from array. */
+//    REP_OUTSB (0x03C9, palette_RGB, 32 * 3);
+//}
 
 
 /*
@@ -989,34 +979,34 @@ fill_palette_text ()
  *   RETURN VALUE: none
  *   SIDE EFFECTS: leaves VGA registers in final text mode state
  */
-static void
-write_font_data ()
-{
-    int i;                /* loop index over characters                   */
-    int j;                /* loop index over font bytes within characters */
-    unsigned char* fonts; /* pointer into video memory                    */
-
-    /* Prepare VGA to write font data into video memory. */
-    OUTW (0x3C4, 0x0402);
-    OUTW (0x3C4, 0x0704);
-    OUTW (0x3CE, 0x0005);
-    OUTW (0x3CE, 0x0406);
-    OUTW (0x3CE, 0x0204);
-
-    /* Copy font data from array into video memory. */
-    for (i = 0, fonts = mem_image; i < 256; i++) {
-        for (j = 0; j < 16; j++)
-            fonts[j] = font_data[i][j];
-        fonts += 32; /* skip 16 bytes between characters */
-    }
-
-    /* Prepare VGA for text mode. */
-    OUTW (0x3C4, 0x0302);
-    OUTW (0x3C4, 0x0304);
-    OUTW (0x3CE, 0x1005);
-    OUTW (0x3CE, 0x0E06);
-    OUTW (0x3CE, 0x0004);
-}
+//static void
+//write_font_data ()
+//{
+//    int i;                /* loop index over characters                   */
+//    int j;                /* loop index over font bytes within characters */
+//    unsigned char* fonts; /* pointer into video memory                    */
+//
+//    /* Prepare VGA to write font data into video memory. */
+//    OUTW (0x3C4, 0x0402);
+//    OUTW (0x3C4, 0x0704);
+//    OUTW (0x3CE, 0x0005);
+//    OUTW (0x3CE, 0x0406);
+//    OUTW (0x3CE, 0x0204);
+//
+//    /* Copy font data from array into video memory. */
+//    for (i = 0, fonts = mem_image; i < 256; i++) {
+//        for (j = 0; j < 16; j++)
+//            fonts[j] = font_data[i][j];
+//        fonts += 32; /* skip 16 bytes between characters */
+//    }
+//
+//    /* Prepare VGA for text mode. */
+//    OUTW (0x3C4, 0x0302);
+//    OUTW (0x3C4, 0x0304);
+//    OUTW (0x3CE, 0x1005);
+//    OUTW (0x3CE, 0x0E06);
+//    OUTW (0x3CE, 0x0004);
+//}
 
 
 /*
@@ -1027,31 +1017,31 @@ write_font_data ()
  *   RETURN VALUE: none
  *   SIDE EFFECTS: may clear screens; writes font data to video memory
  */
-static void
-set_text_mode_3 (int clear_scr)
-{
-    unsigned long* txt_scr; /* pointer to text screens in video memory */
-    int i;                  /* loop over text screen words             */
-
-    VGA_blank (1);                               /* blank the screen        */
-    /*
-     * The value here had been changed to 0x63, but seems to work
-     * fine in QEMU (and VirtualPC, where I got it) with the 0x04
-     * bit set (VGA_MIS_DCLK_28322_720).
-     */
-    set_seq_regs_and_reset (text_seq, 0x67);     /* sequencer registers     */
-    set_CRTC_registers (text_CRTC);              /* CRT control registers   */
-    set_attr_registers (text_attr);              /* attribute registers     */
-    set_graphics_registers (text_graphics);      /* graphics registers      */
-    fill_palette_text ();			 /* palette colors          */
-    if (clear_scr) {				 /* clear screens if needed */
-        txt_scr = (unsigned long*)(mem_image + 0x18000);
-        for (i = 0; i < 8192; i++)
-            *txt_scr++ = 0x07200720;
-    }
-    write_font_data ();                          /* copy fonts to video mem */
-    VGA_blank (0);			         /* unblank the screen      */
-}
+//static void
+//set_text_mode_3 (int clear_scr)
+//{
+//    unsigned long* txt_scr; /* pointer to text screens in video memory */
+//    int i;                  /* loop over text screen words             */
+//
+//    VGA_blank (1);                               /* blank the screen        */
+//    /*
+//     * The value here had been changed to 0x63, but seems to work
+//     * fine in QEMU (and VirtualPC, where I got it) with the 0x04
+//     * bit set (VGA_MIS_DCLK_28322_720).
+//     */
+//    set_seq_regs_and_reset (text_seq, 0x67);     /* sequencer registers     */
+//    set_CRTC_registers (text_CRTC);              /* CRT control registers   */
+//    set_attr_registers (text_attr);              /* attribute registers     */
+//    set_graphics_registers (text_graphics);      /* graphics registers      */
+//    fill_palette_text ();			 /* palette colors          */
+//    if (clear_scr) {				 /* clear screens if needed */
+//        txt_scr = (unsigned long*)(mem_image + 0x18000);
+//        for (i = 0; i < 8192; i++)
+//            *txt_scr++ = 0x07200720;
+//    }
+//    write_font_data ();                          /* copy fonts to video mem */
+//    VGA_blank (0);			         /* unblank the screen      */
+//}
 
 
 /*
@@ -1074,7 +1064,7 @@ copy_image (unsigned char* img, unsigned short scr_addr)
      */
     asm volatile (
     "cld                                                 ;"
-    "movl $(16000 - 1440),%%ecx                                   ;"
+    "movl $16000,%%ecx                                   ;"
     "rep movsb    # copy ECX bytes from M[ESI] to M[EDI]  "
     : /* no outputs */
     : "S" (img), "D" (mem_image + scr_addr)
@@ -1092,16 +1082,16 @@ copy_image (unsigned char* img, unsigned short scr_addr)
  *   RETURN VALUE: none
  *   SIDE EFFECTS: copies a plane from the build buffer to video memory
  */
-static void copy_status_bar (unsigned char* img, unsigned short scr_addr) {
-    asm volatile (
-    "cld                                                 ;"
-    "movl $1440,%%ecx                                   ;"
-    "rep movsb    # copy ECX bytes from M[ESI] to M[EDI]  "
-    : /* no outputs */
-    : "S" (img), "D" (mem_image + scr_addr)
-    : "eax", "ecx", "memory"
-    );
-}
+//static void copy_status_bar (unsigned char* img, unsigned short scr_addr) {
+//    asm volatile (
+//    "cld                                                 ;"
+//    "movl $1440,%%ecx                                   ;"
+//    "rep movsb    # copy ECX bytes from M[ESI] to M[EDI]  "
+//    : /* no outputs */
+//    : "S" (img), "D" (mem_image + scr_addr)
+//    : "eax", "ecx", "memory"
+//    );
+//}
 
 
 #if defined(TEXT_RESTORE_PROGRAM)
