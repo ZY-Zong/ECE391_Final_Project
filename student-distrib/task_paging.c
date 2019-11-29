@@ -376,7 +376,7 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
 }
 
 /**
- * Set current paging pointing VRAM to buffer for inactive terminal 
+ * Set current paging pointing VRAM to buffer for running terminal 
  * @param ter_id    the terminal to be set
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed
@@ -398,11 +398,20 @@ int terminal_vid_set(const int ter_id) {
     if (-1 == task_clear_PDE_4kB(kernel_vram_pde)) return -1;
 
     // set it pointing to corresponding PT 
-    if (-1 == set_PDE_4kB(kernel_vram_pde, (uint32_t) &kernel_video_memory_pt[ter_id], 1, 0, 1)) return -1;
+    if (ter_id == terminal_active){
+        if (-1 == set_PDE_4kB(kernel_vram_pde, (uint32_t) &kernel_page_table_1, 1, 0, 1)) return -1;
+    } else {
+        if (-1 == set_PDE_4kB(kernel_vram_pde, (uint32_t) &kernel_video_memory_pt[ter_id], 1, 0, 1)) return -1;
+    }
+    
 
     // set user vidmap if necessary 
     if (user_video_mapped[ter_id] == TASK_VRAM_MAPPED) {
-        task_set_user_video_map(ter_id);
+        if (ter_id == terminal_active){
+            task_set_user_video_map(-1);
+        } else {
+            task_set_user_video_map(ter_id);
+        }
     }
 
     FLUSH_TLB();
