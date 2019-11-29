@@ -1,9 +1,10 @@
+file bootimg
+layout src
+focus cmd
+
 define ccc
 target remote 10.0.2.2:1234
 end
-
-file bootimg
-layout src
 
 define lm
 layout asm
@@ -14,7 +15,7 @@ layout src
 end
 
 define p_stack
-p/x32 $esp
+x/32x $esp
 end
 
 define load_shell

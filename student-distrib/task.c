@@ -244,10 +244,12 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
 
     // Allocate a new PCB
     if (NULL == (task = task_allocate_new_slot())) return -1;  // no available slot
+    // Clean up #1 starts: task_deallocate(task)
 
 
-    // Setup flags and parent. Will be used in the following code
+    // Setup flags and parent. Will be used in the following code.
     task->flags = 0;
+
     if (task_count == 1) {  // this is the initial task
         task->flags |= TASK_INIT_TASK;
         task->parent = NULL;
@@ -259,15 +261,21 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     } else {
         task->parent = running_task();
     }
+
     if (kernel_task_eip != NULL) {
         if (wait_for_return == 1) {
             DEBUG_ERR("system_execute(): kernel task should not wait for return");
             task_deallocate(task);
             return -1;
         }
+        if (new_terminal) {
+            DEBUG_ERR("system_execute(): kernel thread can't have terminal");
+            task_deallocate(task);
+            return -1;
+        }
         task->flags |= TASK_KERNEL_TASK;
     }
-    if (wait_for_return == -1) {
+    if (wait_for_return == -1) {  // idle task
         if (kernel_task_eip == NULL) {
             DEBUG_ERR("system_execute(): idle task must be kernel task");
             task_deallocate(task);
@@ -276,7 +284,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         task->flags |= TASK_IDLE_TASK;
     }
 
-    // Initialize kernel ESP to the bottom of PKM
+    // Initialize kernel ESP to the bottom of PKM. Must before copying executable_name and args
     task->kesp = ((uint32_t) task) + PKM_SIZE_IN_BYTES - 1;
 
     // Parse executable name and arguments
@@ -288,6 +296,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     task->executable_name = command;
 
     // Store the executable name and argument string to the kernel stack of new program, or they will be inaccessible
+    // Must be after setting up kesp
     temp = strlen((int8_t *) task->executable_name);
     task->kesp -= temp;
     task->executable_name = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->executable_name);
@@ -298,66 +307,63 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         task->args = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->args);
     }
 
-    // Init RTC control info
-    rtc_control_init(&task->rtc);
+    // Setup some initial value of task list, in order for sched_insert_to_head_unsafe() to work correctly.
+    task->list_node.prev = task->list_node.next = &(task->list_node);
 
-    // Assign terminal
+    /** --------------- Phase 2. Load components and set up memory --------------- */
+
     if (task->flags & TASK_KERNEL_TASK) {
-        if (new_terminal) {
-            DEBUG_ERR("system_execute(): kernel thread can't have terminal");
-            task_deallocate(task);
-            return -1;
-        }
-        task->terminal = NULL;
+        task->terminal = NULL;  // kernel task must not have terminal, which has been checked above
+        task->page_id = -1;  // kernel task has no user paging
+        start_eip = (uint32_t) kernel_task_eip;  // kernel task starts at given address
     } else {
-        if (new_terminal) {
+        if (new_terminal) {  // allocate a new terminal
             task->flags |= TASK_TERMINAL_OWNER;
-            task->terminal = terminal_allocate();
-            if (task->terminal == NULL) {
+            if ((task->terminal = terminal_allocate()) == NULL) {
                 DEBUG_ERR("system_execute(): fail to allocate new terminal");
                 task_deallocate(task);
                 return -1;
             }
+            // Clean up #2 starts: terminal_deallocate(task->terminal)
             if (terminal_vid_open(task->terminal->terminal_id) != 0) {
                 DEBUG_ERR("system_execute(): fail to allocate video memory new terminal");
                 terminal_deallocate(task->terminal);
                 task_deallocate(task);
                 return -1;
             }
-            terminal_user_task[task->terminal->terminal_id] = task;
-            task_set_focus_task(task);
-        } else {
+        } else {  // inherent terminal from its parent or no terminal if it's the init task
             if (task->flags & TASK_INIT_TASK) {
                 task->terminal = NULL;
             } else {
                 task->terminal = running_task()->terminal;  // inherent terminal from caller
-                if (wait_for_return == 1) {  // new task will be the actual user of the terminal until it halt
-                    terminal_user_task[task->terminal->terminal_id] = task;
-                    task_set_focus_task(task);
-                }
             }
         }
+
+        // Setup paging, run program loader, get new EIP. Require terminal ID.
+        // NOTICE: after setting up paging for new program, arg command become useless
+        if ((task->page_id = task_set_up_memory(command, &start_eip, task->terminal->terminal_id)) < 0) {
+            if (task->flags & TASK_TERMINAL_OWNER) {
+                terminal_deallocate(task->terminal);
+            }
+            task_deallocate(task);
+            return -1;
+        }
+        // Clean up #3 starts: task_reset_paging(running_task()->page_id, task->page_id);
+
+        if (new_terminal || wait_for_return) {
+            terminal_user_task[task->terminal->terminal_id] = task;  // become the user task of the terminal
+            task_set_focus_task(task);
+        }
+        // Clean up #4 starts: set back focus_task
     }
 
-    // Setup some initial value of task list, in order for sched_insert_to_head_unsafe() to work correctly.
-    task->list_node.prev = task->list_node.next = &(task->list_node);
+    // Init RTC control info
+    rtc_control_init(&task->rtc);
 
     // Init opened file list
     init_file_array(&task->file_array);
 
-    if (!(task->flags & TASK_KERNEL_TASK)) {
-        // Setup paging, run program loader, get new EIP
-        // NOTICE: after setting up paging for new program, arg command become useless
-        if ((task->page_id = task_set_up_memory(command, &start_eip, task->terminal->terminal_id)) < 0) {
-            task_deallocate(task);
-            return -1;
-        }
-    } else {
-        task->page_id = -1;
-        start_eip = (uint32_t) kernel_task_eip;
-    }
-
-    /** --------------- Phase 2. Ready to go. Setup scheduler --------------- */
+    /** --------------- Phase 3. Ready to go. Setup scheduler --------------- */
 
     // Put child task into run queue
     if (task->flags & TASK_IDLE_TASK) {
@@ -382,7 +388,8 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     }
     restore_flags(flags);
 
-    /** --------------- Phase 3. Very ready to go. Do assembly level switch --------------- */
+    /** --------------- Phase 4. Very ready to go. Do assembly level switch --------------- */
+
     // Set tss to new task's kernel stack to make sure system calls use correct stack
     tss.esp0 = task->kesp;
 
@@ -403,7 +410,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
 
     // The child task running...
 
-    /** --------------- Phase 4. Ready to go. Insert the new task into schedule --------------- */
+    /** --------------- Phase 5. This task get reactivated --------------- */
 
     // Sanity check. TASK_WAITING_CHILD should be cleared when this thread is re-activated
     if (running_task()->flags & TASK_WAITING_CHILD) {
@@ -561,6 +568,10 @@ task_t *focus_task() {
     return focus_task_;
 }
 
+/**
+ * Interface for terminal driver to switch terminal
+ * @param terminal_id    ID of terminal to switch to
+ */
 void task_change_focus(int32_t terminal_id) {
     if (terminal_id < 0 || terminal_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("task_change_focus(): invalid terminal_id");
@@ -569,11 +580,16 @@ void task_change_focus(int32_t terminal_id) {
 
     if (terminal_user_task[terminal_id] == NULL) {
         DEBUG_ERR("task_change_focus(): no task owns terminal %d", terminal_id);
+        return;
     }
 
     task_set_focus_task(terminal_user_task[terminal_id]);
 }
 
+/**
+ * Change focus task and switch video memory
+ * @param task    New focus task
+ */
 static void task_set_focus_task(task_t *task) {
 
     if (task->terminal == NULL) {

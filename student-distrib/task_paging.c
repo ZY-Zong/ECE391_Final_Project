@@ -81,7 +81,7 @@ int task_clear_PDE_4MB(PDE_4MB_t *entry);
 
 int task_clear_PDE_4kB(PDE_4kB_t *entry);
 
-int task_clear_PTE(PTE_t *entry);
+int clear_PTE(PTE_t *entry);
 
 int set_PDE_4kB(PDE_4kB_t *pde, uint32_t pt, uint8_t can_write, uint8_t user, uint8_t present);
 
@@ -325,7 +325,8 @@ int terminal_vid_close(const int ter_id) {
  * @effect          PDE will be changed, the screen will be changed 
  */
 int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
-    // Error checking 
+
+    // Error checking
     // Check new_ter_id
     if (new_ter_id < 0 || new_ter_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_active_vid_switch(): bad new_ter_id: %d", new_ter_id);
@@ -345,12 +346,18 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
         return -1;
     }
 
-    // Turn on the kernel page for copy 
-    PDE_4kB_t *pde = (PDE_4kB_t *) (&kernel_page_directory.entry[0]);
-    if (-1 == task_clear_PDE_4kB(pde)) return -1;
-    if (-1 == set_PDE_4kB(pde, (uint32_t) &kernel_page_table_0, 1, 0, 1)) return -1;
+    if (new_ter_id == pre_ter_id) return 0;
 
-    if (pre_ter_id != NULL_TERMINAL_ID){
+    // Turn on the kernel page for copy
+    if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+                          (uint32_t) &kernel_page_table_0, 1, 0, 1)) {
+        return -1;
+    }
+    FLUSH_TLB();
+
+//    printf("%d -> %d\n", pre_ter_id, new_ter_id);
+
+    if (pre_ter_id != NULL_TERMINAL_ID) {
         // Copy the previous terminal VRAM from physical VRAM to its buffer
         terminal_copy_from_physical(pre_ter_id);
     }
@@ -358,10 +365,12 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     // Copy the current terminal VRAM from its buffer to physical VRAM
     terminal_copy_to_physical(new_ter_id);
 
-    // Turn on active kernel paging 
-    pde = (PDE_4kB_t *) (&kernel_page_directory.entry[0]);
-    if (-1 == task_clear_PDE_4kB(pde)) return -1;
-    if (-1 == set_PDE_4kB(pde, (uint32_t) &kernel_page_table_1, 1, 0, 1)) return -1;
+    // Turn on active kernel paging
+    if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+                          (uint32_t) &kernel_page_table_1, 1, 0, 1)) {
+        return -1;
+    }
+    FLUSH_TLB();
 
     // Set user vidmap if necessary
     if (user_video_mapped[new_ter_id] == TASK_VRAM_MAPPED) {
@@ -371,7 +380,6 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     // Set global variables 
     terminal_active = new_ter_id;
 
-    FLUSH_TLB();
     return 0;
 }
 
@@ -382,6 +390,7 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
  * @effect          PDE will be changed
  */
 int terminal_vid_set(const int ter_id) {
+
     // Error checking
     if (ter_id < -2 || ter_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_vid_set(): bad ter_id: %d", ter_id);
@@ -392,22 +401,22 @@ int terminal_vid_set(const int ter_id) {
         return -1;
     }
 
-    // Get the PDE for 0~4MB 
-    PDE_4kB_t *kernel_vram_pde = NULL;
-    kernel_vram_pde = (PDE_4kB_t *) (&kernel_page_directory.entry[0]);
-    if (-1 == task_clear_PDE_4kB(kernel_vram_pde)) return -1;
-
-    // set it pointing to corresponding PT 
-    if (ter_id == terminal_active){
-        if (-1 == set_PDE_4kB(kernel_vram_pde, (uint32_t) &kernel_page_table_1, 1, 0, 1)) return -1;
+    // Set the PDE for 0-4MB pointing to corresponding PT
+    if (ter_id == terminal_active) {
+        if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+                              (uint32_t) &kernel_page_table_1, 1, 0, 1)) {
+            return -1;
+        }
     } else {
-        if (-1 == set_PDE_4kB(kernel_vram_pde, (uint32_t) &kernel_video_memory_pt[ter_id], 1, 0, 1)) return -1;
+        if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+                              (uint32_t) &kernel_video_memory_pt[ter_id], 1, 0, 1)) {
+            return -1;
+        }
     }
-    
 
-    // set user vidmap if necessary 
+    // Set user vidmap if necessary
     if (user_video_mapped[ter_id] == TASK_VRAM_MAPPED) {
-        if (ter_id == terminal_active){
+        if (ter_id == terminal_active) {
             task_set_user_video_map(-1);
         } else {
             task_set_user_video_map(ter_id);
@@ -552,42 +561,39 @@ int task_init_video_memory() {
 
     int i = 0; // loop counter
     int j = 0; // loop counter
-    PTE_t *cur_pte = NULL;
 
     // Set global variables of PT for each terminal's video memory
-    // Set (0xB9+pid)*4kB in the 0-4MB page to be present
+    // Set (0xB9 + pid) * 4kB in the 0-4MB page to be present
     for (i = 0; i < TERMINAL_MAX_COUNT; i++) {
 
         // Clear the PTE 
         for (j = 0; j < SIZE_K; j++) {
-            cur_pte = (PTE_t *) (&user_video_memory_pt[i].entry[j]);
-            task_clear_PTE(cur_pte);
-            cur_pte = (PTE_t *) (&kernel_video_memory_pt[i].entry[j]);
-            task_clear_PTE(cur_pte);
+            clear_PTE((PTE_t *) (&user_video_memory_pt[i].entry[j]));
+            clear_PTE((PTE_t *) (&kernel_video_memory_pt[i].entry[j]));
         }
 
-        // User video memory page 
-        // Get PTE at 0xB8 
-        cur_pte = (PTE_t *) (&user_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]);
-        // Map the PTE to corresponding page at (0xB9+pid)*4kB
-        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i + 1) * SIZE_4K, 1, 1, 1)) return -1;
+        // User video memory page
+        // Map the 0xB8 to corresponding page at (0xB9 + pid) * 4kB
+        if (-1 == set_PTE((PTE_t *) (&user_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]),
+                          (TASK_VIR_VIDEO_MEM_ENTRY + i + 1) * SIZE_4K, 1, 1, 1)) {
+            return -1;
+        }
 
-        // Kernel video memory page 
-        // Get PTE at 0xB8 
-        cur_pte = (PTE_t *) (&kernel_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]);
-        // Map the PTE to corresponding page at (0xB9+pid)*4kB
-        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i + 1) * SIZE_4K, 1, 0, 1)) return -1;
+        // Kernel video memory page
+        // Map the 0xB8 to corresponding page at (0xB9 + pid) * 4kB
+        if (-1 == set_PTE((PTE_t *) (&kernel_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]),
+                          (TASK_VIR_VIDEO_MEM_ENTRY + i + 1) * SIZE_4K, 1, 0, 1)) {
+            return -1;
+        }
 
-        // Update 0~4MB kernel page
-        PTE_t *cur_kernel_pte = NULL;
-        cur_kernel_pte = (PTE_t *) (&kernel_page_table_0.entry[TASK_VIR_VIDEO_MEM_ENTRY + i + 1]);
-        *cur_kernel_pte = *cur_pte;
+        // Update 0-4MB kernel page
+        kernel_page_table_0.entry[TASK_VIR_VIDEO_MEM_ENTRY + i +
+                                  1] = kernel_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY];
 
         // Update map flag array
         user_video_mapped[i] = TASK_VRAM_NOT_MAPPED;
 
     }
-
 
     FLUSH_TLB();
     return 0;
@@ -743,7 +749,7 @@ int task_clear_PDE_4kB(PDE_4kB_t *entry) {
  * @return      0 for success, -1 for fail
  * @effect      *entry will be changed 
  */
-int task_clear_PTE(PTE_t *entry) {
+int clear_PTE(PTE_t *entry) {
     if (entry == NULL) {
         DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
         return -1;

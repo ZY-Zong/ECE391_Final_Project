@@ -21,6 +21,8 @@
 #define C_PRESSED 0x2E
 #define F1_PRESS 0x3B
 
+#define SCANCODE_PRESSED 0x80
+
 // Temporary height and width for text mode
 #define TEXT_MODE_WIDTH 80
 #define TEXT_MODE_HEIGHT 25
@@ -85,12 +87,6 @@ terminal_t terminal_slot[TERMINAL_MAX_COUNT];
 
 void handle_scan_code(uint8_t scan_code);
 
-#define KEYBOARD_F1_SCANCODE 0x3B
-#define KEYBOARD_F2_SCANCODE 0x3C
-#define KEYBOARD_F3_SCANCODE 0x3D
-#define KEYBOARD_SCANCODE_PRESSED 0x80
-
-
 /**
  * Keyboard interrupt handler
  * @param irq_num    Keyboard interrupt irq number, used for sending EOI
@@ -108,12 +104,8 @@ asmlinkage void keyboard_interrupt_handler(uint32_t irq_num) {
 
         // After read from keyboard, send EOI
         idt_send_eoi(irq_num);
-
-        if (scancode == KEYBOARD_F1_SCANCODE) {  // F1
-            clear();
-        } else {
-            handle_scan_code(scancode);  // output the char to the console
-        }
+        
+        handle_scan_code(scancode);  // output the char to the console
     }
     restore_flags(flags);
 }
@@ -126,9 +118,9 @@ asmlinkage void keyboard_interrupt_handler(uint32_t irq_num) {
  */
 void handle_scan_code(uint8_t scan_code) {
 
-    if (scan_code >= KEYBOARD_SCANCODE_PRESSED) {
+    if (scan_code >= SCANCODE_PRESSED) {
         // If the scan_code is a release code, just reset the flags
-        key_flags[scan_code - KEYBOARD_SCANCODE_PRESSED] = 0;
+        key_flags[scan_code - SCANCODE_PRESSED] = 0;
         
     } else {
 
@@ -331,6 +323,13 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
             sched_move_running_after_node_unsafe(&terminal_wait_list);
             sched_launch_to_current_head();
             // Return after this task is active again...
+
+            // Recount i. Now must not continue
+            for (i = 0; (i < running_task()->terminal->key_buf_cnt) && (i < nbytes); i++) {
+                if (running_task()->terminal->key_buf[i] == '\n') {
+                    break;  // exit for
+                }
+            }
         }
         restore_flags(flags);
     }

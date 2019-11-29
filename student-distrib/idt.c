@@ -99,6 +99,9 @@ void idt_send_eoi(uint32_t irq_num) {
  */
 void print_exception(uint32_t vec_num) {
 
+#if IDT_EXCEPTION_BACKTRACK
+
+#else
     if (task_count == 0) {
         clear();
         reset_cursor();
@@ -112,6 +115,8 @@ void print_exception(uint32_t vec_num) {
 
     volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
     while (inf_loop) {}   // put kernel into infinite loop
+#endif
+
 }
 
 /**

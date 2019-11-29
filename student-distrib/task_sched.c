@@ -136,8 +136,15 @@ void sched_launch_to_current_head() {
     if (running_task() == to_run) return;
 
     if (to_run->terminal) {
-        terminal_vid_set(to_run->terminal->terminal_id);
+        cli_and_save(flags);
+        {
+            terminal_vid_set(to_run->terminal->terminal_id);
+        }
+        restore_flags(flags);
     }
+
+    // Set tss to to_run's kernel stack to make sure system calls use correct stack
+    tss.esp0 = to_run->kesp;
 
     sched_launch_to(running_task()->kesp, to_run->kesp);
     // Another task running... Until this task get running again!
@@ -230,4 +237,8 @@ int sched_print_run_queue() {
         printf("[%d] %s\n", count++, task_from_node(node)->executable_name);
     }
     return count;
+}
+
+task_t* sched_get_task_from_node(task_list_node_t* node) {
+    return task_from_node(node);
 }
