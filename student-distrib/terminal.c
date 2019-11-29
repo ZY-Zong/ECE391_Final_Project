@@ -135,6 +135,9 @@ void handle_scan_code(uint8_t scan_code) {
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
 
+        if (focus_task() == NULL) return;
+        if (focus_task()->terminal == NULL) return;
+
         // If Enter and someone is reading from the keyboard
         terminal_t *focus_term = focus_task()->terminal;
 

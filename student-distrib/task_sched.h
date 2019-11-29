@@ -26,8 +26,6 @@ extern task_list_node_t run_queue;
 void sched_init();
 void sched_refill_time(task_t* task);
 void sched_insert_to_head(task_t* task);
-void sched_move_running_to_list_unsafe(task_list_node_t* new_prev, task_list_node_t* new_next);
-void sched_move_running_after_node_unsafe(task_list_node_t* node);
 
 /**
  * Move current running task to an external list, mostly a wait list (lock free)

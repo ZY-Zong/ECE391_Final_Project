@@ -70,11 +70,12 @@ typedef struct sched_control_t sched_control_t;
 
 
 #define TASK_INIT_TASK           1U  // initial process
-#define TASK_FLAG_KERNEL_TASK    2U  // kernel thread (no user paging, no terminal, should not return but can halt)
+#define TASK_KERNEL_TASK    2U  // kernel thread (no user paging, no terminal, should not return but can halt)
 #define TASK_WAITING_CHILD       4U  // waiting for child task to halt
 #define TASK_WAITING_RTC         8U  // in waiting list of RTC
 #define TASK_WAITING_TERMINAL    16U // in waiting list of terminal
 #define TASK_TERMINAL_OWNER      32U // own terminal
+#define TASK_IDLE_TASK           64U // idle task (must be kernel task, only run when no other runnable task)
 
 struct task_t {
     uint8_t valid;  // 1 if current task_t is in use, 0 if not
@@ -134,7 +135,7 @@ void task_run_initial_task();
 
 /** ============== System Calls Implementations ============== */
 
-int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, void (*kernel_thread_eip)());
+int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_terminal, void (*kernel_task_eip)());
 int32_t system_halt(int32_t status);
 int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 
@@ -156,29 +157,6 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes);
 #define task_from_node(ptr_node)    ((task_t *) (((char *) (ptr_node)) - __builtin_offsetof(task_t, list_node)))
 
 /**
- * Move a task to a new list (lock needed)
- * @param task        Pointer to the task to be moved
- * @param new_prev    Pointer to the new prev node of the task
- * @param new_next    Pointer to the new next node of the task
- * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
- *       interrupts happens between
- * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
- *       are still those BEFORE extracting the task.
- */
-inline void move_task_to_list_unsafe(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next);
-
-/**
- * Move a task to the list after the given node (lock needed)
- * @param task    Pointer to the task to be moved
- * @param node    Pointer to the new prev node of the task
- * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
- *       interrupts happens between
- * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
- *       are still those BEFORE extracting the task.
- */
-inline void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
-
-/**
  * Move a task to a new list (lock free)
  * @param task        Pointer to the task to be moved
  * @param new_prev    Pointer to the new prev node of the task
@@ -189,8 +167,8 @@ inline void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
  *       may still be those BEFORE extracting the task due to potential compiler optimization
  */
 #define move_task_to_list(task, new_prev, new_next) {  \
-    uint32_t flags;                                    \
-    cli_and_save(flags);                               \
+    uint32_t _flags;                                    \
+    cli_and_save(_flags);                               \
     {                                                  \
         task_list_node_t *n = &(task)->list_node;      \
         n->next->prev = n->prev;                       \
@@ -200,7 +178,7 @@ inline void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
         n->next = (new_next);                          \
         (new_next)->prev = n;                          \
     }                                                  \
-    restore_flags(flags);                              \
+    restore_flags(_flags);                              \
 }
 
 /**
@@ -218,8 +196,8 @@ inline void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
 
 /**
  * Iterate through a task_list
- * @param var             variable name of current node
- * @param sentinel_node   sentinel node of a task list
+ * @param var             Variable name of current node
+ * @param sentinel_node   Sentinel node of a task list
  * @note Not safe for removal
  */
 #define task_list_for_each(var, sentinel_node) \

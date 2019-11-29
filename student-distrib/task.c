@@ -28,7 +28,8 @@ task_t *focus_task_ = NULL;
 
 static task_t *task_deallocate(task_t *task);
 
-static void init_thread_main();
+static void init_task_main();
+static void idle_task_main();
 
 /**
  * This macro yield CPU from current task (_prev_) to new task (_next_) and return after _next_ terminate
@@ -78,19 +79,15 @@ static void init_thread_main();
     pushl %%ebp     /* save EBP on the stack */                                     \n\
     pushl $1f       /* return address to label 1, on top of the stack after iret */ \n\
     movl %%esp, %0  /* save current ESP */                                          \n\
-    /* The following stack linkage is for IRET */                                   \n\
-    pushl $0x0018   /* kernel SS - KERNEL_DS */                                     \n\
-    pushl %2        /* user ESP */                                                  \n\
-    pushf           /* flags (new program should not care) */                       \n\
-    pushl $0x0010   /* kernel CS - KERNEL_CS  */                                    \n\
-    pushl %3        /* user EIP */                                                  \n\
-    iret            /* enter user program */                                        \n\
+    movl %2, %%esp  /* set new ESP */                                               \n\
+    pushl %3        /* new EPI */                                                   \n\
+    ret             /* enter new kernel task */                                     \n\
 1:  popl %%ebp      /* restore EBP, must before following instructions */           \n\
     movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
     popfl           /* restore flags */"                                              \
     : "=m" (kesp_save_to), /* must write to memory, or halt() will not get it */      \
       "=m" (ret)                                                                      \
-    : "rm" (new_esp), "rm" (new_eip)                                                  \
+    : "r" (new_esp), "r" (new_eip)                                                    \
     : "cc", "memory"                                                                  \
 )
 
@@ -152,9 +149,12 @@ void task_init() {
 
 /**
  * Run init thread
+ * @note When this function is called, IF flag should be 1, otherwise idle task won't be able to yield processor
+ *       to other task
  */
+
 void task_run_initial_task() {
-    system_execute((uint8_t *) "initd", 0, 0, init_thread_main);
+    system_execute((uint8_t *) "initd", 0, 0, init_task_main);
     // Should never return
     DEBUG_ERR("task_run_initial_task(): init thread should never return!");
 }
@@ -216,18 +216,20 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  * Actual implementation of execute() system call
  * @param command    Command to be executed
  * @param wait_for_return    If set to 1, this function will return after new program halt() with its halt state.
- *                           If set to 0, this function will return -1
+ *                           If set to 0, this function will return -1 after caller task is reactivated
  *                           Must be 0 for init task, which will never return
+ *                           If set to -1, an ideal task will be created. Must be kernel task. This funtion return
+ *                             -1 after caller task is reactivated
  * @param new_terminal       If set to 1, a new terminal will be assigned to the task, and it will become the new
- *                           focus task
+ *                             focus task
  *                           If set to 0, the new task will share terminal with running_task
- * @param kernel_thread_eip  If set to NULL, this function will execute user program by arg command.
+ * @param kernel_task_eip    If set to NULL, this function will execute user program by arg command.
  *                           If set to a function, a kernel thread will be created (no paging, no terminal, should never
- *                           return, but can halt) and command will only be used as strings in PCB
+ *                             return, but can halt) and command will only be used as strings in PCB
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  */
-int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_terminal, void (*kernel_thread_eip)()) {
+int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_terminal, void (*kernel_task_eip)()) {
 
     task_t *task;
     uint32_t start_eip;
@@ -245,7 +247,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     if (task_count == 1) {  // this is the initial task
         task->flags |= TASK_INIT_TASK;
         task->parent = NULL;
-        if (wait_for_return) {
+        if (wait_for_return == 1) {
             DEBUG_ERR("system_execute(): init task should not wait for return");
             task_deallocate(task);
             return -1;
@@ -253,13 +255,21 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     } else {
         task->parent = running_task();
     }
-    if (kernel_thread_eip != 0) {
-        task->flags |= TASK_FLAG_KERNEL_TASK;
-        if (wait_for_return) {
+    if (kernel_task_eip != NULL) {
+        if (wait_for_return == 1) {
             DEBUG_ERR("system_execute(): kernel task should not wait for return");
             task_deallocate(task);
             return -1;
         }
+        task->flags |= TASK_KERNEL_TASK;
+    }
+    if (wait_for_return == -1) {
+        if (kernel_task_eip == NULL) {
+            DEBUG_ERR("system_execute(): idle task must be kernel task");
+            task_deallocate(task);
+            return -1;
+        }
+        task->flags |= TASK_IDLE_TASK;
     }
 
     // Initialize kernel ESP to the bottom of PKM
@@ -288,7 +298,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     rtc_control_init(&task->rtc);
 
     // Assign terminal
-    if (task->flags & TASK_FLAG_KERNEL_TASK) {
+    if (task->flags & TASK_KERNEL_TASK) {
         if (new_terminal) {
             DEBUG_ERR("system_execute(): kernel thread can't have terminal");
             task_deallocate(task);
@@ -317,7 +327,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
                 task->terminal = NULL;
             } else {
                 task->terminal = running_task()->terminal;  // inherent terminal from caller
-                if (wait_for_return) {  // new task will be the actual user of the terminal until it halt
+                if (wait_for_return == 1) {  // new task will be the actual user of the terminal until it halt
                     terminal_user_task[task->terminal->terminal_id] = task;
                     focus_task_ = task;
                 }
@@ -326,12 +336,12 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     }
 
     // Setup some initial value of task list, in order for sched_insert_to_head() to work correctly.
-    task->list_node.prev = task->list_node.next = &task->list_node;
+    task->list_node.prev = task->list_node.next = &(task->list_node);
 
     // Init opened file list
     init_file_array(&task->file_array);
 
-    if (!(task->flags & TASK_FLAG_KERNEL_TASK)) {
+    if (!(task->flags & TASK_KERNEL_TASK)) {
         // Setup paging, run program loader, get new EIP
         // NOTICE: after setting up paging for new program, arg command become useless
         if ((task->page_id = task_set_up_memory(command, &start_eip, task->terminal->terminal_id)) < 0) {
@@ -340,19 +350,22 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
         }
     } else {
         task->page_id = -1;
-        start_eip = (uint32_t) kernel_thread_eip;
-        // TODO: test whether execute_launch() work for kernel function
+        start_eip = (uint32_t) kernel_task_eip;
     }
 
     /** --------------- Phase 2. Ready to go. Setup scheduler --------------- */
 
     // Put child task into run queue
-    sched_refill_time(task);
+    if (task->flags & TASK_IDLE_TASK) {
+        task->sched_ctrl.remain_time = 0;
+    } else {
+        sched_refill_time(task);
+    }
     sched_insert_to_head(task);
     // Don't use launch() function of sched, perform context switch manually as follows
 
     // Put current task into list for parents that wait for child to return
-    if (wait_for_return) {
+    if (wait_for_return == 1) {
         // Safe to use running_task() since init task should not wait for return, which has been checked above
         running_task()->flags |= TASK_WAITING_CHILD;
         sched_move_running_after_node(&wait4child_list);
@@ -363,7 +376,7 @@ int32_t system_execute(uint8_t *command, uint8_t wait_for_return, uint8_t new_te
     tss.esp0 = task->kesp;
 
     // Jump to user program entry
-    if (task->flags & TASK_FLAG_KERNEL_TASK) {
+    if (task->flags & TASK_KERNEL_TASK) {
         if (task->flags & TASK_INIT_TASK) {
             execute_launch_in_kernel(temp, task->kesp, start_eip, program_ret);
         } else {
@@ -488,31 +501,36 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
     return 0;
 }
 
-inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
-    task_list_node_t *n = &task->list_node;
-    n->next->prev = n->prev;
-    n->prev->next = n->next;
-    n->prev = new_prev;
-    new_prev->next = n;
-    n->next = new_next;
-    new_next->prev = n;
-}
-
-inline void move_task_after_node_unsafe(task_t *task, task_list_node_t *node) {
-    move_task_to_list_unsafe(task, node, node->next);
-}
-
-static void init_thread_main() {
+/**
+ * Main function of init task
+ * @usage Kernel task EIP of init task
+ * @note When this function is executed, IF flag should be 1, otherwise idle task won't be able to yield processor
+ *       to other task
+ */
+static void init_task_main() {
     int32_t ret;
 
+    system_execute((uint8_t *) "idle", -1, 0, idle_task_main);
+
     system_execute((uint8_t *) "shell", 0, 1, NULL);
     system_execute((uint8_t *) "shell", 0, 1, NULL);
-    while (1) {
+    do {
         ret = system_execute((uint8_t *) "shell", 1, 1, NULL);
-        printf("Last shell has halted with status %d. Restarting...", ret);
-    }
+        printf("Last shell has halted with status %d\n", ret);
+    } while (ret != 0);
 
     system_halt(0);
+}
+
+/**
+ * Main function of idle task
+ * @usage Kernel task EIP of init task
+ * @note When this function is executed, IF flag should be 1, otherwise idle task won't be able to yield processor
+ *       to other task
+ */
+static void idle_task_main() {
+    while (1) {}
+    system_halt(-1);
 }
 
 task_t *focus_task() {
@@ -546,4 +564,18 @@ void task_change_focus(int32_t terminal_id) {
 
     }
     restore_flags(flags);
+}
+
+inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
+    task_list_node_t *n = &task->list_node;
+    n->next->prev = n->prev;
+    n->prev->next = n->next;
+    n->prev = new_prev;
+    new_prev->next = n;
+    n->next = new_next;
+    new_next->prev = n;
+}
+
+inline void move_task_after_node_unsafe(task_t *task, task_list_node_t *node) {
+    move_task_to_list_unsafe(task, node, node->next);
 }
