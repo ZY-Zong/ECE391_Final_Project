@@ -27,7 +27,7 @@ struct hw_context_t {
     uint32_t ds;
     uint32_t es;
     uint32_t fs;
-    uint32_t num;  // IRQ # or exception #
+    uint32_t irq_exp_num;  // IRQ # or exception #
     uint32_t err_code;  // error code for exception or dummy
     uint32_t eip;  // return address
     uint32_t cs;

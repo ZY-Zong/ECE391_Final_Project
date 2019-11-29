@@ -87,15 +87,15 @@ void idt_init() {
  * This function is used to print out the given interrupt number in the interrupt descriptor table.
  * @param vec_num    vector number of the interrupt/exception
  */
-void print_exception(uint32_t vec_num) {
+void unified_exception_handler(hw_context_t hw_context) {
 
     if (process_cnt == 0) {
         clear();
         reset_cursor();
-        printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", vec_num);
+        printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", hw_context.irq_exp_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
-        DEBUG_ERR("EXCEPTION %u OCCUR!\n", vec_num);
+        DEBUG_ERR("EXCEPTION %u OCCUR!\n", hw_context.irq_exp_num);
         system_halt(256);
     }
 
