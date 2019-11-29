@@ -28,6 +28,7 @@ do {                                                                    \
 int screen_x;
 int screen_y;
 static char* video_mem = (char *)VIDEO;
+static uint8_t screen_char[NUM_ROWS][NUM_COLS];
 
 /**
  * Reset input point to the upper left corner of the screen
@@ -55,6 +56,11 @@ void clear(void) {
         SET_WRITE_MASK(1 << (8 + i));
         for (j = 0; j < IMAGE_X_WIDTH * IMAGE_Y_DIM; j++) {
             *(uint8_t *)(video_mem + j) = OFF_PIXEL;
+        }
+    }
+    for (i = 0; i < NUM_COLS; i++) {
+        for (j = 0; j < NUM_ROWS; j++) {
+            screen_char[j][i] = 0;
         }
     }
 }
@@ -204,6 +210,12 @@ int32_t puts(int8_t* s) {
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
+        if (screen_x < NUM_COLS - 1) {
+            int i;
+            for (i = screen_x; i < NUM_COLS; i++) {
+                screen_char[screen_y][i] = 0;
+            }
+        }
         screen_x = 0;
         screen_y++;
         if (NUM_ROWS == screen_y) {
@@ -227,10 +239,11 @@ void putc(uint8_t c) {
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
+        screen_char[screen_y][screen_x] = 0;
 
 
         // Don't increase screen_x since next time we need to start from the same location for a new character
@@ -242,10 +255,11 @@ void putc(uint8_t c) {
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
+        screen_char[screen_y][screen_x] = c;
         screen_x++;
         if (NUM_COLS == screen_x) {
             // We need a new line
@@ -267,17 +281,33 @@ void scroll_up() {
     int x,y;
     int i, j;
     // Move up the last NUM_ROWS - 1 lines
-    for (y = 0; y < NUM_ROWS - 1; y++) {
+//    for (y = 0; y < NUM_ROWS - 1; y++) {
+//        for (x = 0; x < NUM_COLS; x++) {
+//            for (i = 0; i < 4; i++) {  // Loop over four planes
+//                SET_WRITE_MASK(1 << (8 + i));
+//                for (j = 0; j < FONT_HEIGHT; j++) {
+//                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y + 1) * 16 + j) + x * 2)));
+//                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y + 1) * 16 + j) + x * 2 + 1)));
+//                }
+//            }
+//        }
+//    }
+//    for (i = 0; i < 4; i++) {  // Loop over four planes
+//        SET_WRITE_MASK(1 << (8 + i));
+//        memcpy(video_mem, video_mem + IMAGE_X_WIDTH * FONT_HEIGHT, IMAGE_X_WIDTH * (NUM_ROWS - 1) * FONT_HEIGHT);
+//    }
+    screen_x = 0;
+    screen_y = 0;
+    for (y = 1; y < NUM_ROWS; y++) {
         for (x = 0; x < NUM_COLS; x++) {
-//            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
-//            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
             for (i = 0; i < 4; i++) {  // Loop over four planes
                 SET_WRITE_MASK(1 << (8 + i));
                 for (j = 0; j < FONT_HEIGHT; j++) {
-                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2)));
-                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2 + 1)));
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2))) = font_data[screen_char[y][x]][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[screen_char[y][x]][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
                 }
             }
+            screen_char[y - 1][x] = screen_char[y][x];
         }
     }
     // Clean up the last line
@@ -288,8 +318,8 @@ void scroll_up() {
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * FONT_HEIGHT + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
 
