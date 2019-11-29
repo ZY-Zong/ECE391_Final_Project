@@ -131,6 +131,8 @@ void handle_scan_code(uint8_t scan_code) {
         key_flags[scan_code - KEYBOARD_SCANCODE_PRESSED] = 0;
         
     } else {
+
+        uint32_t flags;
         
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
@@ -151,7 +153,11 @@ void handle_scan_code(uint8_t scan_code) {
             // No lock is needed, since this function is already placed in a lock
             focus_task()->flags &= ~TASK_WAITING_TERMINAL;
             sched_refill_time(focus_task());
-            sched_insert_to_head(focus_task());
+            cli_and_save(flags);
+            {
+                sched_insert_to_head_unsafe(focus_task());
+            }
+            restore_flags(flags);
             sched_launch_to_current_head();
             // Return after this task is active again...
             return;
@@ -242,7 +248,11 @@ void handle_scan_code(uint8_t scan_code) {
             // No lock is needed, since this function is already placed in a lock
             focus_task()->flags &= ~TASK_WAITING_TERMINAL;
             sched_refill_time(focus_task());
-            sched_insert_to_head(focus_task());
+            cli_and_save(flags);
+            {
+                sched_insert_to_head_unsafe(focus_task());
+            }
+            restore_flags(flags);
             sched_launch_to_current_head();
             // Return after this task is active again...
         }
@@ -317,7 +327,8 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
         cli_and_save(flags);
         {
             running_task()->flags |= TASK_WAITING_TERMINAL;
-            sched_move_running_after_node(&terminal_wait_list);
+            // Already in lock
+            sched_move_running_after_node_unsafe(&terminal_wait_list);
             sched_launch_to_current_head();
             // Return after this task is active again...
         }

@@ -88,7 +88,8 @@ asmlinkage void rtc_interrupt_handler(uint32_t irq_num) {
             if (task->rtc.counter == 0) {
                 task->parent->flags &= ~TASK_WAITING_RTC;
                 sched_refill_time(task);
-                sched_insert_to_head(task);
+                // Already in lock
+                sched_insert_to_head_unsafe(task);
                 wake_count++;
             }
         }
@@ -153,7 +154,8 @@ int32_t system_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
         running_task()->rtc.counter = RTC_HARDWARE_FREQUENCY / running_task()->rtc.target_freq;
 
         // Move running task out to wait list
-        sched_move_running_after_node(&rtc_wait_list);
+        // Already in lock
+        sched_move_running_after_node_unsafe(&rtc_wait_list);
 
         // Yield processor to other task
         sched_launch_to_current_head();

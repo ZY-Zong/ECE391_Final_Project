@@ -22,6 +22,8 @@
  * Support multi-terminal and scheduling
  */
 
+#define NULL_TERMINAL_ID    0xECE666  // used for ter_id indicating no opened terminal
+
 void task_paging_init();
 int task_set_up_memory(const uint8_t* task_name, uint32_t* eip, const int ter_id);  // called by system call execute
 int task_reset_paging(const int cur_id, const int pre_id);  // called by system call halt

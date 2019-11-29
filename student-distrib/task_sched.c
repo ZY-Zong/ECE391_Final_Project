@@ -61,6 +61,35 @@ void sched_init() {
 }
 
 /**
+ * Move current running task to an external list, mostly a wait list (lock needed)
+ * @param new_prev    Pointer to new prev node
+ * @param new_next    Pointer to new next node
+ * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
+ *       interrupts happens between
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       are still those BEFORE extracting the task.
+ * @note Not includes performing low-level context switch
+ * @note Always use running_task() instead of first element in run queue, to allow lock-free
+ */
+void sched_move_running_to_list_unsafe(task_list_node_t *new_prev, task_list_node_t *new_next) {
+    move_task_to_list_unsafe(running_task(), new_prev, new_next);
+}
+
+/**
+ * Move current running task after a node, mostly in a wait list (lock needed)
+ * @param node    Pointer to the new prev node
+ * @note Not includes performing low-level context switch
+ * @note Use lock OUTSIDE as you need, since pointers are stored on the calling stack and won't get changed if
+ *       interrupts happens between
+ * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
+ *       are still those BEFORE extracting the task.
+ */
+void sched_move_running_after_node_unsafe(task_list_node_t *node) {
+    sched_move_running_to_list_unsafe(node, node->next);
+}
+
+
+/**
  * Refill remain time of a task
  * @param task   The task to be refilled
  */
@@ -74,8 +103,8 @@ void sched_refill_time(task_t *task) {
  * @note Not includes refilling the time of the task
  * @note Not includes performing low-level context switch
  */
-void sched_insert_to_head(task_t *task) {
-    move_task_after_node(task, &run_queue);  // move the task from whatever list to run queue head
+void sched_insert_to_head_unsafe(task_t *task) {
+    move_task_after_node_unsafe(task, &run_queue);  // move the task from whatever list to run queue head
 }
 
 /**
@@ -96,7 +125,7 @@ void sched_launch_to_current_head() {
         to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
         if (to_run->flags & TASK_IDLE_TASK) {  // the head is idle task
             if (to_run->list_node.next != &run_queue) {  // there are still other task to run
-                move_task_after_node(to_run, run_queue.prev);  // move idle task to last
+                move_task_after_node_unsafe(to_run, run_queue.prev);  // move idle task to last
                 to_run = task_from_node(to_run->list_node.next);
             }  // if no other task is runnable, run idle task
         }
@@ -132,7 +161,7 @@ void sched_move_running_to_last() {
          * task, run_queue.prev will be running_task itself, and it will be completely detached from run queue.
          */
         if (run_queue.prev != &running_task()->list_node) {
-            move_task_after_node(running_task(), run_queue.prev);
+            move_task_after_node_unsafe(running_task(), run_queue.prev);
         }
     }
     restore_flags(flags);
@@ -194,7 +223,7 @@ static void setup_pit(uint16_t hz) {
     outb(divisor >> 8, 0x40);     // Set high byte of divisor
 }
 
-static int sched_print_run_queue() {
+int sched_print_run_queue() {
     int count = 0;
     task_list_node_t* node;
     task_list_for_each(node, &run_queue) {

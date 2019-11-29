@@ -29,7 +29,10 @@ task_t *focus_task_ = NULL;
 static task_t *task_deallocate(task_t *task);
 
 static void init_task_main();
+
 static void idle_task_main();
+
+static void task_set_focus_task(task_t *task);
 
 /**
  * This macro yield CPU from current task (_prev_) to new task (_next_) and return after _next_ terminate
@@ -235,6 +238,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     uint32_t start_eip;
     int32_t program_ret;
     uint32_t temp;
+    uint32_t flags;
 
     /** --------------- Phase 1. Setup kernel data structure of new task --------------- */
 
@@ -309,8 +313,6 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         if (new_terminal) {
             task->flags |= TASK_TERMINAL_OWNER;
             task->terminal = terminal_allocate();
-            terminal_user_task[task->terminal->terminal_id] = task;
-            focus_task_ = task;
             if (task->terminal == NULL) {
                 DEBUG_ERR("system_execute(): fail to allocate new terminal");
                 task_deallocate(task);
@@ -322,6 +324,8 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
                 task_deallocate(task);
                 return -1;
             }
+            terminal_user_task[task->terminal->terminal_id] = task;
+            task_set_focus_task(task);
         } else {
             if (task->flags & TASK_INIT_TASK) {
                 task->terminal = NULL;
@@ -329,13 +333,13 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
                 task->terminal = running_task()->terminal;  // inherent terminal from caller
                 if (wait_for_return == 1) {  // new task will be the actual user of the terminal until it halt
                     terminal_user_task[task->terminal->terminal_id] = task;
-                    focus_task_ = task;
+                    task_set_focus_task(task);
                 }
             }
         }
     }
 
-    // Setup some initial value of task list, in order for sched_insert_to_head() to work correctly.
+    // Setup some initial value of task list, in order for sched_insert_to_head_unsafe() to work correctly.
     task->list_node.prev = task->list_node.next = &(task->list_node);
 
     // Init opened file list
@@ -361,15 +365,22 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     } else {
         sched_refill_time(task);
     }
-    sched_insert_to_head(task);
-    // Don't use launch() function of sched, perform context switch manually as follows
 
-    // Put current task into list for parents that wait for child to return
-    if (wait_for_return == 1) {
-        // Safe to use running_task() since init task should not wait for return, which has been checked above
-        running_task()->flags |= TASK_WAITING_CHILD;
-        sched_move_running_after_node(&wait4child_list);
+    cli_and_save(flags);
+    {
+        sched_insert_to_head_unsafe(task);
+        // Don't use launch() function of sched, perform context switch manually as follows
+
+        // Put current task into list for parents that wait for child to return
+        if (wait_for_return == 1) {
+            // Safe to use running_task() since init task should not wait for return, which has been checked above
+            running_task()->flags |= TASK_WAITING_CHILD;
+            // Already in lock
+            sched_move_running_after_node_unsafe(&wait4child_list);
+
+        }
     }
+    restore_flags(flags);
 
     /** --------------- Phase 3. Very ready to go. Do assembly level switch --------------- */
     // Set tss to new task's kernel stack to make sure system calls use correct stack
@@ -417,6 +428,7 @@ int32_t system_halt(int32_t status) {
     task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
     task_t *task = running_task();  // the task to halt
     task_t *parent = task->parent;
+    uint32_t flags;
 
     if (task_count == 0) {   // pure kernel state
         DEBUG_ERR("Can't halt pure kernel state!");
@@ -431,14 +443,20 @@ int32_t system_halt(int32_t status) {
     /** --------------- Phase 1. Remove current task from scheduler --------------- */
 
     // Remove task from run queue
-    sched_move_running_after_node(&temp_list);
+    cli_and_save(flags);
+    {
+        sched_move_running_after_node_unsafe(&temp_list);
 
-    if (parent) {
-        // Re-activate parent
-        parent->flags &= ~TASK_WAITING_CHILD;
-        sched_refill_time(parent);
-        sched_insert_to_head(parent);
+        if (parent) {
+            // Re-activate parent
+            parent->flags &= ~TASK_WAITING_CHILD;
+            sched_refill_time(parent);
+            // Already in lock
+            sched_insert_to_head_unsafe(parent);
+
+        }
     }
+    restore_flags(flags);
 
     /** --------------- Phase 2. Tear down kernel data structure --------------- */
 
@@ -458,6 +476,7 @@ int32_t system_halt(int32_t status) {
         terminal_user_task[task->terminal->terminal_id] = NULL;
         terminal_vid_close(task->terminal->terminal_id);  // deallocate terminal video memory
         terminal_deallocate(task->terminal);  // deallocate terminal control block
+        // FIXME: switch to another terminal
     } else {
         if (parent->terminal->terminal_id != task->terminal->terminal_id) {
             DEBUG_ERR("system_halt(): task uses terminal %d but not own it, but its parent uses terminal %d",
@@ -465,7 +484,7 @@ int32_t system_halt(int32_t status) {
         }
         terminal_user_task[parent->terminal->terminal_id] = parent;
         if (focus_task_->terminal->terminal_id == parent->terminal->terminal_id) {
-            focus_task_ = parent;
+            task_set_focus_task(parent);
         }
     }
 
@@ -548,20 +567,36 @@ void task_change_focus(int32_t terminal_id) {
         return;
     }
 
+    if (terminal_user_task[terminal_id] == NULL) {
+        DEBUG_ERR("task_change_focus(): no task owns terminal %d", terminal_id);
+    }
+
+    task_set_focus_task(terminal_user_task[terminal_id]);
+}
+
+static void task_set_focus_task(task_t *task) {
+
+    if (task->terminal == NULL) {
+        DEBUG_ERR("task_set_focus_task(): task has no terminal");
+        return;
+    }
+
     uint32_t flags;
 
     cli_and_save(flags);
     {
+        if (focus_task_ != NULL) {
+            focus_task_->terminal->screen_x = screen_x;
+            focus_task_->terminal->screen_y = screen_y;
+            terminal_active_vid_switch(task->terminal->terminal_id, focus_task_->terminal->terminal_id);
+        } else {
+            terminal_active_vid_switch(task->terminal->terminal_id, NULL_TERMINAL_ID);
+        }
 
-        focus_task_->terminal->screen_x = screen_x;
-        focus_task_->terminal->screen_y = screen_y;
-
-        terminal_active_vid_switch(terminal_id, focus_task_->terminal->terminal_id);
-        focus_task_ = terminal_user_task[terminal_id];
+        focus_task_ = task;
 
         screen_x = focus_task_->terminal->screen_x;
         screen_y = focus_task_->terminal->screen_y;
-
     }
     restore_flags(flags);
 }

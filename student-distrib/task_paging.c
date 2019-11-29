@@ -24,8 +24,6 @@
 #define     TERMINAL_VID_OPENED         777     // funny number
 #define     TERMINAL_VID_NOT_OPENED     0
 
-#define     MAGIC_NO_TERMINAL_OPENED    0xECE666  // used for ter_id indicating no opened terminal
-
 #define ELF_MAGIC_SIZE_IN_BYTE  4
 #define TASK_USER_VRAM_START_INDEX    0xB9    // real VRAM is at 0xB8
 
@@ -322,7 +320,7 @@ int terminal_vid_close(const int ter_id) {
  * Set a opened terminal video memory to be active, i.e. change the screen
  * and store the old one to its buffer 
  * @param new_ter_id    the terminal to be set active
- * @param pre_ter_id    the terminal to be stored, or MAGIC_NO_TERMINAL_OPENED
+ * @param pre_ter_id    the terminal to be stored, or NULL_TERMINAL_ID
  * @return          0 for success, -1 for fail 
  * @effect          PDE will be changed, the screen will be changed 
  */
@@ -338,11 +336,11 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
         return -1;
     }
     // Check pre_ter_id
-    if ((pre_ter_id < 0 || pre_ter_id >= TERMINAL_MAX_COUNT) && pre_ter_id != MAGIC_NO_TERMINAL_OPENED) {
+    if ((pre_ter_id < 0 || pre_ter_id >= TERMINAL_MAX_COUNT) && pre_ter_id != NULL_TERMINAL_ID) {
         DEBUG_ERR("terminal_active_vid_switch(): bad pre_ter_id: %d", pre_ter_id);
         return -1;
     }
-    if (pre_ter_id != MAGIC_NO_TERMINAL_OPENED && terminal_opened[pre_ter_id] == TERMINAL_VID_NOT_OPENED) {
+    if (pre_ter_id != NULL_TERMINAL_ID && terminal_opened[pre_ter_id] == TERMINAL_VID_NOT_OPENED) {
         DEBUG_ERR("terminal_active_vid_switch(): not opened pre_ter_id: %d", new_ter_id);
         return -1;
     }
@@ -350,10 +348,12 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     // Turn on the kernel page for copy 
     PDE_4kB_t *pde = (PDE_4kB_t *) (&kernel_page_directory.entry[0]);
     if (-1 == task_clear_PDE_4kB(pde)) return -1;
-    if (-1 == set_PDE_4kB(pde, (uint32_t) kernel_page_table_0.entry, 1, 0, 1)) return -1;
+    if (-1 == set_PDE_4kB(pde, (uint32_t) &kernel_page_table_0, 1, 0, 1)) return -1;
 
-    // Copy the previous terminal VRAM from physical VRAM to its buffer 
-    terminal_copy_from_physical(pre_ter_id);
+    if (pre_ter_id != NULL_TERMINAL_ID){
+        // Copy the previous terminal VRAM from physical VRAM to its buffer
+        terminal_copy_from_physical(pre_ter_id);
+    }
 
     // Copy the current terminal VRAM from its buffer to physical VRAM
     terminal_copy_to_physical(new_ter_id);
@@ -361,7 +361,7 @@ int terminal_active_vid_switch(const int new_ter_id, const int pre_ter_id) {
     // Turn on active kernel paging 
     pde = (PDE_4kB_t *) (&kernel_page_directory.entry[0]);
     if (-1 == task_clear_PDE_4kB(pde)) return -1;
-    if (-1 == set_PDE_4kB(pde, (uint32_t) kernel_page_table_1.entry, 1, 0, 1)) return -1;
+    if (-1 == set_PDE_4kB(pde, (uint32_t) &kernel_page_table_1, 1, 0, 1)) return -1;
 
     // Set user vidmap if necessary
     if (user_video_mapped[new_ter_id] == TASK_VRAM_MAPPED) {
@@ -561,17 +561,17 @@ int task_init_video_memory() {
         // Get PTE at 0xB8 
         cur_pte = (PTE_t *) (&user_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]);
         // Map the PTE to corresponding page at (0xB9+pid)*4kB
-        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K, 1, 1, 1)) return -1;
+        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i + 1) * SIZE_4K, 1, 1, 1)) return -1;
 
         // Kernel video memory page 
         // Get PTE at 0xB8 
         cur_pte = (PTE_t *) (&kernel_video_memory_pt[i].entry[TASK_VIR_VIDEO_MEM_ENTRY]);
         // Map the PTE to corresponding page at (0xB9+pid)*4kB
-        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i) * SIZE_4K, 1, 0, 1)) return -1;
+        if (-1 == set_PTE(cur_pte, (TASK_VIR_VIDEO_MEM_ENTRY + i + 1) * SIZE_4K, 1, 0, 1)) return -1;
 
         // Update 0~4MB kernel page
         PTE_t *cur_kernel_pte = NULL;
-        cur_kernel_pte = (PTE_t *) (&kernel_page_table_0.entry[TASK_VIR_VIDEO_MEM_ENTRY + i]);
+        cur_kernel_pte = (PTE_t *) (&kernel_page_table_0.entry[TASK_VIR_VIDEO_MEM_ENTRY + i + 1]);
         *cur_kernel_pte = *cur_pte;
 
         // Update map flag array

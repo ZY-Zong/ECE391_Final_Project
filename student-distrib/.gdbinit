@@ -13,10 +13,26 @@ define lc
 layout src
 end
 
-define print_stack
-p/x 32 $esp
+define p_stack
+p/x32 $esp
 end
 
 define load_shell
 add-symbol-file ../syscalls/shell.exe 0x8048094
+end
+
+define load_ls
+add-symbol-file ../syscalls/ls.exe 0x8048094
+end
+
+define p_run
+p *running_task()
+end
+
+define p_focus
+p *focus_task()
+end
+
+define p_buf
+p (uint8_t *) buf
 end
