@@ -102,6 +102,7 @@ void sched_refill_time(task_t *task) {
  * @param task    The task to be insert
  * @note Not includes refilling the time of the task
  * @note Not includes performing low-level context switch
+ * @note Use this function in a lock
  */
 void sched_insert_to_head_unsafe(task_t *task) {
     move_task_after_node_unsafe(task, &run_queue);  // move the task from whatever list to run queue head
@@ -109,10 +110,10 @@ void sched_insert_to_head_unsafe(task_t *task) {
 
 /**
  * Perform low-level context switch to current head. Return after caller to this function is active again.
+ * @note Use this function in a lock
  */
 void sched_launch_to_current_head() {
 
-    uint32_t flags;
     task_t *to_run;
 
     if (run_queue.next == &run_queue) {  // nothing to run
@@ -120,27 +121,20 @@ void sched_launch_to_current_head() {
         return;
     }
 
-    cli_and_save(flags);
-    {
-        to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
-        if (to_run->flags & TASK_IDLE_TASK) {  // the head is idle task
-            if (to_run->list_node.next != &run_queue) {  // there are still other task to run
-                move_task_after_node_unsafe(to_run, run_queue.prev);  // move idle task to last
-                to_run = task_from_node(to_run->list_node.next);
-            }  // if no other task is runnable, run idle task
-        }
+    // Get next task to run
+    to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
+    if (to_run->flags & TASK_IDLE_TASK) {  // the head is idle task
+        if (to_run->list_node.next != &run_queue) {  // there are still other task to run
+            move_task_after_node_unsafe(to_run, run_queue.prev);  // move idle task to last
+            to_run = task_from_node(to_run->list_node.next);
+        }  // if no other task is runnable, run idle task
     }
-    restore_flags(flags);
 
     // If they are the same, do nothing
     if (running_task() == to_run) return;
 
     if (to_run->terminal) {
-        cli_and_save(flags);
-        {
-            terminal_vid_set(to_run->terminal->terminal_id);
-        }
-        restore_flags(flags);
+        terminal_vid_set(to_run->terminal->terminal_id);
     }
 
     // Set tss to to_run's kernel stack to make sure system calls use correct stack
@@ -152,27 +146,18 @@ void sched_launch_to_current_head() {
 
 /**
  * Move running task to the end of the run queue
- * @note Always use running_task() instead of first element in run queue, to allow lock-free
+ * @note Always use running_task() instead of first element in run queue
+ * @note Use this function in a lock
  */
 void sched_move_running_to_last() {
-    uint32_t flags;
 
     /*
-     * Since we need an if before move_task_after_node, the lock in move_task_after_node can't take effect immediately,
-     * so we need a lock to protect them from outside.
+     * Be very careful since it moves task in the same list. Without this if, when run_queue has only current running
+     * task, run_queue.prev will be running_task itself, and it will be completely detached from run queue.
      */
-    cli_and_save(flags);
-    {
-        /*
-         * Be very careful since it moves task in the same list. Without this if, when run_queue has only current running
-         * task, run_queue.prev will be running_task itself, and it will be completely detached from run queue.
-         */
-        if (run_queue.prev != &running_task()->list_node) {
-            move_task_after_node_unsafe(running_task(), run_queue.prev);
-        }
+    if (run_queue.prev != &running_task()->list_node) {
+        move_task_after_node_unsafe(running_task(), run_queue.prev);
     }
-    restore_flags(flags);
-
 }
 
 /**
@@ -187,35 +172,41 @@ asmlinkage void sched_pit_interrupt_handler(uint32_t irq_num) {
         return;
     }
 
-    task_t *running = running_task();
+    uint32_t flags;
 
-    if (running->flags & TASK_IDLE_TASK) {
+    cli_and_save(flags);
+    {
+        task_t *running = running_task();
 
-        sched_move_running_to_last();
+        if (running->flags & TASK_IDLE_TASK) {
 
-        idt_send_eoi(irq_num); // must send EOI before context switch, or PIT won't work in new task
-        sched_launch_to_current_head();  // return after this thread get running again
-
-    } else {
-
-        // Decrease available time of current running task
-        running->sched_ctrl.remain_time -= SCHED_PIT_INTERVAL;
-
-        if (running->sched_ctrl.remain_time <= 0) {  // running_task runs out of its time
-            /*
-             *  Re-fill remain time when putting a task to the end, instead of when getting it to running.
-             *  For example, task A have 30 ms left, but task B was inserted to the head of run queue because of rtc read()
-             *  complete, etc. After B runs out of its time, A should have 30ms, rather than re-filling it with 50 ms.
-             */
-            sched_refill_time(running);
             sched_move_running_to_last();
 
             idt_send_eoi(irq_num); // must send EOI before context switch, or PIT won't work in new task
             sched_launch_to_current_head();  // return after this thread get running again
+
         } else {
-            idt_send_eoi(irq_num);
+
+            // Decrease available time of current running task
+            running->sched_ctrl.remain_time -= SCHED_PIT_INTERVAL;
+
+            if (running->sched_ctrl.remain_time <= 0) {  // running_task runs out of its time
+                /*
+                 *  Re-fill remain time when putting a task to the end, instead of when getting it to running.
+                 *  For example, task A have 30 ms left, but task B was inserted to the head of run queue because of rtc read()
+                 *  complete, etc. After B runs out of its time, A should have 30ms, rather than re-filling it with 50 ms.
+                 */
+                sched_refill_time(running);
+                sched_move_running_to_last();
+
+                idt_send_eoi(irq_num); // must send EOI before context switch, or PIT won't work in new task
+                sched_launch_to_current_head();  // return after this thread get running again
+            } else {
+                idt_send_eoi(irq_num);
+            }
         }
     }
+    restore_flags(flags);
 }
 
 /**
@@ -232,13 +223,13 @@ static void setup_pit(uint16_t hz) {
 
 int sched_print_run_queue() {
     int count = 0;
-    task_list_node_t* node;
+    task_list_node_t *node;
     task_list_for_each(node, &run_queue) {
         printf("[%d] %s\n", count++, task_from_node(node)->executable_name);
     }
     return count;
 }
 
-task_t* sched_get_task_from_node(task_list_node_t* node) {
+task_t *sched_get_task_from_node(task_list_node_t *node) {
     return task_from_node(node);
 }

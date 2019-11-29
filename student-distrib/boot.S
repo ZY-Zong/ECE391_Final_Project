@@ -69,7 +69,6 @@ halt:
 .globl enable_paging
 enable_paging:
 
-
     # EAX and ECX are caller saved
     # Other callee-saved registers are not used
 
@@ -81,7 +80,6 @@ enable_paging:
     movl    kernel_page_directory, %ecx  # index 0 of PD
     orl     %eax, %ecx
     movl    %ecx, kernel_page_directory
-
 
     # Enable paging by setting registers
 

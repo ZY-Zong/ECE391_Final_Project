@@ -97,14 +97,14 @@ asmlinkage void keyboard_interrupt_handler(uint32_t irq_num) {
 
     uint32_t flags = 0;
 
-    cli_and_save(flags);
+    cli_and_save(flags);  // handle_scan_code requires to be placed in a lock
     {
         // Get scan code from port 0x60
         uint8_t scancode = inb(KEYBOARD_PORT);
 
         // After read from keyboard, send EOI
         idt_send_eoi(irq_num);
-        
+
         handle_scan_code(scancode);  // output the char to the console
     }
     restore_flags(flags);
@@ -115,17 +115,16 @@ asmlinkage void keyboard_interrupt_handler(uint32_t irq_num) {
  * @param scan_code    Scan code to be handled
  * @note If the keyboard buffer is full, just discard any keystroke from the keyboard
  * @note Priority of the keys: Enter > CapsLock > Ctrl+L > Ctrl+Fn > Backspace
+ * @note This function is already placed in a lock
  */
 void handle_scan_code(uint8_t scan_code) {
 
     if (scan_code >= SCANCODE_PRESSED) {
         // If the scan_code is a release code, just reset the flags
         key_flags[scan_code - SCANCODE_PRESSED] = 0;
-        
+
     } else {
 
-        uint32_t flags;
-        
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
 
@@ -142,14 +141,10 @@ void handle_scan_code(uint8_t scan_code) {
             focus_term->key_buf_cnt++;
 
             // Wake up the sleep task
-            // No lock is needed, since this function is already placed in a lock
             focus_task()->flags &= ~TASK_WAITING_TERMINAL;
             sched_refill_time(focus_task());
-            cli_and_save(flags);
-            {
-                sched_insert_to_head_unsafe(focus_task());
-            }
-            restore_flags(flags);
+            // Don't worry. This whole function is already placed in a lock
+            sched_insert_to_head_unsafe(focus_task());
             sched_launch_to_current_head();
             // Return after this task is active again...
             return;
@@ -169,7 +164,7 @@ void handle_scan_code(uint8_t scan_code) {
         }
 
         // If Ctrl+C
-        if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[C_PRESSED]){
+        if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[C_PRESSED]) {
             // TODO: Wait for Tingkai's function
             return;
         }
@@ -214,7 +209,7 @@ void handle_scan_code(uint8_t scan_code) {
             if (!capslock_status && (key_flags[LEFT_SHIFT_PRESS] || key_flags[RIGHT_SHIFT_PRESS])) {
                 // If not capslock but shift is pressed
                 character = shift_scan_code_table[scan_code];
-            } else if (!capslock_status && (!key_flags[LEFT_SHIFT_PRESS] && !key_flags[RIGHT_SHIFT_PRESS])){
+            } else if (!capslock_status && (!key_flags[LEFT_SHIFT_PRESS] && !key_flags[RIGHT_SHIFT_PRESS])) {
                 // If neither capslock nor shift is pressed
                 character = scan_code_table[scan_code];
             } else if (capslock_status && (key_flags[LEFT_SHIFT_PRESS] || key_flags[RIGHT_SHIFT_PRESS])) {
@@ -240,11 +235,8 @@ void handle_scan_code(uint8_t scan_code) {
             // No lock is needed, since this function is already placed in a lock
             focus_task()->flags &= ~TASK_WAITING_TERMINAL;
             sched_refill_time(focus_task());
-            cli_and_save(flags);
-            {
-                sched_insert_to_head_unsafe(focus_task());
-            }
-            restore_flags(flags);
+            // Don't worry. This whole function is already placed in a lock
+            sched_insert_to_head_unsafe(focus_task());
             sched_launch_to_current_head();
             // Return after this task is active again...
         }
@@ -290,15 +282,15 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
         return -1;
     }
 
-    // If user asks more than 128 bytes of data, then just return 128 bytes.
-    if (nbytes > KEYBOARD_BUF_SIZE) {
-        nbytes = KEYBOARD_BUF_SIZE;
-    }
-
-    running_task()->terminal->user_ask_len = nbytes;
-
     cli_and_save(flags);
     {
+        // If user asks more than 128 bytes of data, then just return 128 bytes.
+        if (nbytes > KEYBOARD_BUF_SIZE) {
+            nbytes = KEYBOARD_BUF_SIZE;
+        }
+
+        running_task()->terminal->user_ask_len = nbytes;
+
         // Perform full scan, in case key buffer changes in an unexpected way.
         // For example, an backspace and an enter are pressed during two loops, we need to identify that enter.
         for (i = 0; (i < running_task()->terminal->key_buf_cnt) && (i < nbytes); i++) {
@@ -311,13 +303,8 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
             to_continue = 0;
         }
 
-    }
-    restore_flags(flags);
-
-    if (1 == to_continue) {
-        // Set the task to sleep
-        cli_and_save(flags);
-        {
+        if (1 == to_continue) {
+            // Set the task to sleep
             running_task()->flags |= TASK_WAITING_TERMINAL;
             // Already in lock
             sched_move_running_after_node_unsafe(&terminal_wait_list);
@@ -331,13 +318,9 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
                 }
             }
         }
-        restore_flags(flags);
-    }
 
-    running_task()->terminal->user_ask_len = 0;  // serves the same function as whether_read
+        running_task()->terminal->user_ask_len = 0;  // serves the same function as whether_read
 
-    cli_and_save(flags);
-    {
         memcpy(buf, running_task()->terminal->key_buf, i);
         to_delete = i + (running_task()->terminal->key_buf[i] == '\n');
         for (j = to_delete; j < running_task()->terminal->key_buf_cnt; j++) {
@@ -428,7 +411,7 @@ terminal_t *terminal_allocate() {
  * Deallocate a terminal control block. No action on video memory is included.
  * @param terminal    Pointer to the terminal control
  */
-void terminal_deallocate(terminal_t* terminal) {
+void terminal_deallocate(terminal_t *terminal) {
     terminal->valid = 0;
 }
 
