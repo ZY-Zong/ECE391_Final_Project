@@ -58,8 +58,8 @@
  * Y_DIM   is a vertical screen dimension in pixels.
  */
 
-#define IMAGE_X_DIM     640   /* pixels; must be divisible by 4             */
-#define IMAGE_Y_DIM     400   /* pixels                                     */
+#define IMAGE_X_DIM     320   /* pixels; must be divisible by 4             */
+#define IMAGE_Y_DIM     200   /* pixels                                     */
 #define IMAGE_X_WIDTH   (IMAGE_X_DIM / 4)          /* addresses (bytes)     */
 #define SCROLL_X_DIM	IMAGE_X_DIM                /* full image width      */
 #define SCROLL_Y_DIM    IMAGE_Y_DIM                /* full image width (reduced by the height of the status bar)     */

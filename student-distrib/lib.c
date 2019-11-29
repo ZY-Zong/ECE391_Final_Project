@@ -5,8 +5,8 @@
 #include "modex.h"
 
 #define VIDEO       0xA0000
-#define NUM_COLS    80
-#define NUM_ROWS    25
+#define NUM_COLS    40
+#define NUM_ROWS    12
 #define ATTRIB      0x7
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 16
@@ -45,10 +45,17 @@ void reset_cursor() {
  * Return Value: none
  * Function: Clears video memory */
 void clear(void) {
-    int32_t i;
-    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
-        *(uint8_t *)(video_mem + (i << 1)) = ' ';
-        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+//    int32_t i;
+//    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
+//        *(uint8_t *)(video_mem + (i << 1)) = ' ';
+//        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+//    }
+    int i, j;
+    for (i = 0; i < 4; i++) {  // Loop over four planes
+        SET_WRITE_MASK(1 << (8 + i));
+        for (j = 0; j < IMAGE_X_WIDTH * IMAGE_Y_DIM; j++) {
+            *(uint8_t *)(video_mem + j) = OFF_PIXEL;
+        }
     }
 }
 
@@ -220,8 +227,8 @@ void putc(uint8_t c) {
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
 
@@ -235,8 +242,8 @@ void putc(uint8_t c) {
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
         screen_x++;
@@ -267,8 +274,8 @@ void scroll_up() {
             for (i = 0; i < 4; i++) {  // Loop over four planes
                 SET_WRITE_MASK(1 << (8 + i));
                 for (j = 0; j < FONT_HEIGHT; j++) {
-                    *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2)));
-                    *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2 + 1)));
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2)));
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2 + 1)));
                 }
             }
         }
@@ -281,8 +288,8 @@ void scroll_up() {
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
 
