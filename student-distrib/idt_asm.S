@@ -6,26 +6,33 @@
 
 /* Common macros */
 
-.macro SAVE_ALL_REGS  # save all register onto the stack
-	pushf
+.macro SETUP_HW_CONTEXT  # set up hardware context
+	# Not including Error Code / Dummy
+	# Not including IRQ / Error #
+	push fs
+	push es
+	push ds
+	pushl %eax
 	pushl %ebp
 	pushl %edi
 	pushl %esi
 	pushl %edx
 	pushl %ecx
 	pushl %ebx
-	pushl %eax
 .endm
 
-.macro RESTORE_ALL_REGS  # restore all register from the stack
-	popl %eax
+.macro RESTORE_HE_CONTEXT  # restore hardware context
 	popl %ebx
 	popl %ecx
 	popl %edx
 	popl %esi
 	popl %edi
 	popl %ebp
-	popf
+	popl %eax
+	pop ds
+	pop es
+	pop fs
+	addl $8, %esp  # pop IRQ/Error# & ErrorCode/Dummy
 .endm
 
 
@@ -35,11 +42,11 @@
 .macro EXCEPTION_ENTRY n, func
 .globl exception_entry_\n
 exception_entry_\n:
-    SAVE_ALL_REGS
+    SETUP_HW_CONTEXT
     pushl $\n  # push exception number
     call \func
     addl $4, %esp  # pop arg
-    RESTORE_ALL_REGS
+    RESTORE_HE_CONTEXT
     iret  # return from interrupt context
 .endm
 
@@ -48,11 +55,11 @@ exception_entry_\n:
 .macro EXCEPTION_ENTRY_WITH_ERRCODE n, func
 .globl exception_entry_\n
 exception_entry_\n:
-    SAVE_ALL_REGS
+    SETUP_HW_CONTEXT
     pushl $\n  # push exception number
     call \func
     addl $4, %esp  # pop arg
-    RESTORE_ALL_REGS
+    RESTORE_HE_CONTEXT
     addl $4, %esp  # pop error code pushed by processor
     iret  # return from interrupt context
 .endm
@@ -89,12 +96,12 @@ EXCEPTION_ENTRY_WITH_ERRCODE 30, print_exception
 .macro INTERRUPT_ENTRY irq, func
 .globl interrupt_entry_\irq
 interrupt_entry_\irq:
-    SAVE_ALL_REGS
+    SETUP_HW_CONTEXT
     call \func
     pushl $\irq    /* push irq number */
     call send_eoi  /* defined in i8259.c/h */
     addl $4, %esp  /* pop arg */
-    RESTORE_ALL_REGS
+    RESTORE_HE_CONTEXT
     iret  /* return from interrupt context */
 .endm
 
