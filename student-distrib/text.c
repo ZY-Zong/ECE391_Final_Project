@@ -36,7 +36,7 @@
  *		Integrated original release back into main code base.
  */
 
-#include <string.h>
+
 
 #include "text.h"
 
@@ -570,48 +570,48 @@ unsigned char font_data[256][16] = {
 * Output: None
 *
 */
-void text_to_image(char * in_string, unsigned char* array_2d) {
-    int i;
-    // fill in the first row and the last row of the status bar
-    for (i = 0; i < STATUS_BAR_WIDTH; i++) {
-        array_2d[i] = OFF_PIXEL;
-        array_2d[i + STATUS_BAR_WIDTH * (1 + FONT_HEIGHT)] = OFF_PIXEL;
-    }
-    // Calculate the length of the string
-    int length = 0;
-    while (in_string[length] != 0x00) {
-        length++;
-    }
-
-    // If the length of the string is longer than 40 chars, print the first 40 chars
-    if (length > STRING_LENGTH_MAX) {
-        for (i = 0; i < STRING_LENGTH_MAX; i++) {
-            int x, y;
-            for (y = 0; y < FONT_HEIGHT; y++) {
-                for (x = 0; x < FONT_WIDTH; x++) {
-                    array_2d[x + i * FONT_WIDTH + (y + 1) * STATUS_BAR_WIDTH] = font_data[(unsigned char)in_string[i]][y] & (1 << (7 - x)) ? ON_PIXEL : OFF_PIXEL;
-                }
-            }
-        }
-    } else {
-        // Fill the beginning and end of the string with spaces
-        int front_blank = (STRING_LENGTH_MAX - length) * 4;
-        for (i = 0; i < front_blank; i++) {
-            int y;
-            for (y = 0; y < FONT_HEIGHT; y++) {
-                array_2d[i + (y + 1) * STATUS_BAR_WIDTH] = OFF_PIXEL;
-                array_2d[STATUS_BAR_WIDTH - 1 - i + (y + 1) * STATUS_BAR_WIDTH] = OFF_PIXEL;
-            }
-        }
-        // fill in the characters
-        for (i = 0; i < length; i++) {
-            int x, y;
-            for (y = 0; y < FONT_HEIGHT; y++) {
-                for (x = 0; x < FONT_WIDTH; x++) {
-                    array_2d[front_blank + x + i * FONT_WIDTH + (y + 1) * STATUS_BAR_WIDTH] = font_data[(unsigned char)in_string[i]][y] & (1 << (7 - x)) ? ON_PIXEL : OFF_PIXEL;
-                }
-            }
-        }
-    }
-}
+//void text_to_image(char * in_string, unsigned char* array_2d) {
+//    int i;
+//    // fill in the first row and the last row of the status bar
+//    for (i = 0; i < STATUS_BAR_WIDTH; i++) {
+//        array_2d[i] = OFF_PIXEL;
+//        array_2d[i + STATUS_BAR_WIDTH * (1 + FONT_HEIGHT)] = OFF_PIXEL;
+//    }
+//    // Calculate the length of the string
+//    int length = 0;
+//    while (in_string[length] != 0x00) {
+//        length++;
+//    }
+//
+//    // If the length of the string is longer than 40 chars, print the first 40 chars
+//    if (length > STRING_LENGTH_MAX) {
+//        for (i = 0; i < STRING_LENGTH_MAX; i++) {
+//            int x, y;
+//            for (y = 0; y < FONT_HEIGHT; y++) {
+//                for (x = 0; x < FONT_WIDTH; x++) {
+//                    array_2d[x + i * FONT_WIDTH + (y + 1) * STATUS_BAR_WIDTH] = font_data[(unsigned char)in_string[i]][y] & (1 << (7 - x)) ? ON_PIXEL : OFF_PIXEL;
+//                }
+//            }
+//        }
+//    } else {
+//        // Fill the beginning and end of the string with spaces
+//        int front_blank = (STRING_LENGTH_MAX - length) * 4;
+//        for (i = 0; i < front_blank; i++) {
+//            int y;
+//            for (y = 0; y < FONT_HEIGHT; y++) {
+//                array_2d[i + (y + 1) * STATUS_BAR_WIDTH] = OFF_PIXEL;
+//                array_2d[STATUS_BAR_WIDTH - 1 - i + (y + 1) * STATUS_BAR_WIDTH] = OFF_PIXEL;
+//            }
+//        }
+//        // fill in the characters
+//        for (i = 0; i < length; i++) {
+//            int x, y;
+//            for (y = 0; y < FONT_HEIGHT; y++) {
+//                for (x = 0; x < FONT_WIDTH; x++) {
+//                    array_2d[front_blank + x + i * FONT_WIDTH + (y + 1) * STATUS_BAR_WIDTH] = font_data[(unsigned char)in_string[i]][y] & (1 << (7 - x)) ? ON_PIXEL : OFF_PIXEL;
+//                }
+//            }
+//        }
+//    }
+//}
 

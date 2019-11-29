@@ -143,7 +143,7 @@ kernel_page_directory:
 kernel_page_table:
 kernel_page_table_0:
     # Fill index 0-0xB7
-    .rept $0xA0   # modex
+    .rept 0xA0   # modex
     .long 0
     .endr
 

@@ -48,8 +48,8 @@
 #define SCROLL_WIDTH (STATUS_BAR_WIDTH / 4)
 // #define STATUS_BAR_HEIGHT 18  /* the height of status bar*/
 #define STRING_LENGTH_MAX (STATUS_BAR_WIDTH / FONT_WIDTH) /*maximum length of the output string*/
-#define OFF_PIXEL 0x0A /* The color of the off pixel in the text mode*/
-#define ON_PIXEL 0x0C /* The color of the on pixel in the text mode*/
+#define OFF_PIXEL 0x00 /* The color of the off pixel in the text mode*/
+#define ON_PIXEL 0x04 /* The color of the on pixel in the text mode*/
 
 /* Standard VGA text font. */
 extern unsigned char font_data[256][16];

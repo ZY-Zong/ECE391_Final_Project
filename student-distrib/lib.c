@@ -2,11 +2,28 @@
  * vim:ts=4 noexpandtab */
 
 #include "lib.h"
+#include "modex.h"
 
 #define VIDEO       0xA0000
 #define NUM_COLS    80
 #define NUM_ROWS    25
 #define ATTRIB      0x7
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 16
+
+/*
+ * macro used to target a specific video plane or planes when writing
+ * to video memory in mode X; bits 8-11 in the mask_hi_bits enable writes
+ * to planes 0-3, respectively
+ */
+#define SET_WRITE_MASK(mask_hi_bits)                                    \
+do {                                                                    \
+    asm volatile ("                                                     \
+	movw $0x03C4,%%dx    	/* set write mask                    */;\
+	movb $0x02,%b0                                                 ;\
+	outw %w0,(%%dx)                                                 \
+    " : : "a" ((mask_hi_bits)) : "edx", "memory");                      \
+} while (0)
 
 int screen_x;
 int screen_y;
@@ -197,13 +214,31 @@ void putc(uint8_t c) {
         } else { // Normal cases for backspace
             screen_x--;
         }
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        int i, j;
+        for (i = 0; i < 4; i++) {  // Loop over four planes
+            SET_WRITE_MASK(1 << (8 + i));
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+            }
+        }
+
+
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        int i, j;
+        for (i = 0; i < 4; i++) {  // Loop over four planes
+            SET_WRITE_MASK(1 << (8 + i));
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((NUM_COLS * (screen_y * 16 + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+            }
+        }
         screen_x++;
         if (NUM_COLS == screen_x) {
             // We need a new line
@@ -223,18 +258,34 @@ void putc(uint8_t c) {
  */
 void scroll_up() {
     int x,y;
+    int i, j;
     // Move up the last NUM_ROWS - 1 lines
     for (y = 0; y < NUM_ROWS - 1; y++) {
         for (x = 0; x < NUM_COLS; x++) {
-            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
-            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+//            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
+//            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+            for (i = 0; i < 4; i++) {  // Loop over four planes
+                SET_WRITE_MASK(1 << (8 + i));
+                for (j = 0; j < FONT_HEIGHT; j++) {
+                    *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2)));
+                    *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((NUM_COLS * ((y + 1) * 16 + j) + x * 2 + 1)));
+                }
+            }
         }
     }
     // Clean up the last line
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
-        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
-        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
+//        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+        for (i = 0; i < 4; i++) {  // Loop over four planes
+            SET_WRITE_MASK(1 << (8 + i));
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((NUM_COLS * (y * 16 + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+            }
+        }
+
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)
     screen_y = NUM_ROWS - 1;
