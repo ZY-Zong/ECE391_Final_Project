@@ -72,7 +72,7 @@ void rtc_init() {
  * Handle the RTC interrupt. Note that Status Register C will contain a bitmask telling which interrupt happened.
  * @reference https://wiki.osdev.org/RTC
  */
-asmlinkage void rtc_interrupt_handler(uint32_t irq_num) {
+asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
     uint32_t flags;
     int32_t wake_count = 0;
 
@@ -95,7 +95,7 @@ asmlinkage void rtc_interrupt_handler(uint32_t irq_num) {
         }
 
         rtc_restart_interrupt();  // to get another interrupt
-        idt_send_eoi(irq_num);
+        idt_send_eoi(hw_context.irq_exp_num);
 
         if (wake_count > 0) {
             sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.

@@ -93,7 +93,7 @@ void handle_scan_code(uint8_t scan_code);
  * @usage idt_asm.S
  * @note Reference: https://wiki.osdev.org/PS2_Keyboard#Scan_Code_Sets.2C_Scan_Codes_and_Key_Codes
  */
-asmlinkage void keyboard_interrupt_handler(uint32_t irq_num) {
+asmlinkage void keyboard_interrupt_handler(hw_context_t hw_context) {
 
     uint32_t flags = 0;
 
@@ -103,7 +103,7 @@ asmlinkage void keyboard_interrupt_handler(uint32_t irq_num) {
         uint8_t scancode = inb(KEYBOARD_PORT);
 
         // After read from keyboard, send EOI
-        idt_send_eoi(irq_num);
+        idt_send_eoi(hw_context.irq_exp_num);
 
         handle_scan_code(scancode);  // output the char to the console
     }
