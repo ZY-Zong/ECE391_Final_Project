@@ -6,80 +6,88 @@
 
 /* Common macros */
 
-.macro SAVE_ALL_REGS  # save all register onto the stack
-	pushf
+.macro SETUP_HW_CONTEXT  # set up hardware context
+	/* Not including Error Code / Dummy */
+	/* Not including IRQ / Error # */
+	push %fs
+	push %es
+	push %ds
+	pushl %eax
 	pushl %ebp
 	pushl %edi
 	pushl %esi
 	pushl %edx
 	pushl %ecx
 	pushl %ebx
-	pushl %eax
 .endm
 
-.macro RESTORE_ALL_REGS  # restore all register from the stack
-	popl %eax
+.macro RESTORE_HW_CONTEXT  /*  restore hardware context */
 	popl %ebx
 	popl %ecx
 	popl %edx
 	popl %esi
 	popl %edi
 	popl %ebp
-	popf
+	popl %eax
+	pop %ds
+	pop %es
+	pop %fs
+	addl $8, %esp  /* pop IRQ/Error# & ErrorCode/Dummy */
 .endm
 
+
+exception_unified_ll_handler:
+    /* Error Code / Dummy has been pushed */
+    /* Error # has been pushed */
+    SETUP_HW_CONTEXT
+    call unified_exception_handler
+    RESTORE_HW_CONTEXT
+    iret
 
 /* Low-level handlers (entry points) for exceptions */
 
-# Macro for generating code of exception entries
-.macro EXCEPTION_ENTRY n, func
+/* Macro for generating code of exception entries */
+.macro EXCEPTION_ENTRY n
 .globl exception_entry_\n
 exception_entry_\n:
-    SAVE_ALL_REGS
-    pushl $\n  # push exception number
-    call \func
-    addl $4, %esp  # pop arg
-    RESTORE_ALL_REGS
-    iret  # return from interrupt context
+    pushl $0   /* push dummy */
+    pushl $\n  /* push exception number */
+    jmp exception_unified_ll_handler
 .endm
 
-# Macro for generating code of exception entries, including popping error code
-# Reference: [Exceptions - OSDev Wiki](https://wiki.osdev.org/Exceptions#Alignment_Check)
-.macro EXCEPTION_ENTRY_WITH_ERRCODE n, func
+/* Macro for generating code of exception entries, including popping error code */
+/* Reference: [Exceptions - OSDev Wiki](https://wiki.osdev.org/Exceptions#Alignment_Check) */
+.macro EXCEPTION_ENTRY_WITH_ERRCODE n
 .globl exception_entry_\n
 exception_entry_\n:
-    SAVE_ALL_REGS
-    pushl $\n  # push exception number
-    call \func
-    addl $4, %esp  # pop arg
-    RESTORE_ALL_REGS
-    addl $4, %esp  # pop error code pushed by processor
-    iret  # return from interrupt context
+    /* push Error Code is already on the stack */
+    pushl $\n  /* push exception number */
+    jmp exception_unified_ll_handler
 .endm
 
-EXCEPTION_ENTRY 0, print_exception
-EXCEPTION_ENTRY 1, print_exception
-EXCEPTION_ENTRY 2, print_exception  # non-maskable Interrupt
-EXCEPTION_ENTRY 3, print_exception
-EXCEPTION_ENTRY 4, print_exception
-EXCEPTION_ENTRY 5, print_exception
-EXCEPTION_ENTRY 6, print_exception
-EXCEPTION_ENTRY 7, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 8, print_exception
-EXCEPTION_ENTRY 9, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 10, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 11, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 12, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 13, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 14, print_exception
+EXCEPTION_ENTRY 0
+EXCEPTION_ENTRY 1
+EXCEPTION_ENTRY 2  /* non-maskable Interrupt */
+EXCEPTION_ENTRY 3
+EXCEPTION_ENTRY 4
+EXCEPTION_ENTRY 5
+EXCEPTION_ENTRY 6
+EXCEPTION_ENTRY 7
+EXCEPTION_ENTRY_WITH_ERRCODE 8
+EXCEPTION_ENTRY 9
+EXCEPTION_ENTRY_WITH_ERRCODE 10
+EXCEPTION_ENTRY_WITH_ERRCODE 11
+EXCEPTION_ENTRY_WITH_ERRCODE 12
+EXCEPTION_ENTRY_WITH_ERRCODE 13
+EXCEPTION_ENTRY_WITH_ERRCODE 14
 /* 15 is reserved by Intel */
-EXCEPTION_ENTRY 16, print_exception
-EXCEPTION_ENTRY_WITH_ERRCODE 17, print_exception
-EXCEPTION_ENTRY 18, print_exception
-EXCEPTION_ENTRY 19, print_exception
-EXCEPTION_ENTRY 20, print_exception
+EXCEPTION_ENTRY 16
+EXCEPTION_ENTRY_WITH_ERRCODE 17
+EXCEPTION_ENTRY 18
+EXCEPTION_ENTRY 19
+EXCEPTION_ENTRY 20
 /* 21-29 are for interrupts */
-EXCEPTION_ENTRY_WITH_ERRCODE 30, print_exception
+EXCEPTION_ENTRY_WITH_ERRCODE 30
 
 
 /* Low-level handlers (entry points) for interrupts */
@@ -89,11 +97,11 @@ EXCEPTION_ENTRY_WITH_ERRCODE 30, print_exception
 .macro INTERRUPT_ENTRY irq, func
 .globl interrupt_entry_\irq
 interrupt_entry_\irq:
-    SAVE_ALL_REGS
+    pushl $0       /* push Dummy */
     pushl $\irq    /* push irq number */
+    SETUP_HW_CONTEXT
     call \func
-    addl $4, %esp  /* pop arg */
-    RESTORE_ALL_REGS
+    RESTORE_HW_CONTEXT
     iret  /* return from interrupt context */
 .endm
 
@@ -106,30 +114,32 @@ INTERRUPT_ENTRY 8, rtc_interrupt_handler
 
 .globl system_call_entry
 system_call_entry:
-    pushf
-    pushl %ebp
-    pushl %edi
-    pushl %esi
-    pushl %edx
-    pushl %ecx
-    pushl %ebx
-    /* if SYSTEM_CALL_TABLE_SIZE <= EAX, call sys_not_implemented */
+    pushl $0       /* push Dummy */
+    pushl $0x80    /* push vec number */
+    SETUP_HW_CONTEXT
+    /* If SYSTEM_CALL_TABLE_SIZE <= EAX, call sys_not_implemented */
     cmpl $SYSTEM_CALL_TABLE_SIZE, %eax
     jae system_call_entry_invalid
-    /* if EAX valid, call corresponding system call */
+    /* If EAX valid, call corresponding system call */
+    /* HW context on the stack matches arguments */
     call *system_call_table(,%eax,4)
     jmp system_call_entry_done
 system_call_entry_invalid:
     call sys_not_implemented
 system_call_entry_done:
+    /* Similar to RESTORE_HW_CONTEXT, except that not restore EAX */
     popl %ebx
     popl %ecx
     popl %edx
     popl %esi
     popl %edi
     popl %ebp
-    popf
-    iret  /* return from interrupt context */
+    addl $4, %esp  /* pop EAX but not overlap the return value */
+    pop %ds
+    pop %es
+    pop %fs
+    addl $8, %esp  /* pop IRQ/Error# & ErrorCode/Dummy */
+    iret
 
 system_call_table:
     .long sys_not_implemented  /* 0 */

@@ -7,6 +7,7 @@
 #define _I8259_H
 
 #include "types.h"
+#include "idt.h"
 
 /* Ports that each PIC sits on */
 #define MASTER_8259_PORT    0x20
@@ -45,5 +46,7 @@ void enable_irq(uint32_t irq_num);
 void disable_irq(uint32_t irq_num);
 /* Send end-of-interrupt signal for the specified IRQ */
 void send_eoi(uint32_t irq_num);
+
+void lowlevel_send_eoi(hw_context_t hw_context);
 
 #endif /* _I8259_H */
