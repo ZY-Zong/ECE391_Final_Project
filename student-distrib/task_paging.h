@@ -27,6 +27,7 @@
 void task_paging_init();
 int task_set_up_memory(const uint8_t* task_name, uint32_t* eip, const int ter_id);  // called by system call execute
 int task_reset_paging(const int cur_id, const int pre_id);  // called by system call halt
+int task_running_paging_set(const int id); // call by running task for its page 
 
 int system_vidmap(uint8_t ** screen_start);
 
