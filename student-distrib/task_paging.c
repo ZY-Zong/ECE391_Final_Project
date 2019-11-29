@@ -230,6 +230,26 @@ int task_reset_paging(const int cur_id, const int pre_id) {
     return 0;
 }
 
+/**
+ * Reset the 128-132MB paging for a running task 
+ * @param       id: the task id 
+ * @return      0 for success, 1 for failure
+ * @effect      the PDE will be changed 
+ */
+int task_running_paging_set(const int id){
+    if (id < 0 || id > TASK_MAX_COUNT){
+        DEBUG_ERR("task_running_paging_set(): bad id : %d\n", id);
+        return -1;
+    }
+    if (page_id_running[id] == PID_FREE){
+        DEBUG_ERR("task_running_paging_set(): task %d is not running", id);
+        return -1;
+    }
+
+    task_turn_on_paging(id);
+    return 0;
+}
+
 
 /**
  * Map current task's virtual VRAM to kernel VRAM 
