@@ -8,6 +8,7 @@
 #include "types.h"
 #include "x86_desc.h"
 #include "file_system.h"
+#include "signal.h"
 
 #define PROCESS_INITIAL     1U  // initial process
 
@@ -22,6 +23,7 @@ struct process_t {
     uint32_t kesp;  // kernel stack esp
     int32_t page_id;
     file_array_t file_array;
+    signal_struct_t signals;
 };
 
 
