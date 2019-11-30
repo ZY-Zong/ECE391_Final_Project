@@ -7,6 +7,7 @@
 #include "task.h"
 #include "task_sched.h"
 #include "task_paging.h"
+#include "vidmem.h"
 
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
 #define KEYBOARD_FLAG_SIZE 128
@@ -88,6 +89,12 @@ terminal_t terminal_slot[TERMINAL_MAX_COUNT];
 
 void handle_scan_code(uint8_t scan_code);
 
+terminal_t *running_term_ = NULL;
+
+terminal_t *running_term() {
+    return running_term_;
+}
+
 /**
  * Keyboard interrupt handler
  * @param irq_num    Keyboard interrupt irq number, used for sending EOI
@@ -107,16 +114,17 @@ asmlinkage void keyboard_interrupt_handler(hw_context_t hw_context) {
         idt_send_eoi(hw_context.irq_exp_num);
 
         // Set video memory to focus task to allow echo
-        if (focus_task() && focus_task()->terminal) {
-            terminal_vid_set(focus_task()->terminal->terminal_id);
+
+        if (focus_task()) {
+            terminal_set_running(focus_task()->terminal);
+        } else {
+            DEBUG_WARN("keyboard_interrupt_handler(): no focus task but there is key to be handled");
         }
 
         handle_scan_code(scancode);  // output the char to the console
 
         // Revert video memory
-        if (running_task()->terminal) {
-            terminal_vid_set(running_task()->terminal->terminal_id);
-        }
+        terminal_set_running(running_task()->terminal);
     }
     restore_flags(flags);
 }
@@ -322,7 +330,7 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
             sched_launch_to_current_head();
             // Return after this task is active again...
 
-            // Recount i. Now must not continue
+            // Re-count i. Now must not continue
             for (i = 0; (i < running_task()->terminal->key_buf_cnt) && (i < nbytes); i++) {
                 if (running_task()->terminal->key_buf[i] == '\n') {
                     break;  // exit for
@@ -426,3 +434,16 @@ void terminal_deallocate(terminal_t *terminal) {
     terminal->valid = 0;
 }
 
+void terminal_set_running(terminal_t *term) {
+    if (running_term_  == term) return;
+    if (running_term_) {
+        running_term_->screen_x = screen_x;
+        running_term_->screen_y = screen_y;
+    }
+    if (term) {
+        terminal_vidmem_set(term->terminal_id);
+        screen_x = term->screen_x;
+        screen_y = term->screen_y;
+    }
+    running_term_  = term;
+}

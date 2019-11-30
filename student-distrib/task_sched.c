@@ -138,14 +138,14 @@ void sched_launch_to_current_head() {
     // If they are the same, do nothing
     if (running_task() == to_run) return;
 
-    if (to_run->terminal) {
-        terminal_vid_set(to_run->terminal->terminal_id);
-    }
+    terminal_set_running(to_run->terminal);
 
     // Remap user program if task has page
     if (to_run->page_id != -1) {
-        task_running_paging_set(to_run->page_id);
+        task_paging_set(to_run->page_id);
     }
+
+    task_apply_user_vidmap(to_run);
 
     // Set tss to to_run's kernel stack to make sure system calls use correct stack
     // Whenever switch from user to kernel stack, kernel stack should be clean, so tss.esp0 should always be kesp_base

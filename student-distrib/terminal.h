@@ -33,8 +33,14 @@ struct terminal_t {
 
 #define TERMINAL_MAX_COUNT    3
 
+#define NULL_TERMINAL_ID    0xECE666  // used for ter_id indicating no opened terminal
+
 void terminal_init();
 terminal_t* terminal_allocate();
 void terminal_deallocate(terminal_t* terminal);
+
+terminal_t* running_term();
+void terminal_set_running(terminal_t *term);
+
 
 #endif //TERMINAL_H

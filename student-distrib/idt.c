@@ -10,6 +10,7 @@
 #include "file_system.h"
 #include "task.h"
 #include "task_paging.h"
+#include "vidmem.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.

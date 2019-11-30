@@ -6,13 +6,13 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "i8259.h"
-#include "debug.h"
 #include "tests.h"
 #include "idt.h"
 #include "file_system.h"
 #include "rtc.h"
 #include "terminal.h"
 #include "task.h"
+#include "vidmem.h"
 
 #define RUN_TESTS
 
@@ -172,6 +172,9 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Enable paging */
     enable_paging();
+
+    /* Init video memory related things */
+    vidmem_init();
 
     /* Init the process system */
     task_init();

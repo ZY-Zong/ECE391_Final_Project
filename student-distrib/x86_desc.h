@@ -285,6 +285,13 @@ do {                                    \
     );                                  \
 } while (0)
 
+#define FLUSH_TLB()  asm volatile ("  \
+    movl    %%cr3, %%eax            \n\
+    movl    %%eax, %%cr3"             \
+    : \
+    : \
+    : "cc", "memory", "eax")
+
 #endif /* ASM */
 
 #endif /* _x86_DESC_H */

@@ -7,6 +7,7 @@
 #include "file_system.h"
 #include "task_paging.h"
 #include "task_sched.h"
+#include "vidmem.h"
 
 #define TASK_ENABLE_CHECKPOINT    0
 #if TASK_ENABLE_CHECKPOINT
@@ -284,6 +285,8 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         task->flags |= TASK_IDLE_TASK;
     }
 
+    task->vidmap_enabled = 0;
+
     // Initialize kernel ESP to the bottom of PKM. Must before copying executable_name and args
     task->kesp_base = ((uint32_t) task) + PKM_SIZE_IN_BYTES - 1;
 
@@ -327,12 +330,13 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
                 return -1;
             }
             // Clean up #2 starts: terminal_deallocate(task->terminal)
-            if (terminal_vid_open(task->terminal->terminal_id) != 0) {
+            if (terminal_vidmem_open(task->terminal->terminal_id) != 0) {
                 DEBUG_ERR("system_execute(): fail to allocate video memory new terminal");
                 terminal_deallocate(task->terminal);
                 task_deallocate(task);
                 return -1;
             }
+            // Clean up #3: terminal_vidmem_close(task->terminal->terminal_id)
         } else {  // inherent terminal from its parent or no terminal if it's the init task
             if (task->flags & TASK_INIT_TASK) {
                 task->terminal = NULL;
@@ -343,20 +347,22 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
 
         // Setup paging, run program loader, get new EIP. Require terminal ID.
         // NOTICE: after setting up paging for new program, arg command become useless
-        if ((task->page_id = task_set_up_memory(command, &start_eip, task->terminal->terminal_id)) < 0) {
+        if ((task->page_id = task_paging_allocate_and_set(command, &start_eip)) < 0) {
             if (task->flags & TASK_TERMINAL_OWNER) {
+                terminal_vidmem_close(task->terminal->terminal_id);
                 terminal_deallocate(task->terminal);
             }
             task_deallocate(task);
             return -1;
         }
-        // Clean up #3 starts: task_reset_paging(running_task()->page_id, task->page_id);
+        // Clean up #4 starts: task_reset_paging(running_task()->page_id, task->page_id);
 
         if (new_terminal || wait_for_return) {
             terminal_user_task[task->terminal->terminal_id] = task;  // become the user task of the terminal
             task_set_focus_task(task);
+            terminal_set_running(task->terminal);
         }
-        // Clean up #4 starts: set back focus_task
+        // Clean up #5 starts: set back focus_task and running terminal
     }
 
     // Init RTC control info
@@ -484,7 +490,7 @@ int32_t system_halt(int32_t status) {
     // Deallocate terminal
     if (task->flags & TASK_TERMINAL_OWNER) {
         terminal_user_task[task->terminal->terminal_id] = NULL;
-        terminal_vid_close(task->terminal->terminal_id);  // deallocate terminal video memory
+        terminal_vidmem_close(task->terminal->terminal_id);  // deallocate terminal video memory
         terminal_deallocate(task->terminal);  // deallocate terminal control block
         // FIXME: switch to another terminal
     } else {
@@ -503,7 +509,8 @@ int32_t system_halt(int32_t status) {
 
     /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
 
-    task_reset_paging(task->page_id, parent->page_id);  // switch page to parent
+    task_paging_deallocate(task->page_id);
+    task_paging_set(parent->page_id);  // switch page to parent
 
     tss.esp0 = parent->kesp_base;  // set tss to parent's kernel stack to make sure system calls use correct stack
 
@@ -595,29 +602,57 @@ void task_change_focus(int32_t terminal_id) {
  */
 static void task_set_focus_task(task_t *task) {
 
-    if (task->terminal == NULL) {
+    if (task != NULL && task->terminal == NULL) {
         DEBUG_ERR("task_set_focus_task(): task has no terminal");
         return;
     }
 
     uint32_t flags;
+    int old_term_id;
+    int new_term_id;
 
     cli_and_save(flags);
     {
         if (focus_task_ != NULL) {
-            focus_task_->terminal->screen_x = screen_x;
-            focus_task_->terminal->screen_y = screen_y;
-            terminal_active_vid_switch(task->terminal->terminal_id, focus_task_->terminal->terminal_id);
+//            focus_task_->terminal->screen_x = screen_x;
+//            focus_task_->terminal->screen_y = screen_y;
+            old_term_id = focus_task_->terminal->terminal_id;
         } else {
-            terminal_active_vid_switch(task->terminal->terminal_id, NULL_TERMINAL_ID);
+            old_term_id = NULL_TERMINAL_ID;
         }
+
+        if (task != NULL) {
+//            screen_x = task->terminal->screen_x;
+//            screen_y = task->terminal->screen_y;
+            new_term_id = task->terminal->terminal_id;
+        } else {
+            new_term_id = NULL_TERMINAL_ID;
+        }
+
+        terminal_vidmem_switch_active(new_term_id, old_term_id);  // won't change running terminal
 
         focus_task_ = task;
 
-        screen_x = focus_task_->terminal->screen_x;
-        screen_y = focus_task_->terminal->screen_y;
+        // Now active video memory has changed, user vidmap may need to update
+        task_apply_user_vidmap(running_task());
     }
     restore_flags(flags);
+}
+
+void task_apply_user_vidmap(task_t* task) {
+    if (task == NULL) {
+       DEBUG_ERR("task_apply_user_vidmap(): NULL task");
+       return;
+    }
+    if (task->vidmap_enabled) {
+        if (task->terminal == NULL) {
+            DEBUG_ERR("task_apply_user_vidmap(): task has no terminal but vidmap is enabled");
+            return;
+        }
+        task_set_user_vidmap(task->terminal->terminal_id);
+    } else {
+        task_set_user_vidmap(NULL_TERMINAL_ID);
+    }
 }
 
 inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {

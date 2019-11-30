@@ -88,9 +88,10 @@ struct task_t {
     uint32_t flags;  // flags for current task
     task_t* parent;
 
-    uint32_t kesp_base;  // kernel stack base (above the executable name and the args), for TSS
-    uint32_t kesp;  // kernel stack pointer. Not equal to ESP for running_task. Updated at context switch
-    int32_t page_id;  // id for memory management
+    uint32_t kesp_base;      // kernel stack base (above the executable name and the args), for TSS
+    uint32_t kesp;           // kernel stack pointer. Not equal to ESP for running_task. Updated at context switch
+    int32_t page_id;         // id for memory management
+    uint8_t vidmap_enabled;  // the task has map video memory to user space with vidmap() system call
 
     task_list_node_t list_node;
     sched_control_t sched_ctrl;
@@ -126,6 +127,7 @@ task_t* running_task();
 task_t* focus_task();
 
 void task_change_focus(int32_t terminal_id);
+void task_apply_user_vidmap(task_t* task);
 
 /** ============== Interface for Pure Kernel State ============== */
 
