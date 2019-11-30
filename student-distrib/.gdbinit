@@ -37,3 +37,7 @@ end
 define p_buf
 p (uint8_t *) buf
 end
+
+define restore_stack
+set $esp = $ebp
+end

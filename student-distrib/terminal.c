@@ -3,9 +3,10 @@
 //
 #include "terminal.h"
 
+#include "idt.h"
 #include "task.h"
 #include "task_sched.h"
-#include "idt.h"
+#include "task_paging.h"
 
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
 #define KEYBOARD_FLAG_SIZE 128
@@ -105,7 +106,17 @@ asmlinkage void keyboard_interrupt_handler(hw_context_t hw_context) {
         // After read from keyboard, send EOI
         idt_send_eoi(hw_context.irq_exp_num);
 
+        // Set video memory to focus task to allow echo
+        if (focus_task() && focus_task()->terminal) {
+            terminal_vid_set(focus_task()->terminal->terminal_id);
+        }
+
         handle_scan_code(scancode);  // output the char to the console
+
+        // Revert video memory
+        if (running_task()->terminal) {
+            terminal_vid_set(running_task()->terminal->terminal_id);
+        }
     }
     restore_flags(flags);
 }

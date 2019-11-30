@@ -11,6 +11,8 @@
 #include "types.h"
 #include "linkage.h"
 
+#define HALT_USER_PROGRAM_AT_EXCEPTION  0
+
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
 #define IDT_ENTRY_PIT            0x20  // the vector number of PIT
 #define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard

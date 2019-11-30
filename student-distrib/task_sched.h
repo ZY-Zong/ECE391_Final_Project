@@ -15,7 +15,7 @@
  *  
  */
 
-#define _SCHED_ENABLE_RUN_QUEUE_CHECK    1
+#define SCHED_ENABLE_KESP_CHECK    1
 
 #define SCHED_PIT_FREQUENCY    100  // frequency of PIT [Hz]
 #define SCHED_PIT_INTERVAL     (1000 / SCHED_PIT_FREQUENCY)  // time quantum of scheduler [ms]

@@ -27,8 +27,8 @@ struct terminal_t {
 
     int32_t screen_width;
     int32_t screen_height;
-    int32_t screen_x;
-    int32_t screen_y;
+    int32_t screen_x;  // not valid for focus_task. Update when switching focus_task
+    int32_t screen_y;  // not valid for focus_task. Update when switching focus_task
 };
 
 #define TERMINAL_MAX_COUNT    3

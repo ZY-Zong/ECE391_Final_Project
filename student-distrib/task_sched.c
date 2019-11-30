@@ -11,19 +11,24 @@
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
-#if _SCHED_ENABLE_RUN_QUEUE_CHECK
-
-void _sched_check_run_queue() {
-    if (task_count == 0) {
-        DEBUG_ERR("No running task!");
-    }
-    if (running_task()->list_node.prev != &run_queue || run_queue.next != &running_task()->list_node) {
-        DEBUG_ERR("Sched run queue is inconsistent!");
-    }
+#if SCHED_ENABLE_KESP_CHECK
+static void _sched_kesp_panic() {
+    DEBUG_ERR("Scheduler: kernel stack panic!");
 }
 
+static void _sched_check_kesp() {
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        if ((running_task()->kesp < ((uint32_t) running_task()) + sizeof(task_t) + SIZE_K) ||
+            (running_task()->kesp > ((uint32_t) running_task()) + PKM_SIZE_IN_BYTES)) {
+            _sched_kesp_panic();
+        }
+    }
+    restore_flags(flags);
+}
 #else
-#define _sched_check_run_queue()    do {} while(0)
+#define _sched_check_kesp()    do { } while(0)
 #endif
 
 /**
@@ -47,7 +52,7 @@ void _sched_check_run_queue() {
 1:  popl %%ebp      /* restore EBP, must before following instructions */                                 \n\
     popfl           /* restore flags */"                                                                    \
     : "=m" (kesp_save_to) /* must write to memory, since this macro returns after task get running again */ \
-    : "m" (new_kesp)      /* must read from memory, in case two process are the same */                     \
+    : "r" (new_kesp)      /* must read from memory, in case two process are the same */                     \
     : "cc", "memory"                                                                                        \
 )
 
@@ -137,8 +142,14 @@ void sched_launch_to_current_head() {
         terminal_vid_set(to_run->terminal->terminal_id);
     }
 
+    // Remap user program if task has page
+    if (to_run->page_id != -1) {
+        task_running_paging_set(to_run->page_id);
+    }
+
     // Set tss to to_run's kernel stack to make sure system calls use correct stack
-    tss.esp0 = to_run->kesp;
+    // Whenever switch from user to kernel stack, kernel stack should be clean, so tss.esp0 should always be kesp_base
+    tss.esp0 = to_run->kesp_base;
 
     sched_launch_to(running_task()->kesp, to_run->kesp);
     // Another task running... Until this task get running again!
@@ -177,6 +188,8 @@ asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
     cli_and_save(flags);
     {
         task_t *running = running_task();
+
+        _sched_check_kesp();
 
         if (running->flags & TASK_IDLE_TASK) {
 

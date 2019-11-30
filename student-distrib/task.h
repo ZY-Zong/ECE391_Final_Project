@@ -77,6 +77,7 @@ typedef struct sched_control_t sched_control_t;
 #define TASK_TERMINAL_OWNER      32U // own terminal
 #define TASK_IDLE_TASK           64U // idle task (must be kernel task, only run when no other runnable task)
 
+typedef struct task_t task_t;
 struct task_t {
     uint8_t valid;  // 1 if current task_t is in use, 0 if not
 
@@ -85,9 +86,10 @@ struct task_t {
     uint8_t* args;
 
     uint32_t flags;  // flags for current task
-    struct task_t* parent;
+    task_t* parent;
 
-    uint32_t kesp;  // kernel stack ESP
+    uint32_t kesp_base;  // kernel stack base (above the executable name and the args), for TSS
+    uint32_t kesp;  // kernel stack pointer. Not equal to ESP for running_task. Updated at context switch
     int32_t page_id;  // id for memory management
 
     task_list_node_t list_node;
@@ -95,13 +97,10 @@ struct task_t {
 
     rtc_control_t rtc;
 
-    uint8_t is_terminal_owner;
     terminal_t* terminal;
-
 
     file_array_t file_array;
 };
-typedef struct task_t task_t;
 
 
 /** ============== Process Kernel Memory (PKM) ============== */

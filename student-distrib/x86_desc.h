@@ -182,12 +182,12 @@ typedef struct __attribute__((packed)) PTE_t {
     uint32_t    base_address    : 20 ; // 20 high bits of the address of 4kB page
 } PTE_t;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __attribute__((aligned (SIZE_4K))) {
     uint32_t entry[KERNEL_PAGE_DIRECTORY_SIZE];
 } kernel_page_directory_t;
 extern kernel_page_directory_t kernel_page_directory;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __attribute__((aligned (SIZE_4K))) {
     uint32_t entry[KERNEL_PAGE_TABLE_SIZE];
 } page_table_t;
 extern page_table_t kernel_page_table_0;

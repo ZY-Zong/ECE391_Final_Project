@@ -99,16 +99,17 @@ void idt_send_eoi(uint32_t irq_num) {
  */
 void unified_exception_handler(hw_context_t hw_context) {
 
-    if (process_cnt == 0) {
+    if (task_count == 0) {
         clear();
         reset_cursor();
         printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", hw_context.irq_exp_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
         DEBUG_ERR("EXCEPTION %u OCCUR!\n", hw_context.irq_exp_num);
+#if HALT_USER_PROGRAM_AT_EXCEPTION
         system_halt(256);
+#endif
     }
-
 
     volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
     while (inf_loop) {}   // put kernel into infinite loop

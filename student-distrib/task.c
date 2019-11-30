@@ -285,7 +285,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     }
 
     // Initialize kernel ESP to the bottom of PKM. Must before copying executable_name and args
-    task->kesp = ((uint32_t) task) + PKM_SIZE_IN_BYTES - 1;
+    task->kesp_base = ((uint32_t) task) + PKM_SIZE_IN_BYTES - 1;
 
     // Parse executable name and arguments
     if (execute_parse_command(command, &task->args) != 0) {
@@ -296,16 +296,18 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     task->executable_name = command;
 
     // Store the executable name and argument string to the kernel stack of new program, or they will be inaccessible
-    // Must be after setting up kesp
+    // Must be after setting up kesp_base
     temp = strlen((int8_t *) task->executable_name);
-    task->kesp -= temp;
-    task->executable_name = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->executable_name);
+    task->kesp_base -= temp;
+    task->executable_name = (uint8_t *) strcpy((int8_t *) task->kesp_base, (int8_t *) task->executable_name);
 
     if (task->args != NULL) {
         temp = strlen((int8_t *) task->args);
-        task->kesp -= temp;
-        task->args = (uint8_t *) strcpy((int8_t *) task->kesp, (int8_t *) task->args);
+        task->kesp_base -= temp;
+        task->args = (uint8_t *) strcpy((int8_t *) task->kesp_base, (int8_t *) task->args);
     }
+
+    task->kesp = task->kesp_base;  // empty kernel stack
 
     // Setup some initial value of task list, in order for sched_insert_to_head_unsafe() to work correctly.
     task->list_node.prev = task->list_node.next = &(task->list_node);
@@ -391,7 +393,8 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     /** --------------- Phase 4. Very ready to go. Do assembly level switch --------------- */
 
     // Set tss to new task's kernel stack to make sure system calls use correct stack
-    tss.esp0 = task->kesp;
+    // Whenever switch from user to kernel stack, kernel stack should be clean, so tss.esp0 should always be kesp_base
+    tss.esp0 = task->kesp_base;
 
     // Jump to user program entry
     if (task->flags & TASK_KERNEL_TASK) {
@@ -502,7 +505,7 @@ int32_t system_halt(int32_t status) {
 
     task_reset_paging(task->page_id, parent->page_id);  // switch page to parent
 
-    tss.esp0 = parent->kesp;  // set tss to parent's kernel stack to make sure system calls use correct stack
+    tss.esp0 = parent->kesp_base;  // set tss to parent's kernel stack to make sure system calls use correct stack
 
     halt_backtrack(parent->kesp, status);
 

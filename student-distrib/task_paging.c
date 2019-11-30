@@ -36,7 +36,7 @@ static int page_id_active;
 // Video memory 
 static int terminal_active;
 static int terminal_opened[TERMINAL_MAX_COUNT];
-static page_table_t user_video_memory_pt[TERMINAL_MAX_COUNT];
+static page_table_t user_video_memory_pt[TERMINAL_MAX_COUNT] ;
 static page_table_t kernel_video_memory_pt[TERMINAL_MAX_COUNT];
 static int user_video_mapped[TERMINAL_MAX_COUNT];
 
@@ -77,9 +77,9 @@ int terminal_copy_from_physical(const int dest_id);
 
 int terminal_copy_to_physical(const int src_id);
 
-int task_clear_PDE_4MB(PDE_4MB_t *entry);
+int clear_PDE_4MB(PDE_4MB_t *entry);
 
-int task_clear_PDE_4kB(PDE_4kB_t *entry);
+int clear_PDE_4kB(PDE_4kB_t *entry);
 
 int clear_PTE(PTE_t *entry);
 
@@ -635,8 +635,8 @@ int task_set_user_video_map(const int id) {
     // Get the PDE for 132~136MB
     PDE_4kB_t *user_vram_pde = (PDE_4kB_t *) (&kernel_page_directory.entry[TASK_VIR_MEM_ENTRY + 1]);
 
-    // Clear to PDE 
-    if (-1 == task_clear_PDE_4kB(user_vram_pde)) return -1;
+    // Clear PDE
+    if (-1 == clear_PDE_4kB(user_vram_pde)) return -1;
 
     // Finish if closing the page
     if (id == -2) return 0;
@@ -718,9 +718,9 @@ int terminal_copy_to_physical(const int src_id) {
  * @return      0 for success, -1 for fail
  * @effect      *entry will be changed 
  */
-int task_clear_PDE_4MB(PDE_4MB_t *entry) {
+int clear_PDE_4MB(PDE_4MB_t *entry) {
     if (entry == NULL) {
-        DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
+        DEBUG_ERR("clear_PDE_4MB(): bad input!");
         return -1;
     }
 
@@ -745,9 +745,9 @@ int task_clear_PDE_4MB(PDE_4MB_t *entry) {
  * @return      0 for success, -1 for fail
  * @effect      *entry will be changed 
  */
-int task_clear_PDE_4kB(PDE_4kB_t *entry) {
+int clear_PDE_4kB(PDE_4kB_t *entry) {
     if (entry == NULL) {
-        DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
+        DEBUG_ERR("clear_PDE_4kB(): bad input!");
         return -1;
     }
 
@@ -771,7 +771,7 @@ int task_clear_PDE_4kB(PDE_4kB_t *entry) {
  */
 int clear_PTE(PTE_t *entry) {
     if (entry == NULL) {
-        DEBUG_ERR("task_clear_PDE_4MB(): bad input!");
+        DEBUG_ERR("clear_PTE(): bad input!");
         return -1;
     }
 
