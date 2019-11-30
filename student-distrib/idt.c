@@ -7,6 +7,7 @@
 #include "linkage.h"
 #include "file_system.h"
 #include "task.h"
+#include "task_paging.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.
@@ -86,15 +87,15 @@ void idt_init() {
  * This function is used to print out the given interrupt number in the interrupt descriptor table.
  * @param vec_num    vector number of the interrupt/exception
  */
-void print_exception(uint32_t vec_num) {
+void unified_exception_handler(hw_context_t hw_context) {
 
     if (process_cnt == 0) {
         clear();
         reset_cursor();
-        printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", vec_num);
+        printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", hw_context.irq_exp_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
-        DEBUG_ERR("EXCEPTION %u OCCUR!\n", vec_num);
+        DEBUG_ERR("EXCEPTION %u OCCUR!\n", hw_context.irq_exp_num);
         system_halt(256);
     }
 
@@ -219,4 +220,8 @@ asmlinkage int32_t lowlevel_sys_close(int32_t fd) {
  */
 asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
     return system_getargs(buf, nbytes);
+}
+
+asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
+    return task_get_vimap(screen_start);
 }

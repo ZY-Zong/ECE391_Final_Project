@@ -8,10 +8,33 @@
 
 #ifndef ASM
 
+#include "types.h"
+
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
 #define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard
 #define IDT_ENTRY_RTC            0x28  // the vector number of RTC
 #define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
+
+typedef struct hw_context_t hw_context_t;
+struct hw_context_t {
+    int32_t ebx;
+    int32_t ecx;
+    int32_t edx;
+    int32_t esi;
+    int32_t edi;
+    int32_t ebp;
+    int32_t eax;
+    uint32_t ds;
+    uint32_t es;
+    uint32_t fs;
+    uint32_t irq_exp_num;  // IRQ # or exception #
+    uint32_t err_code;  // error code for exception or dummy
+    uint32_t eip;  // return address
+    uint32_t cs;
+    uint32_t eflags;
+    uint32_t esp;
+    uint32_t ss;
+};
 
 // Defined in idt_asm.S
 extern void exception_entry_0();

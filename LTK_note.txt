@@ -174,3 +174,12 @@
         running_task()->signals
         what to write in C and what to write in asm?
 
+2019.11.29
+    countinue with signal 
+    deal with signal_check
+    next: keep check on how the stack looks like and finish sigreturn
+
+2019.11.30
+    countinue 
+    some exception have no error code, may need to fix 
+    the stack is very complicated, need to carefully review whether the offset is correct 
