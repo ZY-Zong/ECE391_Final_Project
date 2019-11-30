@@ -181,5 +181,7 @@
 
 2019.11.30
     countinue 
-    some exception have no error code, may need to fix 
+    some exception have no error code, may need to fix. OK
     the stack is very complicated, need to carefully review whether the offset is correct 
+    return address to the function directly: won't set up stack frame?
+        desire: should set up 

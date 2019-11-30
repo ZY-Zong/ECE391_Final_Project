@@ -42,23 +42,24 @@ signal_set_up_stack_helper:
     # store this address for return address of handler 
     movl    %esp, %edx 
     # hw_context 
-    pushl   0(%ebx)     # ebx
-    pushl   4(%ebx)     # ecx
-    pushl   8(%ebx)     # edx 
-    pushl   12(%ebx)    # esi
-    pushl   16(%ebx)    # edi 
-    pushl   20(%ebx)    # ebp 
-    pushl   24(%ebx)    # eax 
-    pushl   28(%ebx)    # ds 
-    pushl   32(%ebx)    # es 
-    pushl   36(%ebx)    # fs
-    pushl   40(%ebx)    # irq_exp_num
-    pushl   44(%ebx)    # err_code / dummy 
-    pushl   48(%ebx)    # eip 
-    pushl   52(%ebx)    # cs 
-    pushl   56(%ebx)    # eflags 
-    pushl   60(%ebx)    # esp
     pushl   64(%ebx)    # ss
+    pushl   60(%ebx)    # esp
+    pushl   56(%ebx)    # eflags 
+    pushl   52(%ebx)    # cs 
+    pushl   48(%ebx)    # eip 
+    pushl   44(%ebx)    # err_code / dummy 
+    pushl   40(%ebx)    # irq_exp_num
+    pushl   36(%ebx)    # fs
+    pushl   32(%ebx)    # es 
+    pushl   28(%ebx)    # ds 
+    pushl   24(%ebx)    # eax 
+    pushl   20(%ebx)    # ebp 
+    pushl   16(%ebx)    # edi 
+    pushl   12(%ebx)    # esi
+    pushl   8(%ebx)     # edx 
+    pushl   4(%ebx)     # ecx
+    pushl   0(%ebx)     # ebx
+     
     # parameters for signal handler: signal number 
     pushl   %ecx 
     # the return address of signal handler: the assemble linkage that call sigreturn 
@@ -66,7 +67,7 @@ signal_set_up_stack_helper:
 
     # Update the register value in kernel hw_context 
     movl    %esp, 60(%ebx)
-    movl    %ebp, 20(%ebx)
+    movl    %ebp, 20(%ebx)      # actually the same 
     # change eip to signal handler 
     movl    $signal_handle, %eax 
     movl    %eax, 48(%ebx)
@@ -131,8 +132,8 @@ system_sigreturn:
     popl    %ecx   
     popl    %eax 
     
-    # return value 
-    movl    $0, %eax 
+    # return value: the return of previous system call/interrupt/exception
+    movl    24(%edi), %eax 
 
     # Restore callee save registers 
     popl    %edi 
