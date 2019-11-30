@@ -196,7 +196,7 @@ int terminal_vidmem_switch_active(const int new_active_id, const int pre_active_
 
 /**
  * Set current paging pointing VRAM to buffer for running terminal
- * @param term_id    the terminal to be set
+ * @param term_id   The terminal to be set
  * @return          0 for success, -1 for fail
  * @effect          PDE will be changed
  */
@@ -245,7 +245,7 @@ int system_vidmap(uint8_t **screen_start) {
     }
 
     // Check whether the current task ter_id correct
-    if (running_task()->terminal == NULL) {
+    if (running_task()->terminal->terminal_id == NULL_TERMINAL_ID) {
         DEBUG_ERR("system_vidmap(): current task has no terminal");
         return -1;
     }

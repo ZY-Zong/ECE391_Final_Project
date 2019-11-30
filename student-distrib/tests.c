@@ -488,6 +488,7 @@ long execute_err_test() {
     int32_t ret;
 
     printf("Try executing non-exist file...");
+    // FIXME: place execute() in a lock?
     if (-1 != (ret = system_execute((uint8_t *) "non_exist", 0, 0, NULL))) {
         printf("error return value %d for non-exist file\n", ret);
         result = FAIL;

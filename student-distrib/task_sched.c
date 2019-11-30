@@ -127,7 +127,7 @@ void sched_launch_to_current_head() {
     }
 
     // Get next task to run
-    to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
+    to_run = task_from_node(run_queue.next);
 
     if (to_run->flags & TASK_IDLE_TASK) {  // the head is idle task
         if (to_run->list_node.next != &run_queue) {  // there are still other task to run
@@ -139,14 +139,16 @@ void sched_launch_to_current_head() {
     // If they are the same, do nothing
     if (running_task() == to_run) return;
 
+    // Switch terminal
     terminal_set_running(to_run->terminal);
 
     // Remap user program if task has page
     if (to_run->page_id != -1) {
         task_paging_set(to_run->page_id);
-    }
+    }  // if to_run doesn't not have page, we don't close paging either for speeding reason
 
-    ;
+    // Restore user vidmap
+    // FIXME: even to_run is a kernel task, we still need to call this function, or EXCEPTION 14. Not sure why yet...
     task_apply_user_vidmap(to_run);
 
     // Set tss to to_run's kernel stack to make sure system calls use correct stack
@@ -176,7 +178,7 @@ void sched_move_running_to_last() {
 /**
  * Interrupt handler for PIT
  * @usage Used in idt_asm.S
- * @note Always use running_task() instead of first element in run queue, to allow lock-free
+ * @note Always use running_task() instead of first element in run queue, since they may not be the same
  */
 asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
 

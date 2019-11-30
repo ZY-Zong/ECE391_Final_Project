@@ -155,7 +155,13 @@ asmlinkage long sys_not_implemented() {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
-    return system_execute(command, 1, 0, NULL);
+    int32_t ret;
+    uint32_t flags;
+    cli_and_save(flags); {
+        ret = system_execute(command, 1, 0, NULL);
+    }
+    restore_flags(flags);
+    return ret;
 }
 
 /**
@@ -166,7 +172,14 @@ asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_halt(int32_t status) {
-    return system_halt(status);
+    int32_t ret;
+    uint32_t flags;
+    cli_and_save(flags); {
+        ret = system_halt(status);
+        // If the halt doesn't return, it won't cause a problem
+    }
+    restore_flags(flags);
+    return ret;
 }
 
 /**

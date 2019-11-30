@@ -19,7 +19,7 @@ int32_t system_terminal_close(int32_t fd);
 typedef struct terminal_t terminal_t;
 struct terminal_t {
     uint8_t valid;
-    uint8_t terminal_id;  // equal to slot index
+    int terminal_id;  // equal to slot index
 
     char key_buf[KEYBOARD_BUF_SIZE];
     uint8_t key_buf_cnt;
@@ -41,6 +41,21 @@ void terminal_deallocate(terminal_t* terminal);
 
 terminal_t* running_term();
 void terminal_set_running(terminal_t *term);
+extern terminal_t null_terminal;
+
+#define terminal_focus_printf(fmt, ...) do {               \
+    uint32_t _flags;                                       \
+    cli_and_save(_flags);                                  \
+    {                                                      \
+        terminal_t* _run_term = running_term();            \
+        if (focus_task())                                  \
+            terminal_set_running(focus_task()->terminal);  \
+        printf(fmt, ##__VA_ARGS__);                        \
+        terminal_set_running(_run_term);                   \
+    }                                                      \
+    restore_flags(_flags);                                 \
+} while (0)
+
 
 
 #endif //TERMINAL_H

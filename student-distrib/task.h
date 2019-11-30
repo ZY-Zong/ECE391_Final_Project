@@ -29,6 +29,8 @@
  * system_halt() is also extended so that it can accept status greater than 255 (use when halt because of exceptions)
  * The most important low-level context switch functions are execute_launch() and halt_backtrack() in task.c. See
  *  comments there.
+ * It's ok (maybe necessary to use lock in execute() and halt()). Flags for new program are fixed value that enable
+ *  IF.
  *
  * TASK LIST
  * Without scheduling, the implementation of terminal and RTC read() is to run an infinity loop and wait for interrupts
@@ -98,7 +100,7 @@ struct task_t {
 
     rtc_control_t rtc;
 
-    terminal_t* terminal;
+    terminal_t* terminal;  // if no terminal, use &null_terminal
 
     file_array_t file_array;
 };

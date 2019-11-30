@@ -22,7 +22,7 @@ uint32_t task_count = 0;  // count of tasks that has started
 // Wait list of tasks that are waiting for child to halt
 task_list_node_t wait4child_list = TASK_LIST_SENTINEL(wait4child_list);
 
-task_t *terminal_user_task[TERMINAL_MAX_COUNT];
+task_t *terminal_fg_task[TERMINAL_MAX_COUNT];  // terminal foreground task
 task_t *focus_task_ = NULL;
 
 /** ================ Function Declarations =============== */
@@ -34,6 +34,8 @@ static void init_task_main();
 static void idle_task_main();
 
 static void task_set_focus_task(task_t *task);
+
+static int get_another_term_id(int term_id_start);
 
 /**
  * This macro yield CPU from current task (_prev_) to new task (_next_) and return after _next_ terminate
@@ -84,7 +86,9 @@ static void task_set_focus_task(task_t *task);
     pushl $1f       /* return address to label 1, on top of the stack after iret */ \n\
     movl %%esp, %0  /* save current ESP */                                          \n\
     movl %2, %%esp  /* set new ESP */                                               \n\
-    pushl %3        /* new EPI */                                                   \n\
+    pushl %3        /* new EIP */                                                   \n\
+    pushl $0x206    /* flags (new program should not care, but IF = 1) */           \n\
+    popfl                                                                           \n\
     ret             /* enter new kernel task */                                     \n\
 1:  popl %%ebp      /* restore EBP, must before following instructions */           \n\
     movl %%eax, %1  /* return value pass by halt() in EAX */                        \n\
@@ -141,7 +145,7 @@ void task_init() {
 
     // Initialize terminal user list
     for (i = 0; i < TERMINAL_MAX_COUNT; i++) {
-        terminal_user_task[i] = NULL;
+        terminal_fg_task[i] = NULL;
     }
 
     // Initialize paging related things
@@ -158,9 +162,14 @@ void task_init() {
  */
 
 void task_run_initial_task() {
-    system_execute((uint8_t *) "initd", 0, 0, init_task_main);
-    // Should never return
-    DEBUG_ERR("task_run_initial_task(): init thread should never return!");
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        system_execute((uint8_t *) "initd", 0, 0, init_task_main);
+        // Should never return
+        DEBUG_ERR("task_run_initial_task(): init thread should never return!");
+    }
+    restore_flags(flags);
 }
 
 /**
@@ -231,9 +240,14 @@ static int32_t execute_parse_command(uint8_t *command, uint8_t **args) {
  *                           If set to a function, a kernel thread will be created (no paging, no terminal, should never
  *                             return, but can halt) and command will only be used as strings in PCB
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
- * @note New program given in command will run immediately, and this function will return after its terminate
+ * @note New program given in command will run immediately
+ * @note Put this function into a lock
  */
 int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_terminal, void (*kernel_task_eip)()) {
+
+    /**
+     * Note: be careful of use of running_task() since it's invalid for init task
+     */
 
     task_t *task;
     uint32_t start_eip;
@@ -251,7 +265,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     // Setup flags and parent. Will be used in the following code.
     task->flags = 0;
 
-    if (task_count == 1) {  // this is the initial task
+    if (task_count == 1) {  // init task
         task->flags |= TASK_INIT_TASK;
         task->parent = NULL;
         if (wait_for_return == 1) {
@@ -260,10 +274,18 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
             return -1;
         }
     } else {
-        task->parent = running_task();
+        if (wait_for_return == 1) {
+            task->parent = running_task();
+        } else {
+            task->parent = NULL;  // do not wake up running_task() when halt
+        }
+        if (wait_for_return == 0 && new_terminal == 0 && running_task()->terminal->terminal_id != NULL_TERMINAL_ID) {
+            DEBUG_ERR(
+                    "system_execute(): new task will inherit non-NULL terminal from running task, so parent must wait.");
+            return -1;
+        }
     }
-
-    if (kernel_task_eip != NULL) {
+    if (kernel_task_eip != NULL) {  // kernel task
         if (wait_for_return == 1) {
             DEBUG_ERR("system_execute(): kernel task should not wait for return");
             task_deallocate(task);
@@ -318,7 +340,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     /** --------------- Phase 2. Load components and set up memory --------------- */
 
     if (task->flags & TASK_KERNEL_TASK) {
-        task->terminal = NULL;  // kernel task must not have terminal, which has been checked above
+        task->terminal = &null_terminal;  // kernel task must not have terminal, which has been checked above
         task->page_id = -1;  // kernel task has no user paging
         start_eip = (uint32_t) kernel_task_eip;  // kernel task starts at given address
     } else {
@@ -337,11 +359,11 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
                 return -1;
             }
             // Clean up #3: terminal_vidmem_close(task->terminal->terminal_id)
-        } else {  // inherent terminal from its parent or no terminal if it's the init task
+        } else {  // inherit terminal from its parent or no terminal if it's the init task
             if (task->flags & TASK_INIT_TASK) {
-                task->terminal = NULL;
+                task->terminal = &null_terminal;
             } else {
-                task->terminal = running_task()->terminal;  // inherent terminal from caller
+                task->terminal = running_task()->terminal;  // inherit terminal from caller
             }
         }
 
@@ -357,11 +379,22 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         }
         // Clean up #4 starts: task_reset_paging(running_task()->page_id, task->page_id);
 
-        if (new_terminal || wait_for_return) {
-            terminal_user_task[task->terminal->terminal_id] = task;  // become the user task of the terminal
+        if (task->terminal->terminal_id != NULL_TERMINAL_ID) {
+            terminal_fg_task[task->terminal->terminal_id] = task;  // become the user task of the terminal
+            // Always set this new task as focus, even it inherits terminal from its parent that is at background
             task_set_focus_task(task);
-            terminal_set_running(task->terminal);
         }
+        terminal_set_running(task->terminal);  // always, because task is about to run
+
+        if (new_terminal) {
+            // Clean new terminal
+            clear();
+            reset_cursor();
+
+            // Print message on new terminal
+            printf("<Terminal %d>\n", task->terminal->terminal_id);  // apply to new terminal
+        }
+
         // Clean up #5 starts: set back focus_task and running terminal
     }
 
@@ -380,21 +413,18 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         sched_refill_time(task);
     }
 
-    cli_and_save(flags);
-    {
-        sched_insert_to_head_unsafe(task);
-        // Don't use launch() function of sched, perform context switch manually as follows
 
-        // Put current task into list for parents that wait for child to return
-        if (wait_for_return == 1) {
-            // Safe to use running_task() since init task should not wait for return, which has been checked above
-            running_task()->flags |= TASK_WAITING_CHILD;
-            // Already in lock
-            sched_move_running_after_node_unsafe(&wait4child_list);
+    sched_insert_to_head_unsafe(task);
+    // Don't use launch() function of sched, perform context switch manually as follows
 
-        }
+    // Put current task into list for parents that wait for child to return
+    if (wait_for_return == 1) {
+        // Safe to use running_task() since init task should not wait for return, which has been checked above
+        running_task()->flags |= TASK_WAITING_CHILD;
+        // Already in lock
+        sched_move_running_after_node_unsafe(&wait4child_list);
+
     }
-    restore_flags(flags);
 
     /** --------------- Phase 4. Very ready to go. Do assembly level switch --------------- */
 
@@ -422,10 +452,13 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     /** --------------- Phase 5. This task get reactivated --------------- */
 
     // Sanity check. TASK_WAITING_CHILD should be cleared when this thread is re-activated
+    // Safe to use running_task() since init task should never reach here. It should get stuck at halt()
     if (running_task()->flags & TASK_WAITING_CHILD) {
         DEBUG_ERR("task of %s is still waiting for exit of child and should not be waken up!",
                   running_task()->executable_name);
     }
+
+    // Running task is already set by whatever active this task
 
 #if TASK_ENABLE_CHECKPOINT
     checkpoint_task_paging_consistent();  // check paging is recovered to current task
@@ -437,14 +470,16 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
 /**
  * Actual implementation of halt() system call
  * @param status    Exit code of current task (size are enlarged to support 256 return from exception)
+ * @note Wrap this function with a lock (although it will not return)
  * @return This function should never return
  */
 int32_t system_halt(int32_t status) {
 
+    // This whole function is wrapped in a lock
+
     task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
     task_t *task = running_task();  // the task to halt
     task_t *parent = task->parent;
-    uint32_t flags;
 
     if (task_count == 0) {   // pure kernel state
         DEBUG_ERR("Can't halt pure kernel state!");
@@ -458,21 +493,16 @@ int32_t system_halt(int32_t status) {
 
     /** --------------- Phase 1. Remove current task from scheduler --------------- */
 
-    // Remove task from run queue
-    cli_and_save(flags);
-    {
-        sched_move_running_after_node_unsafe(&temp_list);
 
-        if (parent) {
-            // Re-activate parent
-            parent->flags &= ~TASK_WAITING_CHILD;
-            sched_refill_time(parent);
-            // Already in lock
-            sched_insert_to_head_unsafe(parent);
+    sched_move_running_after_node_unsafe(&temp_list);
 
-        }
+    if (parent) {
+        // Re-activate parent
+        parent->flags &= ~TASK_WAITING_CHILD;
+        sched_refill_time(parent);
+        // Already in lock
+        sched_insert_to_head_unsafe(parent);
     }
-    restore_flags(flags);
 
     /** --------------- Phase 2. Tear down kernel data structure --------------- */
 
@@ -488,17 +518,28 @@ int32_t system_halt(int32_t status) {
 #endif
 
     // Deallocate terminal
+    int term_id = task->terminal->terminal_id;
     if (task->flags & TASK_TERMINAL_OWNER) {
-        terminal_user_task[task->terminal->terminal_id] = NULL;
-        terminal_vidmem_close(task->terminal->terminal_id);  // deallocate terminal video memory
-        terminal_deallocate(task->terminal);  // deallocate terminal control block
-        // FIXME: switch to another terminal
-    } else {
-        if (parent->terminal->terminal_id != task->terminal->terminal_id) {
-            DEBUG_ERR("system_halt(): task uses terminal %d but not own it, but its parent uses terminal %d",
-                      task->terminal->terminal_id, parent->terminal->terminal_id);
+        terminal_fg_task[term_id] = NULL;
+        if (focus_task_->terminal->terminal_id == term_id) {
+            int new_term_id = get_another_term_id(term_id);
+            if (new_term_id == NULL_TERMINAL_ID) {
+                task_set_focus_task(NULL);
+            } else if (new_term_id != -1) {
+                task_set_focus_task(terminal_fg_task[new_term_id]);
+            } else {
+                task_set_focus_task(NULL);
+                DEBUG_ERR("system_halt(): error when finding another another available terminal");
+            }
         }
-        terminal_user_task[parent->terminal->terminal_id] = parent;
+        terminal_vidmem_close(term_id);  // deallocate terminal video memory
+        terminal_deallocate(task->terminal);  // deallocate terminal control block
+    } else {
+        if (parent->terminal->terminal_id != term_id) {
+            DEBUG_ERR("system_halt(): task uses terminal %d but not own it, but its parent uses terminal %d",
+                      term_id, parent->terminal->terminal_id);
+        }
+        terminal_fg_task[parent->terminal->terminal_id] = parent;
         if (focus_task_->terminal->terminal_id == parent->terminal->terminal_id) {
             task_set_focus_task(parent);
         }
@@ -509,14 +550,29 @@ int32_t system_halt(int32_t status) {
 
     /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
 
-    task_paging_deallocate(task->page_id);
-    task_paging_set(parent->page_id);  // switch page to parent
+    if (parent){
 
-    tss.esp0 = parent->kesp_base;  // set tss to parent's kernel stack to make sure system calls use correct stack
+        task_paging_deallocate(task->page_id);
+        if (parent->page_id != -1) {
+            task_paging_set(parent->page_id);  // switch page to parent
+        }
 
-    halt_backtrack(parent->kesp, status);
+        // Always set this new task as focus, even it inherits terminal from its parent that is at background
+        terminal_set_running(parent->terminal);
 
-    // Goodbye world...
+        tss.esp0 = parent->kesp_base;  // set tss to parent's kernel stack to make sure system calls use correct stack
+
+        // It's OK to leave the lock there. After returning to parent, parent's flags will be recover
+        halt_backtrack(parent->kesp, status);
+
+        // Goodbye world...
+
+    } else {  // sadly, its parent don't want this thread to return to it, so we yield to whoever want to run
+
+        sched_launch_to_current_head();
+
+        // Goodbye world...
+    }
 
     DEBUG_ERR("halt(): should never return");
 
@@ -544,18 +600,26 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
  *       to other task
  */
 static void init_task_main() {
+
     int32_t ret;
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        // It's OK to lock the whole function. New program will have flags with IF = 1.
+        system_execute((uint8_t *) "idle", -1, 0, idle_task_main);
 
-    system_execute((uint8_t *) "idle", -1, 0, idle_task_main);
+        system_execute((uint8_t *) "shell", 0, 1, NULL);
+        system_execute((uint8_t *) "shell", 0, 1, NULL);
+        do {
+            ret = system_execute((uint8_t *) "shell", 1, 1, NULL);
+            terminal_focus_printf("<Last executed shell halted with status %d. Restarting...>\n", ret);
+        } while (ret == 0);
 
-    system_execute((uint8_t *) "shell", 0, 1, NULL);
-    system_execute((uint8_t *) "shell", 0, 1, NULL);
-    do {
-        ret = system_execute((uint8_t *) "shell", 1, 1, NULL);
-        printf("Last shell has halted with status %d\n", ret);
-    } while (ret != 0);
 
-    system_halt(0);
+        system_halt(-1);
+        // If the halt doesn't return, it won't cause a problem
+    }
+    restore_flags(flags);
 }
 
 /**
@@ -566,7 +630,14 @@ static void init_task_main() {
  */
 static void idle_task_main() {
     while (1) {}
-    system_halt(-1);
+
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        system_halt(-1);
+        // If the halt doesn't return, it won't cause a problem
+    }
+    restore_flags(flags);
 }
 
 task_t *focus_task() {
@@ -588,22 +659,24 @@ void task_change_focus(int32_t terminal_id) {
         return;
     }
 
-    if (terminal_user_task[terminal_id] == NULL) {
-        DEBUG_ERR("task_change_focus(): no task owns terminal %d", terminal_id);
+    if (terminal_fg_task[terminal_id] == NULL) {
+        terminal_focus_printf("<No terminal %d>\n", terminal_id);
         return;
     }
 
-    task_set_focus_task(terminal_user_task[terminal_id]);
+    task_set_focus_task(terminal_fg_task[terminal_id]);
+
+//    terminal_focus_printf("<Now in terminal %d>\n", terminal_id);
 }
 
 /**
  * Change focus task and switch video memory
- * @param task    New focus task
+ * @param task    New focus task, can be NULL
  */
 static void task_set_focus_task(task_t *task) {
 
     if (task != NULL && task->terminal == NULL) {
-        DEBUG_ERR("task_set_focus_task(): task has no terminal");
+        DEBUG_ERR("task_set_focus_task(): task is not NULL but its terminal is NULL, which should never happen");
         return;
     }
 
@@ -614,16 +687,12 @@ static void task_set_focus_task(task_t *task) {
     cli_and_save(flags);
     {
         if (focus_task_ != NULL) {
-//            focus_task_->terminal->screen_x = screen_x;
-//            focus_task_->terminal->screen_y = screen_y;
             old_term_id = focus_task_->terminal->terminal_id;
         } else {
             old_term_id = NULL_TERMINAL_ID;
         }
 
         if (task != NULL) {
-//            screen_x = task->terminal->screen_x;
-//            screen_y = task->terminal->screen_y;
             new_term_id = task->terminal->terminal_id;
         } else {
             new_term_id = NULL_TERMINAL_ID;
@@ -639,13 +708,13 @@ static void task_set_focus_task(task_t *task) {
     restore_flags(flags);
 }
 
-void task_apply_user_vidmap(task_t* task) {
+void task_apply_user_vidmap(task_t *task) {
     if (task == NULL) {
-       DEBUG_ERR("task_apply_user_vidmap(): NULL task");
-       return;
+        DEBUG_ERR("task_apply_user_vidmap(): NULL task");
+        return;
     }
     if (task->vidmap_enabled) {
-        if (task->terminal == NULL) {
+        if (task->terminal->terminal_id == NULL_TERMINAL_ID) {
             DEBUG_ERR("task_apply_user_vidmap(): task has no terminal but vidmap is enabled");
             return;
         }
@@ -667,4 +736,25 @@ inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, t
 
 inline void move_task_after_node_unsafe(task_t *task, task_list_node_t *node) {
     move_task_to_list_unsafe(task, node, node->next);
+}
+
+/**
+ * Get another term ID that has foreground task
+ * @param term_id_start
+ * @return
+ */
+static int get_another_term_id(int term_id_start) {
+    if (term_id_start < 0 || term_id_start >= TERMINAL_MAX_COUNT) {
+        DEBUG_ERR("get_another_term_id(): invalid term_id_start");
+        return -1;
+    }
+
+    int i;
+    for (i = 1; i < TERMINAL_MAX_COUNT; i++) {
+        if (terminal_fg_task[(term_id_start - i + TERMINAL_MAX_COUNT) % TERMINAL_MAX_COUNT] != NULL) {
+            return (term_id_start - i + TERMINAL_MAX_COUNT) % TERMINAL_MAX_COUNT;
+        }
+    }
+
+    return NULL_TERMINAL_ID;
 }

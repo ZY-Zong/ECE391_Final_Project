@@ -89,11 +89,21 @@ terminal_t terminal_slot[TERMINAL_MAX_COUNT];
 
 void handle_scan_code(uint8_t scan_code);
 
-terminal_t *running_term_ = NULL;
+terminal_t *running_term_ = &null_terminal;
 
 terminal_t *running_term() {
     return running_term_;
 }
+
+terminal_t null_terminal ={
+        .valid = 1,
+        .terminal_id = NULL_TERMINAL_ID,
+        .key_buf_cnt = 0,
+        .screen_width = TEXT_MODE_WIDTH,
+        .screen_height = TEXT_MODE_HEIGHT,
+        .screen_x = 0,
+        .screen_y = 0
+};
 
 /**
  * Keyboard interrupt handler
@@ -148,7 +158,6 @@ void handle_scan_code(uint8_t scan_code) {
         key_flags[scan_code] = 1;
 
         if (focus_task() == NULL) return;
-        if (focus_task()->terminal == NULL) return;
 
         // If Enter and someone is reading from the keyboard
         terminal_t *focus_term = focus_task()->terminal;
@@ -430,16 +439,33 @@ void terminal_deallocate(terminal_t *terminal) {
     terminal->valid = 0;
 }
 
+/**
+ * Map physical video memory to itself (for active term) or virtual video memory (for backgound term), save and restore
+ * screen_x & screen_y, for lib.c to work
+ * @param term    Terminal to be running
+ */
 void terminal_set_running(terminal_t *term) {
+
+    if (running_term_ == NULL) {
+        DEBUG_ERR("terminal_set_running(): current running_term_ is NULL, which should never happen");
+        return;
+    }
+    if (term == NULL) {
+        DEBUG_ERR("terminal_set_running(): NULL argument, which should never happen");
+        return;
+    }
     if (running_term_ == term) return;
-    if (running_term_) {
-        running_term_->screen_x = screen_x;
-        running_term_->screen_y = screen_y;
-    }
-    if (term) {
-        terminal_vidmem_set(term->terminal_id);
-        screen_x = term->screen_x;
-        screen_y = term->screen_y;
-    }
+
+    // Works even for &null_terminal
+    // For &null_terminal, we still maintain screen_x and screen_y for them to print continuously, although
+    // they may overlap with things on current screen.
+
+    running_term_->screen_x = screen_x;
+    running_term_->screen_y = screen_y;
+
+    terminal_vidmem_set(term->terminal_id);
+    screen_x = term->screen_x;
+    screen_y = term->screen_y;
+
     running_term_ = term;
 }
