@@ -209,7 +209,7 @@ void putc(uint8_t c) {
             // We need a new line
             screen_x %= NUM_COLS;
             screen_y++;
-            if (NUM_ROWS == screen_y) {
+            if (NUM_ROWS >= screen_y) {
                 scroll_up();
             }
         }

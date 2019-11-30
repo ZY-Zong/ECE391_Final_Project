@@ -54,7 +54,7 @@ static void task_set_focus_task(task_t *task);
     /* The following stack linkage is for IRET */                                   \n\
     pushl $0x002B   /* user SS - USER_DS */                                         \n\
     pushl %2        /* user ESP */                                                  \n\
-    pushf           /* flags (new program should not care) */                       \n\
+    pushl $0x206    /* flags (new program should not care, but IF = 1) */           \n\
     pushl $0x0023   /* user CS - USER_CS  */                                        \n\
     pushl %3        /* user EIP */                                                  \n\
     iret            /* enter user program */                                        \n\

@@ -128,10 +128,11 @@ void sched_launch_to_current_head() {
 
     // Get next task to run
     to_run = task_from_node(run_queue.next);  // localize this variable, in case that run queue changes
+
     if (to_run->flags & TASK_IDLE_TASK) {  // the head is idle task
         if (to_run->list_node.next != &run_queue) {  // there are still other task to run
             move_task_after_node_unsafe(to_run, run_queue.prev);  // move idle task to last
-            to_run = task_from_node(to_run->list_node.next);
+            to_run = task_from_node(run_queue.next);  // reload
         }  // if no other task is runnable, run idle task
     }
 
@@ -145,6 +146,7 @@ void sched_launch_to_current_head() {
         task_paging_set(to_run->page_id);
     }
 
+    ;
     task_apply_user_vidmap(to_run);
 
     // Set tss to to_run's kernel stack to make sure system calls use correct stack

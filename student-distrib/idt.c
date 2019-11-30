@@ -41,7 +41,7 @@ void idt_init() {
         idt[i].reserved0 = 0;
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
-        idt[i].reserved3 = 0;
+        idt[i].reserved3 = 1;
         idt[i].reserved4 = 0;
 
     }
