@@ -361,26 +361,22 @@ int32_t system_terminal_read(int32_t fd, void *buf, int32_t nbytes) {
  */
 int32_t system_terminal_write(int32_t fd, const void *buf, int32_t nbytes) {
     int i;
-    uint32_t write_flags = 0;
 
     if (fd != 1) {
         DEBUG_ERR("system_terminal_write(): invalid fd %d for terminal write", fd);
         return -1;
     }
 
-    // Critical section to prevent keyboard buffer changes during the copy operation.
-    cli_and_save(write_flags);
-    {
-        for (i = 0; i < nbytes; i++) {
-            // TODO: decide whether to terminate write when seeing a NUL
-//            if (0 == ((uint8_t *) buf)[i]) {
-//                // If current character is '\0', stop
-//                break;
-//            }
-            putc(((uint8_t *) buf)[i]);
-        }
+    // NOTE: don't place lock here, otherwise looping print program such as counter won't be able to switch
+    for (i = 0; i < nbytes; i++) {
+        // TODO: decide whether to terminate write when seeing a NUL
+        /*if (0 == ((uint8_t *) buf)[i]) {
+            // If current character is '\0', stop
+            break;
+        }*/
+        putc(((uint8_t *) buf)[i]);
     }
-    restore_flags(write_flags);
+
     return i;
 }
 
@@ -435,7 +431,7 @@ void terminal_deallocate(terminal_t *terminal) {
 }
 
 void terminal_set_running(terminal_t *term) {
-    if (running_term_  == term) return;
+    if (running_term_ == term) return;
     if (running_term_) {
         running_term_->screen_x = screen_x;
         running_term_->screen_y = screen_y;
@@ -445,5 +441,5 @@ void terminal_set_running(terminal_t *term) {
         screen_x = term->screen_x;
         screen_y = term->screen_y;
     }
-    running_term_  = term;
+    running_term_ = term;
 }

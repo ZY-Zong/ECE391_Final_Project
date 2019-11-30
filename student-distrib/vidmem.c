@@ -16,7 +16,7 @@
 #define     TASK_IMG_START            0x08000000  // 128MB
 #define     TASK_IMG_END              0x08400000  // 132MB
 #define     VIDMAP_PAGE_ENTRY         33          // 132MB / 4MB
-#define     VIDMAP_USER_START_ADDR    (TASK_IMG_START + VIDMEM_PAGE_ENTRY * SIZE_4K)  // 128MB + 0xB8 + 4K
+#define     VIDMAP_USER_START_ADDR    (TASK_IMG_END + VIDMEM_PAGE_ENTRY * SIZE_4K)  // 132MB + 0xB8 * 4K
 
 #define     USER_VRAM_PAGE_ENTRY        0xB9    // real VRAM is at 0xB8
 

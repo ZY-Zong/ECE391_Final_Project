@@ -563,6 +563,4 @@ void launch_tests() {
 //    TEST_OUTPUT("execute_err_test", execute_err_test());
 
     printf("\nTests complete.\n");
-
-    task_run_initial_task();  // run shell
 }
