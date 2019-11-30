@@ -3,8 +3,7 @@
 #define     _SIGNAL_H
 
 #include "types.h"
-
-extern struct hw_context_t; // TODO: ???
+#include "idt.h"
 
 /*
  * Version 1.0 Tingkai Liu 2019.11.30 

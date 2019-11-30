@@ -2,7 +2,6 @@
 #include "signal.h"
 #include "task.h"
 #include "lib.h"
-#include "idt.h"
 #include "sync.h"
 
 process_t* running_task(); // should be deleted 
@@ -24,8 +23,8 @@ process_t* running_task(); // should be deleted
                 popl    %%eax                           \n\
                 "                                       \
                 : /* no outputs */                      \
-                : "m"((signum)), "m"((hw_context_addr))     \
-                : "memory", "eax", "ebx", "ecx", "edx", "esi", "edi")
+                : "m"((signum)), "r"((hw_context_addr))     \
+                : "memory")
 
 
 typedef int32_t (*signal_handler)(void);
