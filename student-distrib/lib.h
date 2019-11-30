@@ -6,6 +6,9 @@
 #define _LIB_H
 
 #include "types.h"
+// External variables that will be changed when switching terminals
+extern int screen_x;
+extern int screen_y;
 
 /** System Calls */
 
@@ -75,9 +78,9 @@ static inline uint32_t inb(port) {
             xorl %0, %0         \n\
             inb  (%w1), %b0     \n\
             "
-            : "=a"(val)
-            : "d"(port)
-            : "memory"
+    : "=a"(val)
+    : "d"(port)
+    : "memory"
     );
     return val;
 }
@@ -91,9 +94,9 @@ static inline uint32_t inw(port) {
             xorl %0, %0         \n\
             inw  (%w1), %w0     \n\
             "
-            : "=a"(val)
-            : "d"(port)
-            : "memory"
+    : "=a"(val)
+    : "d"(port)
+    : "memory"
     );
     return val;
 }
@@ -103,9 +106,9 @@ static inline uint32_t inw(port) {
 static inline uint32_t inl(port) {
     uint32_t val;
     asm volatile ("inl (%w1), %0"
-            : "=a"(val)
-            : "d"(port)
-            : "memory"
+    : "=a"(val)
+    : "d"(port)
+    : "memory"
     );
     return val;
 }

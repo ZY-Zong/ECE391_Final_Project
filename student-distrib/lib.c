@@ -2,15 +2,33 @@
  * vim:ts=4 noexpandtab */
 
 #include "lib.h"
+#include "modex.h"
 
-#define VIDEO       0xB8000
-#define NUM_COLS    80
-#define NUM_ROWS    25
+#define VIDEO       0xA0000
+#define NUM_COLS    40
+#define NUM_ROWS    12
 #define ATTRIB      0x7
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 16
 
-static int screen_x;
-static int screen_y;
+/*
+ * macro used to target a specific video plane or planes when writing
+ * to video memory in mode X; bits 8-11 in the mask_hi_bits enable writes
+ * to planes 0-3, respectively
+ */
+#define SET_WRITE_MASK(mask_hi_bits)                                    \
+do {                                                                    \
+    asm volatile ("                                                     \
+	movw $0x03C4,%%dx    	/* set write mask                    */;\
+	movb $0x02,%b0                                                 ;\
+	outw %w0,(%%dx)                                                 \
+    " : : "a" ((mask_hi_bits)) : "edx", "memory");                      \
+} while (0)
+
+int screen_x;
+int screen_y;
 static char* video_mem = (char *)VIDEO;
+static uint8_t screen_char[NUM_ROWS][NUM_COLS];
 
 /**
  * Reset input point to the upper left corner of the screen
@@ -28,10 +46,22 @@ void reset_cursor() {
  * Return Value: none
  * Function: Clears video memory */
 void clear(void) {
-    int32_t i;
-    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
-        *(uint8_t *)(video_mem + (i << 1)) = ' ';
-        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+//    int32_t i;
+//    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
+//        *(uint8_t *)(video_mem + (i << 1)) = ' ';
+//        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+//    }
+    int i, j;
+    for (i = 0; i < 4; i++) {  // Loop over four planes
+        SET_WRITE_MASK(1 << (8 + i));
+        for (j = 0; j < IMAGE_X_WIDTH * IMAGE_Y_DIM; j++) {
+            *(uint8_t *)(video_mem + j) = OFF_PIXEL;
+        }
+    }
+    for (i = 0; i < NUM_COLS; i++) {
+        for (j = 0; j < NUM_ROWS; j++) {
+            screen_char[j][i] = 0;
+        }
     }
 }
 
@@ -64,92 +94,92 @@ int32_t printf(int8_t *format, ...) {
     while (*buf != '\0') {
         switch (*buf) {
             case '%':
-                {
-                    int32_t alternate = 0;
-                    buf++;
+            {
+                int32_t alternate = 0;
+                buf++;
 
-format_char_switch:
-                    /* Conversion specifiers */
-                    switch (*buf) {
-                        /* Print a literal '%' character */
-                        case '%':
-                            putc('%');
-                            break;
+                format_char_switch:
+                /* Conversion specifiers */
+                switch (*buf) {
+                    /* Print a literal '%' character */
+                    case '%':
+                        putc('%');
+                        break;
 
                         /* Use alternate formatting */
-                        case '#':
-                            alternate = 1;
-                            buf++;
-                            /* Yes, I know gotos are bad.  This is the
-                             * most elegant and general way to do this,
-                             * IMHO. */
-                            goto format_char_switch;
+                    case '#':
+                        alternate = 1;
+                        buf++;
+                        /* Yes, I know gotos are bad.  This is the
+                         * most elegant and general way to do this,
+                         * IMHO. */
+                        goto format_char_switch;
 
                         /* Print a number in hexadecimal form */
-                        case 'x':
-                            {
-                                int8_t conv_buf[64];
-                                if (alternate == 0) {
-                                    itoa(*((uint32_t *)esp), conv_buf, 16);
-                                    puts(conv_buf);
-                                } else {
-                                    int32_t starting_index;
-                                    int32_t i;
-                                    itoa(*((uint32_t *)esp), &conv_buf[8], 16);
-                                    i = starting_index = strlen(&conv_buf[8]);
-                                    while(i < 8) {
-                                        conv_buf[i] = '0';
-                                        i++;
-                                    }
-                                    puts(&conv_buf[starting_index]);
-                                }
-                                esp++;
+                    case 'x':
+                    {
+                        int8_t conv_buf[64];
+                        if (alternate == 0) {
+                            itoa(*((uint32_t *)esp), conv_buf, 16);
+                            puts(conv_buf);
+                        } else {
+                            int32_t starting_index;
+                            int32_t i;
+                            itoa(*((uint32_t *)esp), &conv_buf[8], 16);
+                            i = starting_index = strlen(&conv_buf[8]);
+                            while(i < 8) {
+                                conv_buf[i] = '0';
+                                i++;
                             }
-                            break;
+                            puts(&conv_buf[starting_index]);
+                        }
+                        esp++;
+                    }
+                        break;
 
                         /* Print a number in unsigned int form */
-                        case 'u':
-                            {
-                                int8_t conv_buf[36];
-                                itoa(*((uint32_t *)esp), conv_buf, 10);
-                                puts(conv_buf);
-                                esp++;
-                            }
-                            break;
+                    case 'u':
+                    {
+                        int8_t conv_buf[36];
+                        itoa(*((uint32_t *)esp), conv_buf, 10);
+                        puts(conv_buf);
+                        esp++;
+                    }
+                        break;
 
                         /* Print a number in signed int form */
-                        case 'd':
-                            {
-                                int8_t conv_buf[36];
-                                int32_t value = *((int32_t *)esp);
-                                if(value < 0) {
-                                    conv_buf[0] = '-';
-                                    itoa(-value, &conv_buf[1], 10);
-                                } else {
-                                    itoa(value, conv_buf, 10);
-                                }
-                                puts(conv_buf);
-                                esp++;
-                            }
-                            break;
+                    case 'd':
+                    {
+                        int8_t conv_buf[36];
+                        int32_t value = *((int32_t *)esp);
+                        if(value < 0) {
+                            conv_buf[0] = '-';
+                            itoa(-value, &conv_buf[1], 10);
+                        } else {
+                            itoa(value, conv_buf, 10);
+                        }
+                        puts(conv_buf);
+                        esp++;
+                    }
+                        break;
 
                         /* Print a single character */
-                        case 'c':
-                            putc((uint8_t) *((int32_t *)esp));
-                            esp++;
-                            break;
+                    case 'c':
+                        putc((uint8_t) *((int32_t *)esp));
+                        esp++;
+                        break;
 
                         /* Print a NULL-terminated string */
-                        case 's':
-                            puts(*((int8_t **)esp));
-                            esp++;
-                            break;
+                    case 's':
+                        puts(*((int8_t **)esp));
+                        esp++;
+                        break;
 
-                        default:
-                            break;
-                    }
-
+                    default:
+                        break;
                 }
+
+            }
                 break;
 
             default:
@@ -180,6 +210,12 @@ int32_t puts(int8_t* s) {
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
+        if (screen_x < NUM_COLS - 1) {
+            int i;
+            for (i = screen_x; i < NUM_COLS; i++) {
+                screen_char[screen_y][i] = 0;
+            }
+        }
         screen_x = 0;
         screen_y++;
         if (NUM_ROWS == screen_y) {
@@ -197,13 +233,33 @@ void putc(uint8_t c) {
         } else { // Normal cases for backspace
             screen_x--;
         }
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        int i, j;
+        for (i = 0; i < 4; i++) {  // Loop over four planes
+            SET_WRITE_MASK(1 << (8 + i));
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+            }
+        }
+        screen_char[screen_y][screen_x] = 0;
+
+
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        int i, j;
+        for (i = 0; i < 4; i++) {  // Loop over four planes
+            SET_WRITE_MASK(1 << (8 + i));
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+            }
+        }
+        screen_char[screen_y][screen_x] = c;
         screen_x++;
         if (NUM_COLS == screen_x) {
             // We need a new line
@@ -223,18 +279,50 @@ void putc(uint8_t c) {
  */
 void scroll_up() {
     int x,y;
+    int i, j;
     // Move up the last NUM_ROWS - 1 lines
-    for (y = 0; y < NUM_ROWS - 1; y++) {
+//    for (y = 0; y < NUM_ROWS - 1; y++) {
+//        for (x = 0; x < NUM_COLS; x++) {
+//            for (i = 0; i < 4; i++) {  // Loop over four planes
+//                SET_WRITE_MASK(1 << (8 + i));
+//                for (j = 0; j < FONT_HEIGHT; j++) {
+//                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y + 1) * 16 + j) + x * 2)));
+//                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y + 1) * 16 + j) + x * 2 + 1)));
+//                }
+//            }
+//        }
+//    }
+//    for (i = 0; i < 4; i++) {  // Loop over four planes
+//        SET_WRITE_MASK(1 << (8 + i));
+//        memcpy(video_mem, video_mem + IMAGE_X_WIDTH * FONT_HEIGHT, IMAGE_X_WIDTH * (NUM_ROWS - 1) * FONT_HEIGHT);
+//    }
+    screen_x = 0;
+    screen_y = 0;
+    for (y = 1; y < NUM_ROWS; y++) {
         for (x = 0; x < NUM_COLS; x++) {
-            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = *(uint8_t *)(video_mem + ((NUM_COLS * (y + 1) + x) << 1));
-            *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+            for (i = 0; i < 4; i++) {  // Loop over four planes
+                SET_WRITE_MASK(1 << (8 + i));
+                for (j = 0; j < FONT_HEIGHT; j++) {
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2))) = font_data[screen_char[y][x]][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[screen_char[y][x]][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                }
+            }
+            screen_char[y - 1][x] = screen_char[y][x];
         }
     }
     // Clean up the last line
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
-        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
-        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+//        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
+//        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
+        for (i = 0; i < 4; i++) {  // Loop over four planes
+            SET_WRITE_MASK(1 << (8 + i));
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * FONT_HEIGHT + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+            }
+        }
+
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)
     screen_y = NUM_ROWS - 1;
@@ -344,9 +432,9 @@ void* memset(void* s, int32_t c, uint32_t n) {
             jmp     .memset_bottom  \n\
             .memset_done:           \n\
             "
-            :
-            : "a"(c << 24 | c << 16 | c << 8 | c), "D"(s), "c"(n)
-            : "edx", "memory", "cc"
+    :
+    : "a"(c << 24 | c << 16 | c << 8 | c), "D"(s), "c"(n)
+    : "edx", "memory", "cc"
     );
     return s;
 }
@@ -365,9 +453,9 @@ void* memset_word(void* s, int32_t c, uint32_t n) {
             cld                     \n\
             rep     stosw           \n\
             "
-            :
-            : "a"(c), "D"(s), "c"(n)
-            : "edx", "memory", "cc"
+    :
+    : "a"(c), "D"(s), "c"(n)
+    : "edx", "memory", "cc"
     );
     return s;
 }
@@ -385,9 +473,9 @@ void* memset_dword(void* s, int32_t c, uint32_t n) {
             cld                     \n\
             rep     stosl           \n\
             "
-            :
-            : "a"(c), "D"(s), "c"(n)
-            : "edx", "memory", "cc"
+    :
+    : "a"(c), "D"(s), "c"(n)
+    : "edx", "memory", "cc"
     );
     return s;
 }
@@ -430,9 +518,9 @@ void* memcpy(void* dest, const void* src, uint32_t n) {
             jmp     .memcpy_bottom  \n\
             .memcpy_done:           \n\
             "
-            :
-            : "S"(src), "D"(dest), "c"(n)
-            : "eax", "edx", "memory", "cc"
+    :
+    : "S"(src), "D"(dest), "c"(n)
+    : "eax", "edx", "memory", "cc"
     );
     return dest;
 }
@@ -457,9 +545,9 @@ void* memmove(void* dest, const void* src, uint32_t n) {
             .memmove_go:                        \n\
             rep     movsb                       \n\
             "
-            :
-            : "D"(dest), "S"(src), "c"(n)
-            : "edx", "memory", "cc"
+    :
+    : "D"(dest), "S"(src), "c"(n)
+    : "edx", "memory", "cc"
     );
     return dest;
 }
