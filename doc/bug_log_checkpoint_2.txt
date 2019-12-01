@@ -1,0 +1,45 @@
+--------------------Bug Log for Checkpoint 2--------------------
+RTC:
+    Description: RTC cannot go out of while loop, RTC cannot be set to 2 Hz.
+    Reason: 1. Did nothing in while loop, so flag is always 0. Should update the flag rtc_interrupt_occured
+            in while loop.
+
+            2. The frequency is changed in the rtc interrupt handler, but not the write function, so it will not
+            be set immediately. Should modify the frequency in the system_rtc_write function.
+
+            3. Add rtc_restart_interrupt in rtc_read, because it needs to take another interrupt to
+            make interrupt available 0.5s after system_rtc_read. Or the interrupt may happen at a random
+            time.
+
+    Description: Setting works now. Test with thirty interrupts, and frequencies with 2, 4, 8, 16, 32 Hz.
+                 Tests finish immediately, something must be wrong.
+    Reason: Flag rtc_interrupt_occured should be given to local variable before entering the while loop,
+            or it will never goes inside the loop:
+
+                cli();
+                flag_t = rtc_interrupt_occured;
+                sti();
+                while (!flag_t) {...}
+
+            or use do while:
+
+                do {
+                    // Update flag_t;
+                } while (!flag_t);
+
+
+Exception after system call:
+    Description: After int 0x80, we have exception 11 (segment not present).
+
+    Reason: Did not set present field of system call in the IDT.
+
+
+File system:
+    Bug 1:
+        Description: the initialization of the file system failed.
+        Reason: the initialization of file system requires a module load at boot, which is stored in somewhere in physical memory. However, if paging is turned on before that, that region of memory will be marked as un-present.
+        Way to Solve: init file system before turning on paging.
+        Difficulty to find: Median
+        Difficulty to solve: Very easy
+
+

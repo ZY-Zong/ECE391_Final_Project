@@ -113,3 +113,7 @@ void send_eoi(uint32_t irq_num) {
     }
 }
 
+void lowlevel_send_eoi(hw_context_t hw_context) {
+    send_eoi(hw_context.irq_exp_num);
+}
+

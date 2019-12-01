@@ -105,7 +105,7 @@ int paging_test() {
     }
 
     // Check kernel page directory
-    if ((kernel_page_table_t *) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
+    if ((page_table_t *) (kernel_page_directory.entry[0] & 0xFFFFF000) != &kernel_page_table_0) {
         TEST_ERR("Paging directory entry 0 is not correct");
         result = FAIL;
     }
@@ -488,7 +488,8 @@ long execute_err_test() {
     int32_t ret;
 
     printf("Try executing non-exist file...");
-    if (-1 != (ret = system_execute((uint8_t *) "non_exist"))) {
+    // FIXME: place execute() in a lock?
+    if (-1 != (ret = system_execute((uint8_t *) "non_exist", 0, 0, NULL))) {
         printf("error return value %d for non-exist file\n", ret);
         result = FAIL;
     } else {
@@ -496,7 +497,7 @@ long execute_err_test() {
     }
 
     printf("Try executing non-executable file...");
-    if (-1 != (ret = system_execute((uint8_t *) "frame1.txt"))) {
+    if (-1 != (ret = system_execute((uint8_t *) "frame1.txt", 0, 0, NULL))) {
         printf("error return value %d for non-executable file\n", ret);
         result = FAIL;
     } else {
@@ -531,7 +532,7 @@ void checkpoint_task_paging_consistent() {
     // check 128M - 132M maps to current process correctly
 
     uint32_t user_paging_idx = ((kernel_page_directory.entry[32] & 0xFFC00000) >> 22) - 2;
-    uint32_t pcb_idx = (PKM_STARTING_ADDR - (uint32_t) cur_process()) / PKM_SIZE_IN_BYTES - 1;
+    uint32_t pcb_idx = (PKM_STARTING_ADDR - (uint32_t) running_task()) / PKM_SIZE_IN_BYTES - 1;
 
     if (user_paging_idx == pcb_idx) {
         printf("[PASS] system_execute/halt(): user paging consistent.\n");
@@ -559,10 +560,8 @@ void launch_tests() {
 //    TEST_OUTPUT("terminal_test", terminal_test());
 //    press_enter_to_continue();
 //    TEST_OUTPUT("fs_test", fs_test());
-    TEST_OUTPUT("fs_err_test", fs_err_test());
-    TEST_OUTPUT("execute_err_test", execute_err_test());
+//    TEST_OUTPUT("fs_err_test", fs_err_test());
+//    TEST_OUTPUT("execute_err_test", execute_err_test());
 
     printf("\nTests complete.\n");
-
-    task_run_initial_process();  // run shell
 }

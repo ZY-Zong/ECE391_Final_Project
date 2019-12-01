@@ -1,0 +1,57 @@
+--------------------Bug Log for Checkpoint 1--------------------
+Keyboard:
+    Description: Pressing one keyboard gives different text on the screen.
+                 Text is also printed when release the keyboard.
+                 Also, keyboard whose scan code should be 0 is printed to the screen as a space.
+
+    Reasons: 1. Pressing keyboard gives scan code from 0x00 to 0x80, while releasing keyboard gives different scan code.
+                To avoid print texts when releasing, judge whether the scan code now is in press status:
+                    if (scancode < KEYBOARD_PRESS_KEYS_NUM) {
+                        /* Output the char to the console */
+                        if (scan_code_table[scancode] != 0) {
+                            putc(scan_code_table[scancode]);
+                        }
+                    }
+                This can ignore the keyboard releasing action. Also, Ignore those keyboards like tab,
+                caps lock because they don't need any texts printed to the screen.
+
+             2.The keys table lost 'i'.
+
+
+Paging:
+    Bug1:
+        Description: Cannot access cr0.
+        Reason: Open the paging before the stack frame is set.
+        Solution: Change the order, init the paging after stack frame is set.
+    Bug 2:
+        Description: Init other stuff fail.
+        Reason: Other init need to access 0~4MB, but the paging turn on make them as not present.
+        Solution: Package init paging as a function, and call the function after all the init is done.
+
+
+PIC Initialization:
+    Description: RTC doesn't work even once.
+                 After changing the sequence of enable_irq(RTC_IRQ_NUM) and rtc_init(), RTC still didn't work.
+    Reason: The core problem is that when enabling irq on the slave PIC, we didn't enable IRQ2 on the master PIC.
+    Solution:
+                // Unmask the port on master for slave
+                cur_mask = (inb(MASTER_DATA)) & (~(MASK_ONE_BIT << 2));
+                outb(cur_mask, MASTER_DATA);
+
+
+Image Cannot Boot Up:
+     Description: After booting mp3.img from the GRUB interface, our image immediately returned to the GRUB interface.
+     Possible Reasons:
+     1. At the beginning, we only set the seg_selector and dpl field of idt table entries,
+        did not set reserved and present field of the idt entries.
+
+     2. Changed the entries in the data structure used for lgdt command.
+     from
+          gdt_desc_ptr:
+              .word 63
+              .long _gdt
+     to
+          gdt_desc_ptr:
+              .word gdt_bottom - gdt - 1
+              .long gdt
+     .

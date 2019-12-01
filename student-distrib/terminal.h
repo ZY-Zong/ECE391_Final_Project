@@ -7,21 +7,55 @@
 
 #include "lib.h"
 
+int32_t system_terminal_read(int32_t fd, void* buf, int32_t nbytes);
+int32_t system_terminal_write(int32_t fd, const void* buf, int32_t nbytes);
+int32_t system_terminal_open(const uint8_t* filename);
+int32_t system_terminal_close(int32_t fd);
+
 #define KEYBOARD_IRQ_NUM   1
+#define KEYBOARD_BUF_SIZE  128
 
-int32_t terminal_read(int32_t fd, void* buf, int32_t nbytes);
-int32_t terminal_write(int32_t fd, const void* buf, int32_t nbytes);
-int32_t terminal_open(const uint8_t* filename);
-int32_t terminal_close(int32_t fd);
 
-// Declaration of keyboard related functions
-void keyboard_init();
-void keyboard_interrupt_handler();
-void handle_scan_code(uint8_t scan_code);
+typedef struct terminal_t terminal_t;
+struct terminal_t {
+    uint8_t valid;
+    int terminal_id;  // equal to slot index
 
-#define KEYBOARD_F1_SCANCODE 0x3B
-#define KEYBOARD_F2_SCANCODE 0x3C
-#define KEYBOARD_F3_SCANCODE 0x3D
-#define KEYBOARD_SCANCODE_PRESSED 0x80
+    char key_buf[KEYBOARD_BUF_SIZE];
+    uint8_t key_buf_cnt;
+    uint8_t user_ask_len;
+
+    int32_t screen_width;
+    int32_t screen_height;
+    int32_t screen_x;  // not valid for focus_task. Update when switching focus_task
+    int32_t screen_y;  // not valid for focus_task. Update when switching focus_task
+};
+
+#define TERMINAL_MAX_COUNT    3
+
+#define NULL_TERMINAL_ID    0xECE666  // used for ter_id indicating no opened terminal
+
+void terminal_init();
+terminal_t* terminal_allocate();
+void terminal_deallocate(terminal_t* terminal);
+
+terminal_t* running_term();
+void terminal_set_running(terminal_t *term);
+extern terminal_t null_terminal;
+
+#define terminal_focus_printf(fmt, ...) do {               \
+    uint32_t _flags;                                       \
+    cli_and_save(_flags);                                  \
+    {                                                      \
+        terminal_t* _run_term = running_term();            \
+        if (focus_task())                                  \
+            terminal_set_running(focus_task()->terminal);  \
+        printf(fmt, ##__VA_ARGS__);                        \
+        terminal_set_running(_run_term);                   \
+    }                                                      \
+    restore_flags(_flags);                                 \
+} while (0)
+
+
 
 #endif //TERMINAL_H

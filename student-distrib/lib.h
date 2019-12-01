@@ -6,6 +6,9 @@
 #define _LIB_H
 
 #include "types.h"
+// External variables that will be changed when switching terminals
+extern int screen_x;
+extern int screen_y;
 
 /** System Calls */
 
@@ -22,20 +25,20 @@ int32_t getargs(uint8_t* buf, int32_t nbytes);
 
 /** Debug Helper function */
 // Use printf() if things to print are normal. Only use the following macros when info are optional.
-#define DEBUG   0
+#define DEBUG   1
 #define DEBUG_VERBOSE   0
 #if DEBUG
 #if DEBUG_VERBOSE
-#define DEBUG_PRINT(fmt, ...)    do { printf("%s:%d:%s(): " fmt, \
+#define DEBUG_PRINT(fmt, ...)    do { printf("%s:%d:%s(): " fmt "\n", \
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
-#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR]" "%s:%d:%s(): " fmt, \
+#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR]" "%s:%d:%s(): " fmt "\n", \
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
-#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING]" "%s:%d:%s(): " fmt, \
+#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING]" "%s:%d:%s(): " fmt "\n", \
                                              __FILE__, __LINE__, __func__, ##__VA_ARGS__); } while (0)
 #else
-#define DEBUG_PRINT(fmt, ...)    do { printf(fmt, ##__VA_ARGS__); } while (0)
-#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR] " fmt, ##__VA_ARGS__); } while (0)
-#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING] " fmt, ##__VA_ARGS__); } while (0)
+#define DEBUG_PRINT(fmt, ...)    do { printf(fmt "\n", ##__VA_ARGS__); } while (0)
+#define DEBUG_ERR(fmt, ...)      do { printf("[ERROR] " fmt "\n", ##__VA_ARGS__); } while (0)
+#define DEBUG_WARN(fmt, ...)     do { printf("[WARNING] " fmt "\n", ##__VA_ARGS__); } while (0)
 #endif
 #else
 #define DEBUG_PRINT(fmt, ...)    do {} while (0)
@@ -75,9 +78,9 @@ static inline uint32_t inb(port) {
             xorl %0, %0         \n\
             inb  (%w1), %b0     \n\
             "
-            : "=a"(val)
-            : "d"(port)
-            : "memory"
+    : "=a"(val)
+    : "d"(port)
+    : "memory"
     );
     return val;
 }
@@ -91,9 +94,9 @@ static inline uint32_t inw(port) {
             xorl %0, %0         \n\
             inw  (%w1), %w0     \n\
             "
-            : "=a"(val)
-            : "d"(port)
-            : "memory"
+    : "=a"(val)
+    : "d"(port)
+    : "memory"
     );
     return val;
 }
@@ -103,9 +106,9 @@ static inline uint32_t inw(port) {
 static inline uint32_t inl(port) {
     uint32_t val;
     asm volatile ("inl (%w1), %0"
-            : "=a"(val)
-            : "d"(port)
-            : "memory"
+    : "=a"(val)
+    : "d"(port)
+    : "memory"
     );
     return val;
 }

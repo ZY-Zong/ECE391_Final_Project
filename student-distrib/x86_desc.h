@@ -29,9 +29,10 @@
 #define SIZE_BYTE_IN_BITS       8 
 #define SIZE_INT_IN_BYTES       4 
 
-#define KERNEL_PAGE_DIRECTORY_SIZE    1024
-#define KERNEL_PAGE_TABLE_SIZE    1024
-#define VIDEO_MEMORY_START_PAGE    0xB8
+#define KERNEL_PAGE_DIRECTORY_SIZE      1024
+#define KERNEL_PAGE_TABLE_SIZE          1024
+#define VIDEO_MEMORY_START_PAGE         0xB8
+#define PAGE_4KB_ALIGN_TEST           0x00FFF
 
 #ifndef ASM
 
@@ -135,17 +136,63 @@ extern uint32_t tss_size;
 extern seg_desc_t tss_desc_ptr;
 extern tss_t tss;
 
-/** Paging */
+/** Paging,  See data sheet for more explanation  */
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) PDE_4MB_t {
+    uint32_t    present         : 1  ; // 0 for unpresent, 1 for present
+    uint32_t    can_write       : 1  ; // 0 for read only, 1 for both read and write
+    uint32_t    user_or_super   : 1  ; // 0 for supervisor, 1 for user
+    uint32_t    write_through   : 1  ;
+    uint32_t    cache_disabled  : 1  ;
+    uint32_t    accessed        : 1  ;
+    uint32_t    dirty           : 1  ;
+    uint32_t    page_size       : 1  ; // 1 indicates 4MB
+    uint32_t    global          : 1  ; // not used, set to 0
+    uint32_t    available       : 3  ;
+    uint32_t    pat             : 1  ; // not used in out OS, set to 0
+    uint32_t    reserved        : 9  ;
+    uint32_t    base_address    : 10 ; // 10 high bits of the address of 4MB page
+} PDE_4MB_t;
+
+typedef struct __attribute__((packed)) PDE_4kB_t {
+    uint32_t    present         : 1  ; // 0 for unpresent, 1 for present
+    uint32_t    can_write       : 1  ; // 0 for read only, 1 for both read and write
+    uint32_t    user_or_super   : 1  ; // 0 for supervisor, 1 for user
+    uint32_t    write_through   : 1  ;
+    uint32_t    cache_disabled  : 1  ;
+    uint32_t    accessed        : 1  ;
+    uint32_t    reserved        : 1  ; // should be set to 0
+    uint32_t    page_size       : 1  ; // 0 indicates 4 kB
+    uint32_t    global          : 1  ; // not used, set to 0
+    uint32_t    available       : 3  ;
+    uint32_t    base_address    : 20 ; // 20 high bits of the physical address of PT
+} PDE_4kB_t;
+
+typedef struct __attribute__((packed)) PTE_t {
+    uint32_t    present         : 1  ; // 0 for unpresent, 1 for present
+    uint32_t    can_write       : 1  ; // 0 for read only, 1 for both read and write
+    uint32_t    user_or_super   : 1  ; // 0 for supervisor, 1 for user
+    uint32_t    write_through   : 1  ;
+    uint32_t    cache_disabled  : 1  ;
+    uint32_t    accessed        : 1  ;
+    uint32_t    dirty           : 1  ;
+    uint32_t    pat             : 1  ; // not used, set to 0
+    uint32_t    global          : 1  ; // not used, set to 0
+    uint32_t    available       : 3  ;
+    uint32_t    base_address    : 20 ; // 20 high bits of the address of 4kB page
+} PTE_t;
+
+typedef struct __attribute__((packed)) __attribute__((aligned (SIZE_4K))) {
     uint32_t entry[KERNEL_PAGE_DIRECTORY_SIZE];
 } kernel_page_directory_t;
 extern kernel_page_directory_t kernel_page_directory;
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) __attribute__((aligned (SIZE_4K))) {
     uint32_t entry[KERNEL_PAGE_TABLE_SIZE];
-} kernel_page_table_t;
-extern kernel_page_table_t kernel_page_table_0;
+} page_table_t;
+extern page_table_t kernel_page_table_0;
+extern page_table_t kernel_page_table_1;
+extern page_table_t user_page_table_0;
 
 
 /* Sets runtime-settable parameters in the GDT entry for the LDT */
@@ -237,6 +284,13 @@ do {                                    \
             : "memory"                  \
     );                                  \
 } while (0)
+
+#define FLUSH_TLB()  asm volatile ("  \
+    movl    %%cr3, %%eax            \n\
+    movl    %%eax, %%cr3"             \
+    : \
+    : \
+    : "cc", "memory", "eax")
 
 #endif /* ASM */
 
