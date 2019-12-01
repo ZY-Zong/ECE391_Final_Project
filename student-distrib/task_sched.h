@@ -11,8 +11,7 @@
 #include "task.h"
 
 /**
- * SCHEDULING
- *  
+ * See doc/task_and_sched.md
  */
 
 #define SCHED_ENABLE_KESP_CHECK    1
