@@ -3,7 +3,7 @@
 #include "task.h"
 #include "lib.h"
 
-extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_addr, signal_handler handler);
+extern void signal_set_up_stack_helper(signal_handler handler, int32_t signum, hw_context_t *hw_context_addr);
 
 #define     IS_SIGNAL(signal)   ( (signal >= 0) && (signal < MAX_NUM_SIGNAL) )
 
@@ -190,8 +190,8 @@ asmlinkage void signal_check(hw_context_t context) {
         if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]) {
             default_handlers[cur_signal_num]();
         } else {
-            signal_set_up_stack_helper(cur_signal_num, &context,
-                                       running_task()->signals.current_handlers[cur_signal_num]);
+            signal_set_up_stack_helper(running_task()->signals.current_handlers[cur_signal_num], 
+                                       cur_signal_num, &context);
         }
 
     }
