@@ -86,6 +86,7 @@ int32_t task_signal_init(signal_struct_t *signal_struct) {
         signal_struct->current_handlers[i] = default_handlers[i];
     }
 
+    signal_struct->alarm_time = 0;
 
     return 0;
 }
@@ -105,8 +106,10 @@ int32_t signal_send(int32_t signal) {
     uint32_t flags;
     cli_and_save(flags);
     {
-        if (signal == SIGNAL_INTERRUPT) {
-            focus_task()->signals.pending_signal |= 1 << signal;
+        if (signal == SIGNAL_INTERRUPT || signal == SIGNAL_ALARM) {
+            if (focus_task() != NULL) {
+                focus_task()->signals.pending_signal |= 1 << signal;
+            }
         } else {
             running_task()->signals.pending_signal |= 1 << signal;
         }
@@ -190,7 +193,7 @@ asmlinkage void signal_check(hw_context_t context) {
         if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]) {
             default_handlers[cur_signal_num]();
         } else {
-            signal_set_up_stack_helper(running_task()->signals.current_handlers[cur_signal_num], 
+            signal_set_up_stack_helper(running_task()->signals.current_handlers[cur_signal_num],
                                        cur_signal_num, &context);
         }
 

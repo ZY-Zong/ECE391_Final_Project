@@ -8,6 +8,7 @@
 #include "idt.h"
 #include "task.h"
 #include "task_paging.h"
+#include "signal.h"
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
@@ -183,6 +184,7 @@ void sched_move_running_to_last() {
 asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
 
     if (run_queue.next == &run_queue) {  // no runnable task
+        DEBUG_ERR("sched_launch_to_current_head(): run queue should never be empty!");
         idt_send_eoi(hw_context.irq_exp_num);
         return;
     }
@@ -191,6 +193,18 @@ asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
 
     cli_and_save(flags);
     {
+        // Handle signal ALARM
+        if (focus_task()) {
+            focus_task()->signals.alarm_time += SCHED_PIT_INTERVAL;
+            if (focus_task()->signals.alarm_time > SIGNAL_ALARM_INTERVAL_MS) {
+                signal_send(SIGNAL_ALARM);
+                focus_task()->signals.alarm_time = 0;
+            }
+        }
+
+
+        // Handle scheduling
+
         task_t *running = running_task();
 
         _sched_check_kesp();

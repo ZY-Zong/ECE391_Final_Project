@@ -40,13 +40,19 @@ signal_set_up_stack_helper:
     movl    %esi, %esp 
 
     # Push stuff 
-    # assemble linkage that call sigreturn 
-    movl    code_1, %eax 
-    pushl   %eax 
-    movl    code_0, %eax 
-    pushl   %eax 
-    # store this address for return address of handler 
-    movl    %esp, %edx 
+    # Assemble linkage that call sigreturn, in total 7 bytes
+    # We will first move first 4 bytes, then move last 4 bytes and over lap with last byte of first move
+    subl    $7, %esp
+    movl    code_0, %eax
+    movl    %eax, (%esp)
+    movl    code_0+3, %eax
+    movl    %eax, 3(%esp)
+
+    # Store this address for return address of handler
+    movl    %esp, %edx
+
+    subl    $1, %esp    # restore 4-byte alignment
+
     # hw_context 
     pushl   64(%ebx)    # ss
     pushl   60(%ebx)    # esp
@@ -92,9 +98,10 @@ signal_set_up_stack_helper:
 
 
 # assemble_linkage_that_call_sigreturn
-# will be pushed onto the user stack 
+# will be pushed onto the user stack
+# In total 7 bytes
 code_0:    movl    $10, %eax 
-code_1:    int     $0x80
+           int     $0x80
 # never back here
 
 # Low-level handler of system call sigreturn()

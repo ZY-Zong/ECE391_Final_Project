@@ -26,6 +26,10 @@ define load_ls
 add-symbol-file ../syscalls/ls.exe 0x8048094
 end
 
+define load_sigtest
+add-symbol-file ../syscalls/sigtest.exe 0x8048094
+end
+
 define p_run
 p *running_task()
 end
