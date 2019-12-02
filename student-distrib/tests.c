@@ -486,23 +486,28 @@ long execute_err_test() {
 
     long result = PASS;
     int32_t ret;
+    uint32_t flags;
 
     printf("Try executing non-exist file...");
-    // FIXME: place execute() in a lock?
-    if (-1 != (ret = system_execute((uint8_t *) "non_exist", 0, 0, NULL))) {
-        printf("error return value %d for non-exist file\n", ret);
-        result = FAIL;
-    } else {
-        printf("Correct\n");
-    }
 
-    printf("Try executing non-executable file...");
-    if (-1 != (ret = system_execute((uint8_t *) "frame1.txt", 0, 0, NULL))) {
-        printf("error return value %d for non-executable file\n", ret);
-        result = FAIL;
-    } else {
-        printf("Correct\n");
+    cli_and_save(flags);
+    {
+        if (-1 != (ret = system_execute((uint8_t *) "non_exist", 0, 0, NULL))) {
+            printf("error return value %d for non-exist file\n", ret);
+            result = FAIL;
+        } else {
+            printf("Correct\n");
+        }
+
+        printf("Try executing non-executable file...");
+        if (-1 != (ret = system_execute((uint8_t *) "frame1.txt", 0, 0, NULL))) {
+            printf("error return value %d for non-executable file\n", ret);
+            result = FAIL;
+        } else {
+            printf("Correct\n");
+        }
     }
+    restore_flags(flags);
 
     return result;
 }

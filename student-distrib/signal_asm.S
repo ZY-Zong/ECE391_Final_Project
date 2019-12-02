@@ -73,8 +73,8 @@ signal_set_up_stack_helper:
 
     # Update the register value in kernel hw_context 
     movl    %esp, 60(%ebx)
-    movl    %ebp, 20(%ebx)      # actually the same
-    /* FIXME: EBP is not correct, should be set to the same as ESP, but the original one should be stored? */
+    # No need to update user EBP
+
     # change eip to signal handler 
     movl    temperory_save_2, %eax
     movl    %eax, 48(%ebx)
@@ -95,46 +95,36 @@ signal_set_up_stack_helper:
 # will be pushed onto the user stack 
 code_0:    movl    $10, %eax 
 code_1:    int     $0x80
-    # never back here 
+# never back here
 
-# System call: sigreturn 
-# Copy the hardware context stored in user stack into kernel stack 
-# that store these when entering sustem call 
-# INPUTS: none 
-# OUTPUTS: always 0
-# Registers: C calling convention
+# Low-level handler of system call sigreturn()
+# Copy the hardware context stored in user stack into kernel stack
+# that store these when entering sustem call
 system_sigreturn:
 
-    /* FIXME: do not set up stack frame, ESP + 4 is current hw context */
-    # Set up stack frame 
-    pushl   %ebp 
-    movl    %esp, %ebp 
-    # Save callee save registers 
-    pushl   %ebx 
-    pushl   %esi
-    pushl   %edi   
+    /* TODO: how to stop user from calling sigreturn by accident? */
 
-    # get the user esp (pointing to signal number, one place above user hw_context)
-    /* FIXME: use ESP instead of EBP to get user ESP in hardware context */
-    movl    68(%ebp), %esi 
-    # the top of kernel hw_context is at 8(%ebp)
+    /* This function is called by system_call_entry. The top of the stack is return address, and then hw context */
+    /* No need to save registers since after its return hw context before signal handling will be restored */
 
-    # point to the top of user and kernel hw_context 
+
+    /* Get the user ESP (pointing to signal number, one place above hw_context in user stack) */
+    /* kernel hw_context is at 4(%esp) */
+    movl    64(%esp), %esi   # user ESP
     addl    $4, %esi    # now esi point to the top of user hw_context
-    movl    %ebp, %edi 
-    addl    $8, %edi    # now edi point to the top of kernel hw_context
-    /* FIXME: if no stack frame, ESP + 4 is current hw context */
+    movl    %esp, %edi
+    addl    $4, %edi    # now edi point to the top of kernel hw_context
 
-    # copy the hardware context 
-    xorl    %ecx, %ecx  # loop counter 
+    /* Copy the hardware context */
+    xorl    %ecx, %ecx  /* loop counter */
     copy_hw_context_loop:
         movl    (%esi, %ecx, 4), %eax 
         movl    %eax, (%edi, %ecx, 4)
         incl    %ecx 
-        cmpl    $17, %ecx   # hw_context has 17 elements 
+        cmpl    $17, %ecx   /* hw_context has 17 elements */
         jne     copy_hw_context_loop
 
-    # restore the mask by calling a C funtion 
+    # Restore the mask by calling a C funtion
     pushl   %eax 
     pushl   %ecx 
     pushl   %edx 
@@ -143,19 +133,14 @@ system_sigreturn:
     popl    %ecx   
     popl    %eax 
     
-    # return value: the return of previous system call/interrupt/exception
+    /* Return value: the return of previous system call/interrupt/exception, which has been wrote to hw context
+     * before first copying hw context to user stack
+     */
     movl    24(%edi), %eax 
 
-    # Restore callee save registers 
-    popl    %edi 
-    popl    %esi 
-    popl    %ebx
-    /* FIXME: no need for stack frame */
+    /* No stack frame */
 
-    leave 
     ret
-
-
 
 # data 
 temperory_save_0:
