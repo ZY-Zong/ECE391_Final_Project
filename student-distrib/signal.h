@@ -13,9 +13,9 @@
  * SIGNAL_DIV_ZERO:
  *      processor generated divide_by_zero exception while executing user level code 
  * SIGNAL_SEGFAULT: 
- *      any other exception occured 
+ *      any other exception occurred
  * SIGNAL_INTERRUPT:
- *      crtl+c is pressed 
+ *      ctrl+c is pressed
  * SIGNAL_ALARM:  
  *      send to current executing task (focus task) every 10 seconds 
  * SIGNAL_USER1:
@@ -40,12 +40,12 @@
 typedef struct signal_struct_t {
     int32_t     pending_signal;     // bit k is 1 means signal k is pending 
     int32_t     masked_signal;      // bit k is 1 means signal k is masked 
-    int32_t     available;          // could be used to restore mask after handlering
+    int32_t     available;          // could be used to restore mask after handling
 } signal_struct_t;
 
 // System calls
 int32_t system_set_handler(int32_t signum, void* handler_address);
-extern int32_t system_sigreturn(void); // defined in signal_asm.S
+extern int32_t system_sigreturn(void);  // defined in signal_asm.S
 
 // Signal operations
 void signal_init(); // call at boot

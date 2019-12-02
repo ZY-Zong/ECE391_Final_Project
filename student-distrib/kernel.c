@@ -13,6 +13,7 @@
 #include "terminal.h"
 #include "task.h"
 #include "vidmem.h"
+#include "signal.h"
 
 #define RUN_TESTS
 
@@ -178,6 +179,9 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the process system */
     task_init();
+
+    /* Init signals */
+    signal_init();
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
