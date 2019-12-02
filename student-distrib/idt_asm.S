@@ -131,19 +131,9 @@ system_call_entry:
 system_call_entry_invalid:
     call sys_not_implemented
 system_call_entry_done:
+    movl %eax, 24(%esp)  /* store EAX to HW context, allow it to immigrate with signal functions */
     call signal_check
-    /* Similar to RESTORE_HW_CONTEXT, except that not restore EAX */
-    popl %ebx
-    popl %ecx
-    popl %edx
-    popl %esi
-    popl %edi
-    popl %ebp
-    addl $4, %esp  /* pop EAX but not overlap the return value */
-    pop %ds
-    pop %es
-    pop %fs
-    addl $8, %esp  /* pop IRQ/Error# & ErrorCode/Dummy */
+    RESTORE_HW_CONTEXT  /* new EAX has been written into it */
     iret
 
 system_call_table:

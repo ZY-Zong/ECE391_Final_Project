@@ -103,6 +103,8 @@ code_1:    int     $0x80
 # OUTPUTS: always 0
 # Registers: C calling convention
 system_sigreturn:
+
+    /* FIXME: do not set up stack frame, ESP + 4 is current hw context */
     # Set up stack frame 
     pushl   %ebp 
     movl    %esp, %ebp 
@@ -112,13 +114,15 @@ system_sigreturn:
     pushl   %edi   
 
     # get the user esp (pointing to signal number, one place above user hw_context)
+    /* FIXME: use ESP instead of EBP to get user ESP in hardware context */
     movl    68(%ebp), %esi 
     # the top of kernel hw_context is at 8(%ebp)
 
     # point to the top of user and kernel hw_context 
     addl    $4, %esi    # now esi point to the top of user hw_context
     movl    %ebp, %edi 
-    addl    $8, %edi    # now edi point to the top of kernel hw_context 
+    addl    $8, %edi    # now edi point to the top of kernel hw_context
+    /* FIXME: if no stack frame, ESP + 4 is current hw context */
 
     # copy the hardware context 
     xorl    %ecx, %ecx  # loop counter 
@@ -144,7 +148,8 @@ system_sigreturn:
     # Restore callee save registers 
     popl    %edi 
     popl    %esi 
-    popl    %ebx 
+    popl    %ebx
+    /* FIXME: no need for stack frame */
 
     leave 
     ret
