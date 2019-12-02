@@ -71,11 +71,13 @@ signal_set_up_stack_helper:
 
     # Update the register value in kernel hw_context 
     movl    %esp, 60(%ebx)
-    movl    %ebp, 20(%ebx)      # actually the same 
+    movl    %ebp, 20(%ebx)      # actually the same
+    /* FIXME: EBP is not correct, should be set to the same as ESP, but the original one should be stored? */
     # change eip to signal handler 
-    movl    $signal_handle, %eax 
+    movl    $signal_handle, %eax
+    /* FIXME: should only jump to user program. If the handler is default handler, don't even need to do these */
     movl    %eax, 48(%ebx)
-    # Switch back to user stack 
+    # Switch back to kernel stack
     movl    temperory_save_0, %esp 
     movl    temperory_save_1, %ebp 
     

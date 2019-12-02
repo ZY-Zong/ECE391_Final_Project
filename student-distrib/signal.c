@@ -8,7 +8,7 @@ extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_
 #define     IS_SIGNAL(signal)   ( (signal >= 0) && (signal < MAX_NUM_SIGNAL) )
 
 #define     SIGNAL_SET_UP_STACK(signum, hw_context_addr) \
-            asm( "\
+            asm volatile ( "                              \
                 pushl   %%eax                           \n\
                 pushl   %%ecx                           \n\
                 pushl   %%edx                           \n\
@@ -24,7 +24,7 @@ extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_
                 : /* no outputs */                      \
                 : "m"((signum)), "r"((hw_context_addr))     \
                 : "memory")
-
+// TODO: no need. just call as C function
 
 typedef int32_t (*signal_handler)(void);
 
@@ -82,6 +82,7 @@ void signal_init() {
     current_handlers[SIGNAL_INTERRUPT] = default_handlers[SIGNAL_INTERRUPT] = signal_interrupt_default_handler;
     current_handlers[SIGNAL_ALARM] = default_handlers[SIGNAL_ALARM] = signal_alarm_default_handler;
     current_handlers[SIGNAL_USER1] = default_handlers[SIGNAL_USER1] = signal_user1_default_handler;
+    // TODO: all programs shared signal handlers?
 }
 
 
@@ -159,17 +160,18 @@ int32_t signal_unblock(int32_t signal) {
 /**
  * Check whether there is a signal pending 
  * If yes, set up the stack frame for signal handler 
- * @note        should be called every time return from exception, interrupt and system call
- * @note        in our simplify version of signal, only one signal can be sent at a time 
+ * @note        Should be called every time return from exception, interrupt and system call
+ * @note        In our simplify version of signal, only one signal can be sent at a time
  */
 asmlinkage void signal_check(hw_context_t context) {
+
     uint32_t cur_signal = running_task()->signals.pending_signal & (~running_task()->signals.masked_signal);
 
     // Check whether there is a signal pending that is not blocked
     if (cur_signal == 0) return;
 
     // Get the signal number 
-    int cur_signal_num;
+    uint32_t cur_signal_num;
     for (cur_signal_num = 0; cur_signal_num < MAX_NUM_SIGNAL; cur_signal_num++) {
         if (cur_signal & 0x1) break;
         cur_signal = cur_signal >> 1;

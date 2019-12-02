@@ -38,9 +38,9 @@
 #include "idt.h"
 
 typedef struct signal_struct_t {
-    int32_t     pending_signal;     // bit k is 1 means signal k is pending 
-    int32_t     masked_signal;      // bit k is 1 means signal k is masked 
-    int32_t     available;          // could be used to restore mask after handling
+    uint32_t    pending_signal;     // bit k is 1 means signal k is pending
+    uint32_t    masked_signal;      // bit k is 1 means signal k is masked
+    uint32_t    available;          // could be used to restore mask after handling
 } signal_struct_t;
 
 // System calls
