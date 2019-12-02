@@ -26,8 +26,10 @@ signal_set_up_stack_helper:
     pushl   %edi   
 
     # Get the user stack  
-    movl    8(%ebp), %ecx   # signal number
-    movl    12(%ebp), %ebx  # address of hw_context 
+    movl    8(%ebp), %eax   # signal handler address
+    movl    %eax, temperory_save_2
+    movl    12(%ebp), %ecx   # signal number
+    movl    16(%ebp), %ebx  # address of hw_context 
     movl    60(%ebx), %esi  # user esp 
     movl    20(%ebx), %edi  # user ebp 
 
@@ -74,8 +76,7 @@ signal_set_up_stack_helper:
     movl    %ebp, 20(%ebx)      # actually the same
     /* FIXME: EBP is not correct, should be set to the same as ESP, but the original one should be stored? */
     # change eip to signal handler 
-    movl    $signal_handle, %eax
-    /* FIXME: should only jump to user program. If the handler is default handler, don't even need to do these */
+    movl    temperory_save_2, %eax
     movl    %eax, 48(%ebx)
     # Switch back to kernel stack
     movl    temperory_save_0, %esp 
@@ -161,5 +162,6 @@ temperory_save_0:
     .long   0 
 temperory_save_1:
     .long   0
-
+temperory_save_2:
+    .long   0
 

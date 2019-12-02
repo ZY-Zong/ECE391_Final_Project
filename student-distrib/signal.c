@@ -3,7 +3,7 @@
 #include "task.h"
 #include "lib.h"
 
-extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_addr);
+extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_addr, signal_handler handler);
 
 #define     IS_SIGNAL(signal)   ( (signal >= 0) && (signal < MAX_NUM_SIGNAL) )
 
@@ -26,10 +26,9 @@ extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_
                 : "memory")
 // TODO: no need. just call as C function
 
-typedef int32_t (*signal_handler)(void);
+
 
 // Global varibales 
-signal_handler current_handlers[MAX_NUM_SIGNAL];
 signal_handler default_handlers[MAX_NUM_SIGNAL];
 
 int32_t signal_div_zero_default_handler();
@@ -61,9 +60,9 @@ int32_t system_set_handler(int32_t signum, void *handler_address) {
     }
 
     if (handler_address == NULL) {
-        current_handlers[signum] = default_handlers[signum];
+        running_task()->signals.current_handlers[signum] = default_handlers[signum];
     } else {
-        current_handlers[signum] = (signal_handler) handler_address;
+        running_task()->signals.current_handlers[signum] = (signal_handler) handler_address;
     }
 
     return 0;
@@ -77,17 +76,16 @@ int32_t system_set_handler(int32_t signum, void *handler_address) {
  * Should be called at boot 
  */
 void signal_init() {
-    current_handlers[SIGNAL_DIV_ZERO] = default_handlers[SIGNAL_DIV_ZERO] = signal_div_zero_default_handler;
-    current_handlers[SIGNAL_SEGFAULT] = default_handlers[SIGNAL_SEGFAULT] = signal_segfault_default_handler;
-    current_handlers[SIGNAL_INTERRUPT] = default_handlers[SIGNAL_INTERRUPT] = signal_interrupt_default_handler;
-    current_handlers[SIGNAL_ALARM] = default_handlers[SIGNAL_ALARM] = signal_alarm_default_handler;
-    current_handlers[SIGNAL_USER1] = default_handlers[SIGNAL_USER1] = signal_user1_default_handler;
-    // TODO: all programs shared signal handlers?
+    default_handlers[SIGNAL_DIV_ZERO] = signal_div_zero_default_handler;
+    default_handlers[SIGNAL_SEGFAULT] = signal_segfault_default_handler;
+    default_handlers[SIGNAL_INTERRUPT] = signal_interrupt_default_handler;
+    default_handlers[SIGNAL_ALARM] = signal_alarm_default_handler;
+    default_handlers[SIGNAL_USER1] = signal_user1_default_handler;
 }
 
 
 /**
- * Init a signal struct by setting pending and mask to 0 
+ * Init a signal struct by setting pending and mask to 0 and current handler to default 
  * @param       signal_struct: the signal struct to be init 
  * @return      0 for success, -1 for bad signal_struct
  */
@@ -99,6 +97,12 @@ int32_t task_signal_init(signal_struct_t *signal_struct) {
 
     signal_struct->pending_signal = 0;
     signal_struct->masked_signal = 0;
+    
+    int i; // loop counter 
+    for (i=0; i<MAX_NUM_SIGNAL; i++){
+        signal_struct->current_handlers[i] = default_handlers[i];
+    }
+    
 
     return 0;
 }
@@ -189,8 +193,12 @@ asmlinkage void signal_check(hw_context_t context) {
         running_task()->signals.masked_signal = SIGNAL_MASK_ALL;
         running_task()->signals.pending_signal = 0; // clear the signal
 
-        // Set up the stack frame
-        signal_set_up_stack_helper(cur_signal_num, &context);
+        // Set up the stack frame if needed 
+        if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]){
+            default_handlers[cur_signal_num]();
+        } else {
+            signal_set_up_stack_helper(cur_signal_num, &context, running_task()->signals.current_handlers[cur_signal_num]);
+        }
 
     }
     restore_flags(flag);
@@ -207,7 +215,7 @@ asmlinkage void signal_check(hw_context_t context) {
  */
 int32_t signal_handle(int32_t signal) {
     // TODO: execute system_sigreturn?
-    return current_handlers[signal]();
+    return running_task()->signals.current_handlers[signal]();
 }
 
 /**

@@ -37,10 +37,13 @@
 #include "types.h"
 #include "idt.h"
 
+typedef int32_t (*signal_handler)(void);
+
 typedef struct signal_struct_t {
     uint32_t    pending_signal;     // bit k is 1 means signal k is pending
     uint32_t    masked_signal;      // bit k is 1 means signal k is masked
     uint32_t    available;          // could be used to restore mask after handling
+    signal_handler current_handlers[MAX_NUM_SIGNAL];
 } signal_struct_t;
 
 // System calls
