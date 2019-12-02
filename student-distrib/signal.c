@@ -131,7 +131,11 @@ int32_t signal_block(int32_t signal) {
         return -1;
     }
 
-    running_task()->signals.masked_signal |= 1 << signal;
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        running_task()->signals.masked_signal |= 1 << signal;
+    }
 
     return 0;
 }
@@ -165,27 +169,30 @@ int32_t signal_unblock(int32_t signal) {
  */
 asmlinkage void signal_check(hw_context_t context) {
 
-    uint32_t cur_signal = running_task()->signals.pending_signal & (~running_task()->signals.masked_signal);
-
-    // Check whether there is a signal pending that is not blocked
-    if (cur_signal == 0) return;
-
-    // Get the signal number 
-    uint32_t cur_signal_num;
-    for (cur_signal_num = 0; cur_signal_num < MAX_NUM_SIGNAL; cur_signal_num++) {
-        if (cur_signal & 0x1) break;
-        cur_signal = cur_signal >> 1;
-    }
-
-    // Mask all signals and store previous mask 
-    running_task()->signals.available = running_task()->signals.masked_signal;
-    running_task()->signals.masked_signal = SIGNAL_MASK_ALL;
-    running_task()->signals.pending_signal = 0; // clear the signal 
-
-    // Set up the stack frame 
     int32_t flag;
     cli_and_save(flag);
-    SIGNAL_SET_UP_STACK(cur_signal_num, &context);
+    {
+        uint32_t cur_signal = running_task()->signals.pending_signal & (~running_task()->signals.masked_signal);
+
+        // Check whether there is a signal pending that is not blocked
+        if (cur_signal == 0) return;
+
+        // Get the signal number
+        uint32_t cur_signal_num;
+        for (cur_signal_num = 0; cur_signal_num < MAX_NUM_SIGNAL; cur_signal_num++) {
+            if (cur_signal & 0x1) break;
+            cur_signal = cur_signal >> 1;
+        }
+
+        // Mask all signals and store previous mask
+        running_task()->signals.available = running_task()->signals.masked_signal;
+        running_task()->signals.masked_signal = SIGNAL_MASK_ALL;
+        running_task()->signals.pending_signal = 0; // clear the signal
+
+        // Set up the stack frame
+        signal_set_up_stack_helper(cur_signal_num, &context);
+
+    }
     restore_flags(flag);
 
 
@@ -250,7 +257,8 @@ int32_t signal_user1_default_handler() {
  * @return     this function should never return  
  */
 int32_t signal_behavior_kill() {
-    system_halt(0);
+    system_halt(256);
+    // Halt should not return
     return -1;
 }
 
