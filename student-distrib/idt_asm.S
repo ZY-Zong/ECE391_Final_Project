@@ -4,6 +4,8 @@
 #define ASM     1
 #include "idt.h"
 
+.extern     system_sigreturn
+
 /* Common macros */
 
 .macro SETUP_HW_CONTEXT  # set up hardware context
@@ -41,6 +43,7 @@ exception_unified_ll_handler:
     /* Error # has been pushed */
     SETUP_HW_CONTEXT
     call unified_exception_handler
+    call signal_check
     RESTORE_HW_CONTEXT
     iret
 
@@ -93,7 +96,7 @@ EXCEPTION_ENTRY_WITH_ERRCODE 30
 /* Low-level handlers (entry points) for interrupts */
 
 /* Macro for generating code of interrupt entries */
-/* EOI will be sent after return of interrupt function */
+/* EOI must be handle manually in interrupt handler */
 .macro INTERRUPT_ENTRY irq, func
 .globl interrupt_entry_\irq
 interrupt_entry_\irq:
@@ -101,11 +104,12 @@ interrupt_entry_\irq:
     pushl $\irq    /* push irq number */
     SETUP_HW_CONTEXT
     call \func
-    call lowlevel_send_eoi  /* defined in i8259.c/h */
+    call signal_check
     RESTORE_HW_CONTEXT
     iret  /* return from interrupt context */
 .endm
 
+INTERRUPT_ENTRY 0, sched_pit_interrupt_handler
 INTERRUPT_ENTRY 1, keyboard_interrupt_handler
 INTERRUPT_ENTRY 8, rtc_interrupt_handler
 
@@ -127,6 +131,7 @@ system_call_entry:
 system_call_entry_invalid:
     call sys_not_implemented
 system_call_entry_done:
+    call signal_check
     /* Similar to RESTORE_HW_CONTEXT, except that not restore EAX */
     popl %ebx
     popl %ecx
@@ -151,5 +156,5 @@ system_call_table:
     .long lowlevel_sys_close
     .long lowlevel_sys_getargs
     .long lowlevel_sys_vidmap
-    .long sys_not_implemented
-    .long sys_not_implemented  /* 10 */
+    .long lowlevel_sys_set_handler
+    .long system_sigreturn  /* 10 */

@@ -8,6 +8,7 @@
 #include "task_sched.h"
 #include "task_paging.h"
 #include "vidmem.h"
+#include "signal.h"
 
 #define KEYBOARD_PORT   0x60    /* keyboard scancode port */
 #define KEYBOARD_FLAG_SIZE 128
@@ -193,7 +194,7 @@ void handle_scan_code(uint8_t scan_code) {
 
         // If Ctrl+C
         if (1 == key_flags[CTRL_PRESS] && 1 == key_flags[C_PRESSED]) {
-            // TODO: Wait for Tingkai's function
+            signal_send(SIGNAL_INTERRUPT);
             return;
         }
 

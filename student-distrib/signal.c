@@ -2,9 +2,8 @@
 #include "signal.h"
 #include "task.h"
 #include "lib.h"
-#include "sync.h"
 
-process_t* running_task(); // should be deleted 
+extern  void signal_set_up_stack_helper(int32_t signum, hw_context_t* hw_context_addr);
 
 #define     IS_SIGNAL(signal)   ( (signal >= 0) && (signal < MAX_NUM_SIGNAL) )
 

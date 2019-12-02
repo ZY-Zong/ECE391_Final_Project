@@ -2,12 +2,16 @@
 */
 
 #include "idt.h"
+
 #include "x86_desc.h"
 #include "lib.h"
 #include "linkage.h"
+#include "i8259.h"
 #include "file_system.h"
 #include "task.h"
 #include "task_paging.h"
+#include "vidmem.h"
+#include "signal.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.
@@ -38,7 +42,7 @@ void idt_init() {
         idt[i].reserved0 = 0;
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
-        idt[i].reserved3 = 0;
+        idt[i].reserved3 = 1;
         idt[i].reserved4 = 0;
 
     }
@@ -66,6 +70,10 @@ void idt_init() {
     SET_IDT_ENTRY(idt[20], exception_entry_20);
     SET_IDT_ENTRY(idt[30], exception_entry_30);
 
+    // Set PIT handler (defined in idt_asm.S)
+    SET_IDT_ENTRY(idt[IDT_ENTRY_PIT], interrupt_entry_0);
+    idt[IDT_ENTRY_PIT].present = 1;
+
     // Set keyboard handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_KEYBOARD], interrupt_entry_1);
     idt[IDT_ENTRY_KEYBOARD].present = 1;
@@ -83,22 +91,29 @@ void idt_init() {
     lidt(idt_desc_ptr);
 }
 
+void idt_send_eoi(uint32_t irq_num) {
+    send_eoi(irq_num);
+}
+
 /**
  * This function is used to print out the given interrupt number in the interrupt descriptor table.
  * @param vec_num    vector number of the interrupt/exception
  */
 void unified_exception_handler(hw_context_t hw_context) {
 
-    if (process_cnt == 0) {
+    if (task_count == 0) {
         clear();
         reset_cursor();
         printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", hw_context.irq_exp_num);
         printf("------------------------ BLUE SCREEN ------------------------");
     } else {
         DEBUG_ERR("EXCEPTION %u OCCUR!\n", hw_context.irq_exp_num);
+#if HALT_USER_PROGRAM_AT_EXCEPTION
+        if (hw_context.irq_exp_num == 0) signal_send(SIGNAL_DIV_ZERO);
+        else signal_send(SIGNAL_SEGFAULT);
         system_halt(256);
+#endif
     }
-
 
     volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
     while (inf_loop) {}   // put kernel into infinite loop
@@ -108,13 +123,8 @@ void unified_exception_handler(hw_context_t hw_context) {
  * Print message that an interrupt handler is not implemented
  * @param irq    IRQ number
  */
-void null_interrupt_handler(uint32_t irq) {
-
-    cli();
-    {
-        DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
-    }
-    sti();
+asmlinkage void null_interrupt_handler(uint32_t irq) {
+    DEBUG_ERR( "Interrupt handler for IRQ %u is not implemented", irq);
 }
 
 /**
@@ -134,7 +144,7 @@ asmlinkage long sys_not_implemented() {
     :
     : "memory", "cc"
     );
-    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d\n",
+    DEBUG_ERR("Invalid system call: \n    EAX: %d  EBX: %d ECX: %d  EDX: %d",
            eax_val, ebx_val, ecx_val, edx_val);
     return -1;
 }
@@ -148,7 +158,13 @@ asmlinkage long sys_not_implemented() {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
-    return system_execute(command);
+    int32_t ret;
+    uint32_t flags;
+    cli_and_save(flags); {
+        ret = system_execute(command, 1, 0, NULL);
+    }
+    restore_flags(flags);
+    return ret;
 }
 
 /**
@@ -159,7 +175,14 @@ asmlinkage int32_t lowlevel_sys_execute(uint8_t *command) {
  * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
  */
 asmlinkage int32_t lowlevel_sys_halt(int32_t status) {
-    return system_halt(status);
+    int32_t ret;
+    uint32_t flags;
+    cli_and_save(flags); {
+        ret = system_halt(status);
+        // If the halt doesn't return, it won't cause a problem
+    }
+    restore_flags(flags);
+    return ret;
 }
 
 /**
@@ -222,6 +245,17 @@ asmlinkage int32_t lowlevel_sys_getargs(uint8_t *buf, int32_t nbytes) {
     return system_getargs(buf, nbytes);
 }
 
+/**
+ * Low-level system call handler for vidmap()
+ * @param screen_start    Starting address of mapped video memory in user memory
+ * @return 0 on success
+ * @usage System call jump table in idt.S
+ * @note Arguments of this function is actually saved registers on the stack, so DO NOT modify them in this layer
+ */
 asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
-    return task_get_vimap(screen_start);
+    return system_vidmap(screen_start);
+}
+
+asmlinkage int32_t lowlevel_sys_set_handler(int32_t signum, void* handler_address){
+    return system_set_handler(signum, handler_address);
 }

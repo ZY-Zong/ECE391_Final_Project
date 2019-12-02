@@ -1,8 +1,12 @@
 
+#define ASM_SIGNAL  1
+
 #include "signal.h"
 
-.extern     signal_handle   # the adress of signal handler funtion, defined in signal.c
-.extern     signal_restore_mask # helper function for restore signal mask, defined in signal.c
+.global     signal_set_up_stack_helper
+.global     system_sigreturn
+#.extern     signal_handle   # the adress of signal handler funtion, defined in signal.c
+#.extern     signal_restore_mask # helper function for restore signal mask, defined in signal.c
 
 # Helper function for setting uo stack for signal handler 
 # INPUTS:  

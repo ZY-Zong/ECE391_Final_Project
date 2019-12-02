@@ -9,8 +9,12 @@
 #ifndef ASM
 
 #include "types.h"
+#include "linkage.h"
+
+#define HALT_USER_PROGRAM_AT_EXCEPTION  1
 
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
+#define IDT_ENTRY_PIT            0x20  // the vector number of PIT
 #define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard
 #define IDT_ENTRY_RTC            0x28  // the vector number of RTC
 #define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
@@ -36,6 +40,8 @@ struct hw_context_t {
     uint32_t ss;
 };
 
+#define IDT_INTERRUPT_COUNT      16
+
 // Defined in idt_asm.S
 extern void exception_entry_0();
 extern void exception_entry_1();
@@ -60,13 +66,15 @@ extern void exception_entry_20();
 extern void exception_entry_30();
 
 // Defined in idt_asm.S
+extern void interrupt_entry_0();
 extern void interrupt_entry_1();
 extern void interrupt_entry_8();
 
 // Defined in idt_asm.S
 extern void system_call_entry();
 
-extern void idt_init();
+void idt_init();
+void idt_send_eoi(uint32_t irq_num);
 
 #endif // ASM
 
