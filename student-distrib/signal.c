@@ -180,6 +180,7 @@ asmlinkage void signal_check(hw_context_t context) {
     // Mask all signals and store previous mask 
     running_task()->signals.available = running_task()->signals.masked_signal;
     running_task()->signals.masked_signal = SIGNAL_MASK_ALL;
+    running_task()->signals.pending_signal = 0; // clear the signal 
 
     // Set up the stack frame 
     int32_t flag;
