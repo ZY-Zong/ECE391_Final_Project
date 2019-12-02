@@ -146,7 +146,12 @@ int32_t signal_unblock(int32_t signal) {
         return -1;
     }
 
-    running_task()->signals.masked_signal &= ~(1 << signal);
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        running_task()->signals.masked_signal &= ~(1 << signal);
+    }
+    restore_flags(flags);
 
     return 0;
 }
@@ -157,7 +162,7 @@ int32_t signal_unblock(int32_t signal) {
  * @note        should be called every time return from exception, interrupt and system call
  * @note        in our simplify version of signal, only one signal can be sent at a time 
  */
-void signal_check(hw_context_t context) {
+asmlinkage void signal_check(hw_context_t context) {
     uint32_t cur_signal = running_task()->signals.pending_signal & (~running_task()->signals.masked_signal);
 
     // Check whether there is a signal pending that is not blocked
