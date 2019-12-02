@@ -7,28 +7,7 @@ extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_
 
 #define     IS_SIGNAL(signal)   ( (signal >= 0) && (signal < MAX_NUM_SIGNAL) )
 
-#define     SIGNAL_SET_UP_STACK(signum, hw_context_addr) \
-            asm volatile ( "                              \
-                pushl   %%eax                           \n\
-                pushl   %%ecx                           \n\
-                pushl   %%edx                           \n\
-                pushl   %1                              \n\
-                pushl   %0                              \n\
-                call    signal_set_up_stack_helper      \n\
-                popl    %0                              \n\
-                popl    %1                              \n\
-                popl    %%edx                           \n\
-                popl    %%ecx                           \n\
-                popl    %%eax                           \n\
-                "                                       \
-                : /* no outputs */                      \
-                : "m"((signum)), "r"((hw_context_addr))     \
-                : "memory")
-// TODO: no need. just call as C function
-
-
-
-// Global varibales 
+// Global Variable
 signal_handler default_handlers[MAX_NUM_SIGNAL];
 
 int32_t signal_div_zero_default_handler();
@@ -59,11 +38,17 @@ int32_t system_set_handler(int32_t signum, void *handler_address) {
         return -1;
     }
 
-    if (handler_address == NULL) {
-        running_task()->signals.current_handlers[signum] = default_handlers[signum];
-    } else {
-        running_task()->signals.current_handlers[signum] = (signal_handler) handler_address;
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        if (handler_address == NULL) {
+            running_task()->signals.current_handlers[signum] = default_handlers[signum];
+        } else {
+            running_task()->signals.current_handlers[signum] = (signal_handler) handler_address;
+        }
     }
+    restore_flags(flags);
+
 
     return 0;
 }
@@ -97,12 +82,12 @@ int32_t task_signal_init(signal_struct_t *signal_struct) {
 
     signal_struct->pending_signal = 0;
     signal_struct->masked_signal = 0;
-    
+
     int i; // loop counter 
-    for (i=0; i<MAX_NUM_SIGNAL; i++){
+    for (i = 0; i < MAX_NUM_SIGNAL; i++) {
         signal_struct->current_handlers[i] = default_handlers[i];
     }
-    
+
 
     return 0;
 }
@@ -119,7 +104,11 @@ int32_t signal_send(int32_t signal) {
         return -1;
     }
 
-    running_task()->signals.pending_signal |= 1 << signal;
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        running_task()->signals.pending_signal |= 1 << signal;
+    }
 
     return 0;
 }
@@ -140,6 +129,7 @@ int32_t signal_block(int32_t signal) {
     {
         running_task()->signals.masked_signal |= 1 << signal;
     }
+    restore_flags(flags);
 
     return 0;
 }
@@ -194,10 +184,11 @@ asmlinkage void signal_check(hw_context_t context) {
         running_task()->signals.pending_signal = 0; // clear the signal
 
         // Set up the stack frame if needed 
-        if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]){
+        if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]) {
             default_handlers[cur_signal_num]();
         } else {
-            signal_set_up_stack_helper(cur_signal_num, &context, running_task()->signals.current_handlers[cur_signal_num]);
+            signal_set_up_stack_helper(cur_signal_num, &context,
+                                       running_task()->signals.current_handlers[cur_signal_num]);
         }
 
     }
@@ -206,17 +197,7 @@ asmlinkage void signal_check(hw_context_t context) {
 
 }
 
-/*************************** Singal Handlers  ***************************/
-
-/**
- * Hander a signal 
- * @param       signal: the signal to be handle 
- * @return      always 0
- */
-int32_t signal_handle(int32_t signal) {
-    // TODO: execute system_sigreturn?
-    return running_task()->signals.current_handlers[signal]();
-}
+/*************************** Signal Handlers  ***************************/
 
 /**
  * Default handler for SIGNAL_DIV_ZERO
@@ -275,5 +256,10 @@ int32_t signal_behavior_kill() {
  * called by system call sigreturn 
  */
 void signal_restore_mask(void) {
-    running_task()->signals.masked_signal = running_task()->signals.available;
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        running_task()->signals.masked_signal = running_task()->signals.available;
+    }
+    restore_flags(flags);
 }
