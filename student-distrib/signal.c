@@ -20,8 +20,6 @@ int32_t signal_alarm_default_handler();
 
 int32_t signal_user1_default_handler();
 
-int32_t signal_behavior_kill();
-
 /*************************** System Calls ***************************/
 
 /**
@@ -107,8 +105,13 @@ int32_t signal_send(int32_t signal) {
     uint32_t flags;
     cli_and_save(flags);
     {
-        running_task()->signals.pending_signal |= 1 << signal;
+        if (signal == SIGNAL_INTERRUPT) {
+            focus_task()->signals.pending_signal |= 1 << signal;
+        } else {
+            running_task()->signals.pending_signal |= 1 << signal;
+        }
     }
+    restore_flags(flags);
 
     return 0;
 }
@@ -204,7 +207,16 @@ asmlinkage void signal_check(hw_context_t context) {
  * Default action: kill 
  */
 int32_t signal_div_zero_default_handler() {
-    return signal_behavior_kill();
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        system_halt(256);
+    }
+    restore_flags(flags);
+
+    // Halt should not return
+    DEBUG_ERR("Fail to kill user program");
+    return -1;
 }
 
 /**
@@ -212,7 +224,16 @@ int32_t signal_div_zero_default_handler() {
  * Default action: kill 
  */
 int32_t signal_segfault_default_handler() {
-    return signal_behavior_kill();
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        system_halt(256);
+    }
+    restore_flags(flags);
+
+    // Halt should not return
+    DEBUG_ERR("Fail to kill user program");
+    return -1;
 }
 
 /**
@@ -220,7 +241,16 @@ int32_t signal_segfault_default_handler() {
  * Default action: kill 
  */
 int32_t signal_interrupt_default_handler() {
-    return signal_behavior_kill();
+    uint32_t flags;
+    cli_and_save(flags);
+    {
+        system_halt(15);
+    }
+    restore_flags(flags);
+
+    // Halt should not return
+    DEBUG_ERR("Fail to kill user program");
+    return -1;
 }
 
 /**
@@ -240,16 +270,6 @@ int32_t signal_user1_default_handler() {
 }
 
 /*************************** Helper Functions  ***************************/
-
-/**
- * Help function that halt current process 
- * @return     this function should never return  
- */
-int32_t signal_behavior_kill() {
-    system_halt(256);
-    // Halt should not return
-    return -1;
-}
 
 /**
  * Restore previous mask 

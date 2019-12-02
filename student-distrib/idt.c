@@ -109,18 +109,20 @@ void unified_exception_handler(hw_context_t hw_context) {
         volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
         while (inf_loop) {}   // put kernel into infinite loop
     } else {
-        DEBUG_ERR("EXCEPTION %u OCCUR!\n", hw_context.irq_exp_num);
+        DEBUG_ERR("EXCEPTION %u OCCUR!", hw_context.irq_exp_num);
 #if (EXCEPTION_HANLDING_TYPE == 0)
-        DEBUG_ERR("Start infinity loop\n");
+        DEBUG_ERR("Start infinity loop");
         volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
         while (inf_loop) {}   // put kernel into infinite loop
 #elif (EXCEPTION_HANLDING_TYPE == 1)
+        DEBUG_ERR("Try to halt user program");
         system_halt(256);
         // If failed to halt
         DEBUG_ERR("Start infinity loop\n");
         volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
         while (inf_loop) {}   // put kernel into infinite loop
 #elif (EXCEPTION_HANLDING_TYPE == 2)
+        DEBUG_ERR("Hand it to signal handler");
         if (hw_context.irq_exp_num == 0) signal_send(SIGNAL_DIV_ZERO);
         else signal_send(SIGNAL_SEGFAULT);
         // Continue backtracking exception handler

@@ -254,7 +254,6 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     uint32_t start_eip;
     int32_t program_ret;
     uint32_t temp;
-    uint32_t flags;
 
     /** --------------- Phase 1. Setup kernel data structure of new task --------------- */
 
