@@ -169,13 +169,18 @@ int32_t signal_unblock(int32_t signal) {
  */
 asmlinkage void signal_check(hw_context_t context) {
 
+    if (context.cs != USER_CS) return;  // only check signal when return to user
+
     int32_t flag;
     cli_and_save(flag);
     {
         uint32_t cur_signal = running_task()->signals.pending_signal & (~running_task()->signals.masked_signal);
 
         // Check whether there is a signal pending that is not blocked
-        if (cur_signal == 0) return;
+        if (cur_signal == 0) {
+            restore_flags(flag);
+            return;
+        }
 
         // Get the signal number
         uint32_t cur_signal_num;
@@ -187,7 +192,7 @@ asmlinkage void signal_check(hw_context_t context) {
         // Mask all signals and store previous mask
         running_task()->signals.available = running_task()->signals.masked_signal;
         running_task()->signals.masked_signal = SIGNAL_MASK_ALL;
-        running_task()->signals.pending_signal = 0; // clear the signal
+        running_task()->signals.pending_signal = 0;  // clear the signal
 
         // Set up the stack frame if needed 
         if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]) {

@@ -78,12 +78,14 @@ signal_set_up_stack_helper:
     pushl   %edx 
 
     # Update the register value in kernel hw_context 
-    movl    %esp, 60(%ebx)
+    movl    %esp, 60(%ebx)  # set user ESP
+    # Notice: we don't change CS and SS and assume they are USER. Do not check_signal when return to kernel
     # No need to update user EBP
 
-    # change eip to signal handler 
+    # Change eip to signal handler
     movl    temperory_save_2, %eax
     movl    %eax, 48(%ebx)
+
     # Switch back to kernel stack
     movl    temperory_save_0, %esp 
     movl    temperory_save_1, %ebp 

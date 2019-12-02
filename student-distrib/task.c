@@ -615,7 +615,10 @@ static void init_task_main() {
         system_execute((uint8_t *) "shell", 0, 1, NULL);
         do {
             ret = system_execute((uint8_t *) "shell", 1, 1, NULL);
-            terminal_focus_printf("<Last executed shell halted with status %d. Restarting...>\n", ret);
+            terminal_focus_printf("<Last executed shell halted with status %d>\n", ret);
+            if (ret == 0) {
+                terminal_focus_printf("<Restarting...>\n", ret);
+            }
         } while (ret == 0);
 
 

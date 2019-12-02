@@ -32,7 +32,7 @@
 
 #define     SIGNAL_MASK_ALL     0xFFFFFFFF
 
-#define     SIGNAL_ALARM_INTERVAL_MS    10000  // [ms]
+#define     SIGNAL_ALARM_INTERVAL_MS    2000  // [ms]
 
 #ifndef     ASM_SIGNAL
 
