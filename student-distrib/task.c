@@ -8,6 +8,7 @@
 #include "task_paging.h"
 #include "task_sched.h"
 #include "vidmem.h"
+#include "signal.h"
 
 #define TASK_ENABLE_CHECKPOINT    0
 #if TASK_ENABLE_CHECKPOINT
@@ -403,6 +404,9 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
 
     // Init opened file list
     init_file_array(&task->file_array);
+
+    // Init signals
+    task_signal_init(&task->signals);
 
     /** --------------- Phase 3. Ready to go. Setup scheduler --------------- */
 

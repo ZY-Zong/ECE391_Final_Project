@@ -106,17 +106,28 @@ void unified_exception_handler(hw_context_t hw_context) {
         reset_cursor();
         printf("EXCEPTION %u OCCUR IN PURE KERNEL STATE!\n", hw_context.irq_exp_num);
         printf("------------------------ BLUE SCREEN ------------------------");
+        volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
+        while (inf_loop) {}   // put kernel into infinite loop
     } else {
         DEBUG_ERR("EXCEPTION %u OCCUR!\n", hw_context.irq_exp_num);
-#if HALT_USER_PROGRAM_AT_EXCEPTION
+#if (EXCEPTION_HANLDING_TYPE == 0)
+        DEBUG_ERR("Start infinity loop\n");
+        volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
+        while (inf_loop) {}   // put kernel into infinite loop
+#elif (EXCEPTION_HANLDING_TYPE == 1)
+        system_halt(256);
+        // If failed to halt
+        DEBUG_ERR("Start infinity loop\n");
+        volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
+        while (inf_loop) {}   // put kernel into infinite loop
+#elif (EXCEPTION_HANLDING_TYPE == 2)
         if (hw_context.irq_exp_num == 0) signal_send(SIGNAL_DIV_ZERO);
         else signal_send(SIGNAL_SEGFAULT);
-        system_halt(256);
+        // Continue backtracking exception handler
+#else
+#error "Invalid EXCEPTION_HANLDING_TYPE"
 #endif
     }
-
-    volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
-    while (inf_loop) {}   // put kernel into infinite loop
 }
 
 /**

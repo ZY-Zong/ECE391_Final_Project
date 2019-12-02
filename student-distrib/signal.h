@@ -50,7 +50,7 @@ extern int32_t system_sigreturn(void);  // defined in signal_asm.S
 // Signal operations
 void signal_init(); // call at boot
 
-int32_t task_signal_init(signal_struct_t* signal_struct); // init signal fileds when execute a task
+int32_t task_signal_init(signal_struct_t* signal_struct);  // init signal fields when execute a task
 int32_t signal_send(int32_t signal); // send a signal to running task
 int32_t signal_block(int32_t signal); // block a signal for running task
 int32_t signal_unblock(int32_t signal); // unblock a signal for running task

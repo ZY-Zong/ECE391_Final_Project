@@ -3,7 +3,7 @@
 #include "task.h"
 #include "lib.h"
 
-extern  void signal_set_up_stack_helper(int32_t signum, hw_context_t* hw_context_addr);
+extern void signal_set_up_stack_helper(int32_t signum, hw_context_t *hw_context_addr);
 
 #define     IS_SIGNAL(signal)   ( (signal >= 0) && (signal < MAX_NUM_SIGNAL) )
 
@@ -33,9 +33,13 @@ signal_handler current_handlers[MAX_NUM_SIGNAL];
 signal_handler default_handlers[MAX_NUM_SIGNAL];
 
 int32_t signal_div_zero_default_handler();
+
 int32_t signal_segfault_default_handler();
+
 int32_t signal_interrupt_default_handler();
+
 int32_t signal_alarm_default_handler();
+
 int32_t signal_user1_default_handler();
 
 int32_t signal_behavior_kill();
@@ -50,8 +54,8 @@ int32_t signal_behavior_kill();
  * @return      0 for success, -1 for fail 
  * @effect      since the whole OS share a same handler array, will affect the behavior of all
  */
-int32_t system_set_handler(int32_t signum, void* handler_address){
-    if (!IS_SIGNAL(signum)){
+int32_t system_set_handler(int32_t signum, void *handler_address) {
+    if (!IS_SIGNAL(signum)) {
         DEBUG_ERR("system_set_handler(): bad signum: %d\n", signum);
         return -1;
     }
@@ -72,7 +76,7 @@ int32_t system_set_handler(int32_t signum, void* handler_address){
  * Init all the signal handlers
  * Should be called at boot 
  */
-void signal_init(){
+void signal_init() {
     current_handlers[SIGNAL_DIV_ZERO] = default_handlers[SIGNAL_DIV_ZERO] = signal_div_zero_default_handler;
     current_handlers[SIGNAL_SEGFAULT] = default_handlers[SIGNAL_SEGFAULT] = signal_segfault_default_handler;
     current_handlers[SIGNAL_INTERRUPT] = default_handlers[SIGNAL_INTERRUPT] = signal_interrupt_default_handler;
@@ -86,8 +90,8 @@ void signal_init(){
  * @param       signal_struct: the signal struct to be init 
  * @return      0 for success, -1 for bad signal_struct
  */
-int32_t task_signal_init(signal_struct_t* signal_struct){
-    if (signal_struct == NULL){
+int32_t task_signal_init(signal_struct_t *signal_struct) {
+    if (signal_struct == NULL) {
         DEBUG_ERR("signal_init(): bad signal_struct!\n");
         return -1;
     }
@@ -104,8 +108,8 @@ int32_t task_signal_init(signal_struct_t* signal_struct){
  * @return      0 for success, -1 for fail
  * @note        will not check whether this signal already sent, as desired
  */
-int32_t signal_send(int32_t signal){
-    if (!IS_SIGNAL(signal)){
+int32_t signal_send(int32_t signal) {
+    if (!IS_SIGNAL(signal)) {
         DEBUG_ERR("signal_send(): invalid signal number: %d\n", signal);
         return -1;
     }
@@ -120,8 +124,8 @@ int32_t signal_send(int32_t signal){
  * Should only call by kernel 
  * @return      0 for success, -1 for fail
  */
-int32_t signal_block(int32_t signal){
-    if (!IS_SIGNAL(signal)){
+int32_t signal_block(int32_t signal) {
+    if (!IS_SIGNAL(signal)) {
         DEBUG_ERR("signal_block(): invalid signal number: %d\n", signal);
         return -1;
     }
@@ -136,8 +140,8 @@ int32_t signal_block(int32_t signal){
  * Should only call by kernel 
  * @return      0 for success, -1 for fail
  */
-int32_t signal_unblock(int32_t signal){
-    if (!IS_SIGNAL(signal)){
+int32_t signal_unblock(int32_t signal) {
+    if (!IS_SIGNAL(signal)) {
         DEBUG_ERR("signal_unblock(): invalid signal number: %d\n", signal);
         return -1;
     }
@@ -153,30 +157,30 @@ int32_t signal_unblock(int32_t signal){
  * @note        should be called every time return from exception, interrupt and system call
  * @note        in our simplify version of signal, only one signal can be sent at a time 
  */
-void signal_check(hw_context_t context){
+void signal_check(hw_context_t context) {
     uint32_t cur_signal = running_task()->signals.pending_signal & (~running_task()->signals.masked_signal);
-    
+
     // Check whether there is a signal pending that is not blocked
-    if ( cur_signal == 0 ) return;
+    if (cur_signal == 0) return;
 
     // Get the signal number 
     int cur_signal_num;
-    for (cur_signal_num = 0; cur_signal_num < MAX_NUM_SIGNAL; cur_signal_num++){
+    for (cur_signal_num = 0; cur_signal_num < MAX_NUM_SIGNAL; cur_signal_num++) {
         if (cur_signal & 0x1) break;
         cur_signal = cur_signal >> 1;
     }
-    
+
     // Mask all signals and store previous mask 
     running_task()->signals.available = running_task()->signals.masked_signal;
     running_task()->signals.masked_signal = SIGNAL_MASK_ALL;
-   
+
     // Set up the stack frame 
     int32_t flag;
     cli_and_save(flag);
     SIGNAL_SET_UP_STACK(cur_signal_num, &context);
     restore_flags(flag);
 
-    
+
 }
 
 /*************************** Singal Handlers  ***************************/
@@ -186,7 +190,7 @@ void signal_check(hw_context_t context){
  * @param       signal: the signal to be handle 
  * @return      always 0
  */
-int32_t signal_handle(int32_t signal){
+int32_t signal_handle(int32_t signal) {
     // TODO: execute system_sigreturn?
     return current_handlers[signal]();
 }
@@ -194,40 +198,40 @@ int32_t signal_handle(int32_t signal){
 /**
  * Default handler for SIGNAL_DIV_ZERO
  * Default action: kill 
- */ 
-int32_t signal_div_zero_default_handler(){
+ */
+int32_t signal_div_zero_default_handler() {
     return signal_behavior_kill();
 }
 
 /**
  * Default handler for SIGNAL_SEGFAULT
  * Default action: kill 
- */ 
-int32_t signal_segfault_default_handler(){
+ */
+int32_t signal_segfault_default_handler() {
     return signal_behavior_kill();
 }
 
 /**
  * Default handler for SIGNAL_INTERRUPT
  * Default action: kill 
- */ 
-int32_t signal_interrupt_default_handler(){
+ */
+int32_t signal_interrupt_default_handler() {
     return signal_behavior_kill();
 }
 
 /**
  * Default handler for SIGNAL_ALARM
  * Default action: ignore
- */ 
-int32_t signal_alarm_default_handler(){
+ */
+int32_t signal_alarm_default_handler() {
     return 0;
 }
 
 /**
  * Default handler for SIGNAL_USER1
  * Default action: ignore 
- */ 
-int32_t signal_user1_default_handler(){
+ */
+int32_t signal_user1_default_handler() {
     return 0;
 }
 
@@ -237,7 +241,7 @@ int32_t signal_user1_default_handler(){
  * Help function that halt current process 
  * @return     this function should never return  
  */
-int32_t signal_behavior_kill(){
+int32_t signal_behavior_kill() {
     system_halt(0);
     return -1;
 }
@@ -246,6 +250,6 @@ int32_t signal_behavior_kill(){
  * Restore previous mask 
  * called by system call sigreturn 
  */
-void signal_restore_mask(void){
+void signal_restore_mask(void) {
     running_task()->signals.masked_signal = running_task()->signals.available;
 }
