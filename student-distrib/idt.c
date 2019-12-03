@@ -25,21 +25,36 @@ void idt_init() {
     for (i = 0; i < IDT_ENTRY_INTEL; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
-        idt[i].size = 1;
         idt[i].present = 1;
         idt[i].reserved0 = 0;
+        idt[i].size = 1;
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
         idt[i].reserved3 = 1;
         idt[i].reserved4 = 0;
     }
-    // Initialize 0x20 - 0xFF general purpose interrupt handlers
-    for (i = IDT_ENTRY_INTEL; i < NUM_VEC; i++) {
+
+    // Initialize 0x20 - 0x2F interrupt gates
+    for (i = IDT_ENTRY_INTEL; i < IDT_ENTRY_INTEL + IDT_INTERRUPT_COUNT; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
-        idt[i].size = 1;
         idt[i].present = 0;
         idt[i].reserved0 = 0;
+        idt[i].size = 0;  // interrupt gate
+        idt[i].reserved1 = 1;
+        idt[i].reserved2 = 1;
+        idt[i].reserved3 = 1;
+        idt[i].reserved4 = 0;
+
+    }
+
+    // Initialize 0x30 - 0xFF general purpose interrupt handlers
+    for (i = IDT_ENTRY_INTEL + IDT_INTERRUPT_COUNT; i < NUM_VEC; i++) {
+        idt[i].seg_selector = KERNEL_CS;
+        idt[i].dpl = 0;
+        idt[i].present = 0;
+        idt[i].reserved0 = 0;
+        idt[i].size = 1;  // trap gate
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
         idt[i].reserved3 = 1;

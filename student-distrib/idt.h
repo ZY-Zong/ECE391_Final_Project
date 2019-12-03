@@ -13,11 +13,11 @@
 
 #define EXCEPTION_HANLDING_TYPE  2  // 0 for simply loop, 1 for halting user program, 2 for sending signals
 
-#define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
-#define IDT_ENTRY_PIT            0x20  // the vector number of PIT
-#define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard
-#define IDT_ENTRY_RTC            0x28  // the vector number of RTC
-#define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
+#define IDT_ENTRY_INTEL            0x20  // number of vectors used by intel
+#define IDT_ENTRY_PIT              0x20  // the vector number of PIT
+#define IDT_ENTRY_KEYBOARD         0x21  // the vector number of keyboard
+#define IDT_ENTRY_RTC              0x28  // the vector number of RTC
+#define IDT_ENTRY_SYSTEM_CALL      0x80  // the vector number of system calls
 
 typedef struct hw_context_t hw_context_t;
 struct hw_context_t {
