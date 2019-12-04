@@ -144,6 +144,5 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
         modetiming->CrtcVTotal /= 2;
         modetiming->flags |= VADJUSTED;
     }
-//    current_timing=besttiming;
     return 0;			/* Succesful. */
 }

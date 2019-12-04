@@ -7,6 +7,10 @@
 
 #include "vga_port.h"
 
+int cirrus_setmode(int mode, int prv_mode);
+void cirrus_setpage_2M(int page);
+void cirrus_setpage(int page);
+
 /* Cards specifications. */
 typedef struct {
     int videoMemory;		/* Video memory in kilobytes. */

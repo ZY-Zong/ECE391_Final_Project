@@ -57,14 +57,4 @@
 #define MIS     (SEQ+SEQ_C)	/* General Registers */
 #define EXT     (MIS+MIS_C)	/* SVGA Extended Registers */
 
-/* Shorthands for chipset (driver) specific calls */
-#define chipset_saveregs __svgalib_driverspecs->saveregs
-#define chipset_setregs __svgalib_driverspecs->setregs
-#define chipset_unlock __svgalib_driverspecs->unlock
-#define chipset_test __svgalib_driverspecs->test
-#define chipset_setpage __svgalib_driverspecs->__svgalib_setpage
-#define chipset_setmode __svgalib_driverspecs->setmode
-#define chipset_modeavailable __svgalib_driverspecs->modeavailable
-#define chipset_getmodeinfo __svgalib_driverspecs->getmodeinfo
-
 #endif //_VGA_PORT_H

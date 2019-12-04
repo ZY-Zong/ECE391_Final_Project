@@ -134,4 +134,8 @@ extern void __svgalib_outmisc(int);
 
 int __svgalib_setregs(const unsigned char *regs);
 
+extern int __svgalib_CRT_I;		/* current CRT index register address */
+extern int __svgalib_CRT_D;		/* current CRT data register address */
+extern int __svgalib_IS1_R;		/* current input status register address */
+
 #endif //_VGA_REGS_H

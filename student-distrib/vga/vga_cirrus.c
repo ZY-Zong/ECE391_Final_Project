@@ -7,10 +7,6 @@
 #include "../lib.h"
 #include "vga_regs.h"
 #include "vga.h"
-#include "vga_driver.h"
-#include "vga_accel.h"
-
-static AccelSpecs cirrus_accelspecs;
 
 /* Enable support for > 85 MHz dot clocks on the 5434. */
 #define SUPPORT_5434_PALETTE_CLOCK_DOUBLING
@@ -41,64 +37,10 @@ static AccelSpecs cirrus_accelspecs;
 #define CIRRUS_CR1D        CIRRUSREG_CR(0x1D)
 #define CIRRUS_HIDDENDAC    CIRRUSREG_DAC
 
-
 enum {
     CLGD5420 = 0, CLGD7548, CLGD5420B, CLGD5422, CLGD5422C, CLGD5424, CLGD5426,
     CLGD5428, CLGD5429, CLGD5430, CLGD5434, CLGD5436
 };
-
-/* Efficient chip type checks. */
-
-#define CHECKCHIP1(c1) ((1 << cirrus_chiptype) & (1 << c1))
-#define CHECKCHIP2(c1, c2) ((1 << cirrus_chiptype) & ((1 << c1) | (1 << c2)))
-#define CHECKCHIP3(c1, c2, c3) ((1 << cirrus_chiptype) & ((1 << c1) \
-    | (1 << c2) | (1 << c3)))
-#define CHECKCHIP4(c1, c2, c3, c4) ((1 << cirrus_chiptype) & ((1 << c1) \
-    | (1 << c2) | (1 << c3) | (1 << c4)))
-#define CHECKCHIP5(c1, c2, c3, c4, c5) ((1 << cirrus_chiptype) & \
-    ((1 << c1) | (1 << c2) | (1 << c3) | (1 << c4) | (1 << c5)))
-#define CHECKCHIP6(c1, c2, c3, c4, c5, c6) ((1 << cirrus_chiptype) & \
-    ((1 << c1) | (1 << c2) | (1 << c3) | (1 << c4) | (1 << c5) \
-    | (1 << c6)))
-#define CHECKCHIP7(c1, c2, c3, c4, c5, c6, c7) ((1 << cirrus_chiptype) & \
-    ((1 << c1) | (1 << c2) | (1 << c3) | (1 << c4) | (1 << c5) \
-    | (1 << c6) | (1 << c7)))
-#define CHECKCHIP8(c1, c2, c3, c4, c5, c6, c7, c8) ((1 << cirrus_chiptype) & \
-    ((1 << c1) | (1 << c2) | (1 << c3) | (1 << c4) | (1 << c5) \
-    | (1 << c6) | (1 << c7) | (1 << c8)))
-#define CHECKCHIP9(c1, c2, c3, c4, c5, c6, c7, c8, c9) ((1 << cirrus_chiptype) & \
-    ((1 << c1) | (1 << c2) | (1 << c3) | (1 << c4) | (1 << c5) \
-    | (1 << c6) | (1 << c7) | (1 << c8) | (1 << c9)))
-#define CHECKCHIPGREATEREQUAL(c) (cirrus_chiptype >= c)
-#define CHECKCHIPNOTEQUAL(c) (cirrus_chiptype != c)
-
-#define CHIP_HAS_CR1D() \
-    CHECKCHIP4(CLGD5429, CLGD5430, CLGD5434, CLGD5436)
-#define CHIP_HAS_GRC_AND_GRD() \
-    CHECKCHIP4(CLGD5424, CLGD5426, CLGD5428, CLGD5429)
-#define CHIP_HAS_GRE() \
-    CHECKCHIP5(CLGD5428, CLGD5429, CLGD5430, CLGD5434, CLGD5436)
-#define CHIP_HAS_GR10_AND_GR11() \
-    CHECKCHIP7(CLGD5424, CLGD5426, CLGD5428, CLGD5429, CLGD5430, CLGD5434, CLGD5436)
-#define CHIP_HAS_BLTTRANSPARENTCOLOR() \
-    CHECKCHIP2(CLGD5426, CLGD5428)
-#define CHIP_HAS_PERFTUNINGREGISTER() \
-    CHECKCHIP7(CLGD5424, CLGD5426, CLGD5428, CLGD5429, CLGD5430, CLGD5434, CLGD5436)
-#define CHIP_HAS_MCLK_REGISTER() \
-    CHECKCHIP9(CLGD5420B, CLGD5422C, CLGD5424, CLGD5426, CLGD5428, \
-        CLGD5429, CLGD5430, CLGD5434, CLGD5436)
-#define CHIP_HAS_32BIT_DRAM_BUS() \
-    CHECKCHIPGREATEREQUAL(CLGD5420B)
-#define CHIP_HAS_64BIT_DRAM_BUS() \
-    CHECKCHIP3(CLGD5434, CLGD5436, CLGD7548)
-#define CHIP_HAS_HIDDENDAC() \
-    CHECKCHIPGREATEREQUAL(CLGD5420B)
-#define CHIP_HAS_ACCELERATION() \
-    CHECKCHIPNOTEQUAL(CLGD5420B)
-#define CHIP_HAS_SR17() \
-    CHECKCHIPGREATEREQUAL(CLGD5422)
-#define CHIP_USE_SR17() \
-    CHECKCHIPGREATEREQUAL(CLGD5429)
 
 static int cirrus_memory;
 static int cirrus_chiptype;
@@ -111,7 +53,7 @@ static int DRAMbandwidth, DRAMbandwidthLimit;
 static void cirrus_initializemode(unsigned char *moderegs,
                                   ModeTiming *modetiming, ModeInfo *modeinfo);
 
-ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode);
+static ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode);
 
 static int cirrus_saveregs(unsigned char regs[]);
 
@@ -185,28 +127,20 @@ static int cirrus_init(int force, int par1, int par2);
 
 /* Bank switching function -- set 64K page number */
 
-static void cirrus_setpage_2M(int page) {
+void cirrus_setpage_2M(int page) {
     /* Cirrus banking register has been set to 16K granularity */
     outw((page << 10) + 0x09, GRA_I);
 }
 
-static void cirrus_setpage(int page) {
+void cirrus_setpage(int page) {
     /* default 4K granularity */
     outw((page << 12) + 0x09, GRA_I);
 }
 
 
-/* No r/w paging */
-static void cirrus_setrdpage(int page) {
-}
-
-static void cirrus_setwrpage(int page) {
-}
-
-
 /* Set display start address (not for 16 color modes) */
 /* Cirrus supports any address in video memory (up to 2Mb) */
-
+// TODO: when to use
 static void cirrus_setdisplaystart(int address) {
     outw(0x0d + ((address >> 2) & 0x00ff) * 256, CRT_IC);    /* sa2-sa9 */
     outw(0x0c + ((address >> 2) & 0xff00), CRT_IC);    /* sa10-sa17 */
@@ -229,7 +163,7 @@ static void cirrus_setdisplaystart(int address) {
 
 /* Set logical scanline length (usually multiple of 8) */
 /* Cirrus supports multiples of 8, up to 4088 */
-
+// TODO: when to use
 static void cirrus_setlogicalwidth(int width) {
     outw(0x13 + (width >> 3) * 256, CRT_IC);    /* lw3-lw11 */
     outb(0x1b, CRT_IC);
@@ -292,38 +226,8 @@ static int cirrus_linear(int op, int param) {
         return -1;        /* Unknown function. */
 }
 
-/* Function table (exported) */
-
-DriverSpecs __svgalib_cirrus_driverspecs =
-        {
-                cirrus_saveregs,
-                cirrus_setregs,
-                cirrus_unlock,
-                cirrus_lock,
-                cirrus_test,
-                cirrus_init,
-                cirrus_setpage,
-                cirrus_setrdpage,
-                cirrus_setwrpage,
-                cirrus_setmode,
-                cirrus_modeavailable,
-                cirrus_setdisplaystart,
-                cirrus_setlogicalwidth,
-                cirrus_getmodeinfo,
-                0,                /* old blit funcs */
-                0,
-                0,
-                0,
-                0,
-                0,                /* ext_set */
-                0,                /* accel */
-                cirrus_linear,
-                NULL,                       /* Accelspecs */
-                NULL,                       /* Emulation */
-        };
-
 static int cirrus_test(void) {
-    // TODO: change outb
+
     int oldlockreg;
     int lockreg;
 
@@ -362,29 +266,6 @@ static int cirrus_test(void) {
     return 1;
 }
 
-static int cirrus_map_clock(int bpp, int pixelclock) {
-    if (bpp == 24 && cirrus_chiptype < CLGD5436)
-        /* Most chips need a tripled clock for 24bpp. */
-        return pixelclock * 3;
-    if (bpp == 16 && cirrus_chiptype <= CLGD5424)
-        /* The 5422/24 need to use a doubled clock. */
-        return pixelclock * 2;
-    return pixelclock;
-}
-
-/* This is the horizontal CRTC mapping function in the CardSpecs. */
-
-static int cirrus_map_horizontal_crtc(int bpp, int pixelclock, int htiming) {
-#ifdef ALWAYS_USE_5434_PALETTE_CLOCK_DOUBLING
-    if (bpp == 8 && cirrus_chiptype >= CLGD5434)
-#else
-    if (bpp == 8 && cirrus_chiptype >= CLGD5434 && pixelclock > 86000)
-#endif
-        /* 5434 palette clock doubling mode; divide CRTC by 2. */
-        return htiming / 2;
-    /* Otherwise, don't change. */
-    return htiming;
-}
 
 static int cirrus_init(int force, int par1, int par2) {
     unsigned char v;
@@ -398,7 +279,6 @@ static int cirrus_init(int force, int par1, int par2) {
 
     /* Treat 5446 as 5436. */
     cirrus_chiptype = CLGD5436;
-
 
     /* Now determine the amount of memory. */
     outb(0x0a, SEQ_I);    /* read memory register */
@@ -449,20 +329,6 @@ static int cirrus_init(int force, int par1, int par2) {
      */
     DRAMbandwidthLimit = (DRAMbandwidth * 10) / 11;
 
-
-    int i;
-
-    i = (__svgalib_inSR(0x17) >> 3) & 7;
-    if (i == 4) {
-//        unsigned long buf[64];
-//        int found, _ioperm = 0;
-
-//            found=__svgalib_pci_find_vendor_vga(0x1013,buf,0);
-// TODO: assume not found
-//            if(!found)
-        cirrus_pci_linear = buf[4] & 0xffff0000;
-        DEBUG_PRINT("CHECKPOINT 1");
-    }
 
 /* begin: Initialize card specs. */
     cardspecs.videoMemory = cirrus_memory;
@@ -521,25 +387,12 @@ static int cirrus_init(int force, int par1, int par2) {
     /* Initialize clocks (only fixed set for now). */
     cardspecs.nClocks = NU_FIXED_CLOCKS;
     cardspecs.clocks = cirrus_fixed_clocks;
-    cardspecs.mapClock = cirrus_map_clock;
-    cardspecs.mapHorizontalCrtc = cirrus_map_horizontal_crtc;
+//    cardspecs.mapClock = cirrus_map_clock;
+//    cardspecs.mapHorizontalCrtc = cirrus_map_horizontal_crtc;
     cardspecs.maxHorizontalCrtc = 2040;
     /* Disable 16-color SVGA modes (don't work correctly). */
     cardspecs.maxPixelClock4bpp = 0;
 /* end: Initialize card specs. */
-
-    /* Initialize accelspecs structure. */
-    __svgalib_cirrus_driverspecs.accelspecs = &cirrus_accelspecs;
-
-    memset(__svgalib_cirrus_driverspecs.accelspecs, 0, sizeof(AccelSpecs));
-    __svgalib_cirrus_driverspecs.accelspecs->flags = ACCELERATE_ANY_LINEWIDTH;
-
-    /* Set up the correct paging routine */
-    if (cirrus_memory >= 2048)
-        __svgalib_cirrus_driverspecs.__svgalib_setpage =
-                cirrus_setpage_2M;
-
-    __svgalib_driverspecs = &__svgalib_cirrus_driverspecs;
 
     __svgalib_banked_mem_base = 0xa0000;
     __svgalib_banked_mem_size = 0x10000;
@@ -596,571 +449,6 @@ static void cirrus_setregs(const unsigned char regs[], int mode) {
     __svgalib_outSR(0x1F, regs[CIRRUS_MCLKREGISTER]);
 }
 
-/* Cirrus Logic acceleration functions implementation. */
-
-/* BitBLT modes. */
-
-#define FORWARDS        0x00
-#define BACKWARDS        0x01
-#define SYSTEMDEST        0x02
-#define SYSTEMSRC        0x04
-#define TRANSPARENCYCOMPARE    0x08
-#define PIXELWIDTH16        0x10
-#define PIXELWIDTH32        0x30    /* 543x only. */
-#define PATTERNCOPY        0x40
-#define COLOREXPAND        0x80
-
-/* Macros for normal I/O BitBLT register access. */
-
-#define SETSRCADDR(addr) \
-    outw((((addr) & 0x000000FF) << 8) | 0x2C, GRA_I); \
-    outw((((addr) & 0x0000FF00)) | 0x2D, GRA_I); \
-    outw((((addr) & 0x003F0000) >> 8) | 0x2E, GRA_I);
-
-#define SETDESTADDR(addr) \
-    outw((((addr) & 0x000000FF) << 8) | 0x28, GRA_I); \
-    outw((((addr) & 0x0000FF00)) | 0x29, GRA_I); \
-    outw((((addr) & 0x003F0000) >> 8) | 0x2A, GRA_I);
-
-/* Pitch: the 5426 goes up to 4095, the 5434 can do 8191. */
-
-#define SETDESTPITCH(pitch) \
-    outw((((pitch) & 0x000000FF) << 8) | 0x24, GRA_I); \
-    outw((((pitch) & 0x00001F00)) | 0x25, GRA_I);
-
-#define SETSRCPITCH(pitch) \
-    outw((((pitch) & 0x000000FF) << 8) | 0x26, GRA_I); \
-    outw((((pitch) & 0x00001F00)) | 0x27, GRA_I);
-
-/* Width: the 5426 goes up to 2048, the 5434 can do 8192. */
-
-#define SETWIDTH(width) \
-    outw(((((width) - 1) & 0x000000FF) << 8) | 0x20, GRA_I); \
-    outw(((((width) - 1) & 0x00001F00)) | 0x21, GRA_I);
-
-/* Height: the 5426 goes up to 1024, the 5434 can do 2048. */
-/* It appears many 5434's only go up to 1024. */
-
-#define SETHEIGHT(height) \
-    outw(((((height) - 1) & 0x000000FF) << 8) | 0x22, GRA_I); \
-    outw((((height) - 1) & 0x00000700) | 0x23, GRA_I);
-
-#define SETBLTMODE(m) \
-    outw(((m) << 8) | 0x30, GRA_I);
-
-#define SETBLTWRITEMASK(m) \
-    outw(((m) << 8) | 0x2F, GRA_I);
-
-#define SETTRANSPARENCYCOLOR(c) \
-    outw(((c) << 8) | 0x34, GRA_I);
-
-#define SETTRANSPARENCYCOLOR16(c) \
-    outw(((c) << 8) | 0x34, GRA_I); \
-    outw((c & 0xFF00) | 0x35, GRA_I);
-
-#define SETTRANSPARENCYCOLORMASK16(m) \
-    outw(((m) << 8) | 0x38, GRA_I); \
-    outw(((m) & 0xFF00) | 0x39, GRA_I);
-
-#define SETROP(rop) \
-    outw(((rop) << 8) | 0x32, GRA_I);
-
-#define SETFOREGROUNDCOLOR(c) \
-    outw(0x01 + ((c) << 8), GRA_I);
-
-#define SETBACKGROUNDCOLOR(c) \
-    outw(0x00 + ((c) << 8), GRA_I);
-
-#define SETFOREGROUNDCOLOR16(c) \
-    outw(0x01 + ((c) << 8), GRA_I); \
-    outw(0x11 + ((c) & 0xFF00), GRA_I);
-
-#define SETBACKGROUNDCOLOR16(c) \
-    outw(0x00 + ((c) << 8), GRA_I); \
-    outw(0x10 + ((c) & 0xFF00), GRA_I); \
-
-#define SETFOREGROUNDCOLOR32(c) \
-    outw(0x01 + ((c) << 8), GRA_I); \
-    outw(0x11 + ((c) & 0xFF00), GRA_I); \
-    outw(0x13 + (((c) & 0xFf0000) >> 8), GRA_I); \
-    outw(0x15 + (((unsigned int)(c) & 0xFF000000) >> 16), GRA_I);
-
-#define SETBACKGROUNDCOLOR32(c) \
-    outw(0x00 + ((c) << 8), GRA_I); \
-    outw(0x10 + ((c) & 0xFF00), GRA_I); \
-    outw(0x12 + (((c) & 0xFF0000) >> 8), GRA_I); \
-    outw(0x14 + (((unsigned int)(c) & 0xFF000000) >> 16), GRA_I);
-
-#define STARTBLT() { \
-    unsigned char tmp; \
-    outb(0x31, GRA_I); \
-    tmp = inb(GRA_D); \
-    outb(tmp | 0x02, GRA_D); \
-    }
-
-#define BLTBUSY(s) { \
-    outb(0x31, GRA_I); \
-    s = inb(GRA_D) & 1; \
-    }
-
-#define WAITUNTILFINISHED() \
-    for (;;) { \
-        int busy; \
-        BLTBUSY(busy); \
-        if (!busy) \
-            break; \
-    }
-
-
-/* Macros for memory-mapped I/O BitBLT register access. */
-
-/* MMIO addresses (offset from 0xb8000). */
-
-#define MMIOBACKGROUNDCOLOR    0x00
-#define MMIOFOREGROUNDCOLOR    0x04
-#define MMIOWIDTH        0x08
-#define MMIOHEIGHT        0x0A
-#define MMIODESTPITCH        0x0C
-#define MMIOSRCPITCH        0x0E
-#define MMIODESTADDR        0x10
-#define MMIOSRCADDR        0x14
-#define MMIOBLTWRITEMASK    0x17
-#define MMIOBLTMODE        0x18
-#define MMIOROP            0x1A
-#define MMIOBLTSTATUS        0x40
-
-#define MMIOSETDESTADDR(addr) \
-  *(unsigned int *)(MMIO_POINTER + MMIODESTADDR) = addr;
-
-#define MMIOSETSRCADDR(addr) \
-  *(unsigned int *)(MMIO_POINTER + MMIOSRCADDR) = addr;
-
-/* Pitch: the 5426 goes up to 4095, the 5434 can do 8191. */
-
-#define MMIOSETDESTPITCH(pitch) \
-  *(unsigned short *)(MMIO_POINTER + MMIODESTPITCH) = pitch;
-
-#define MMIOSETSRCPITCH(pitch) \
-  *(unsigned short *)(MMIO_POINTER + MMIOSRCPITCH) = pitch;
-
-/* Width: the 5426 goes up to 2048, the 5434 can do 8192. */
-
-#define MMIOSETWIDTH(width) \
-  *(unsigned short *)(MMIO_POINTER + MMIOWIDTH) = (width) - 1;
-
-/* Height: the 5426 goes up to 1024, the 5434 can do 2048. */
-
-#define MMIOSETHEIGHT(height) \
-  *(unsigned short *)(MMIO_POINTER + MMIOHEIGHT) = (height) - 1;
-
-#define MMIOSETBLTMODE(m) \
-  *(unsigned char *)(MMIO_POINTER + MMIOBLTMODE) = m;
-
-#define MMIOSETBLTWRITEMASK(m) \
-  *(unsigned char *)(MMIO_POINTER + MMIOBLTWRITEMASK) = m;
-
-#define MMIOSETROP(rop) \
-  *(unsigned char *)(MMIO_POINTER + MMIOROP) = rop;
-
-#define MMIOSTARTBLT() \
-  *(unsigned char *)(MMIO_POINTER + MMIOBLTSTATUS) |= 0x02;
-
-#define MMIOBLTBUSY(s) \
-  s = *(volatile unsigned char *)(MMIO_POINTER + MMIOBLTSTATUS) & 1;
-
-#define MMIOSETBACKGROUNDCOLOR(c) \
-  *(unsigned char *)(MMIO_POINTER + MMIOBACKGROUNDCOLOR) = c;
-
-#define MMIOSETFOREGROUNDCOLOR(c) \
-  *(unsigned char *)(MMIO_POINTER + MMIOFOREGROUNDCOLOR) = c;
-
-#define MMIOSETBACKGROUNDCOLOR16(c) \
-  *(unsigned short *)(MMIO_POINTER + MMIOBACKGROUNDCOLOR) = c;
-
-#define MMIOSETFOREGROUNDCOLOR16(c) \
-  *(unsigned short *)(MMIO_POINTER + MMIOFOREGROUNDCOLOR) = c;
-
-#define MMIOSETBACKGROUNDCOLOR32(c) \
-  *(unsigned int *)(MMIO_POINTER + MMIOBACKGROUNDCOLOR) = c;
-
-#define MMIOSETFOREGROUNDCOLOR32(c) \
-  *(unsigned int *)(MMIO_POINTER + MMIOFOREGROUNDCOLOR) = c;
-
-#define MMIOWAITUNTILFINISHED() \
-    for (;;) { \
-        int busy; \
-        MMIOBLTBUSY(busy); \
-        if (!busy) \
-            break; \
-    }
-
-static int cirrus_pattern_address;    /* Pattern with 1's (8 bytes) */
-static int cirrus_bitblt_pixelwidth;
-/* Foreground color is not preserved on 5420/2/4/6/8. */
-static int cirrus_accel_foreground_color;
-
-void __svgalib_cirrusaccel_init(AccelSpecs *accelspecs, int bpp, int width_in_pixels) {
-    /* [Setup accelerator screen pitch] */
-    /* [Prepare any required off-screen space] */
-    if (cirrus_chiptype < CLGD5426)
-        /* No BitBLT engine. */
-        return;
-    if (bpp == 8)
-        cirrus_bitblt_pixelwidth = 0;
-    if (bpp == 16)
-        cirrus_bitblt_pixelwidth = PIXELWIDTH16;
-    if (bpp == 32)
-        cirrus_bitblt_pixelwidth = PIXELWIDTH32;
-    SETSRCPITCH(__svgalib_accel_screenpitchinbytes);
-    SETDESTPITCH(__svgalib_accel_screenpitchinbytes);
-    SETROP(0x0D);
-    cirrus_pattern_address = cirrus_memory * 1024 - 8;
-    (*__svgalib_driverspecs->__svgalib_setpage)(cirrus_pattern_address / 65536);
-    gr_writel(0xffffffff, cirrus_pattern_address & 0xffff);
-    gr_writel(0xffffffff, (cirrus_pattern_address & 0xffff) + 4);
-    (*__svgalib_driverspecs->__svgalib_setpage)(0);
-    if (cirrus_chiptype >= CLGD5429)
-        /* Enable memory-mapped I/O. */
-        __svgalib_outSR(0x17, __svgalib_inSR(0x17) | 0x04);
-}
-
-
-/*
- * Note: The foreground color register must always be reset to 0
- * on the 542x to avoid problems in normal framebuffer operation.
- * This is not the case on chips that support memory-mapped I/O.
- */
-
-/*
- * These are two auxilliary functions to program the foreground
- * color depending on the current depth.
- */
-
-static void set_foreground_color(int fg) {
-    if (__svgalib_accel_bytesperpixel == 1) {
-        SETFOREGROUNDCOLOR(fg);
-        return;
-    }
-    if (__svgalib_accel_bytesperpixel == 2) {
-        SETFOREGROUNDCOLOR16(fg);
-        return;
-    }
-    SETFOREGROUNDCOLOR32(fg);
-}
-
-static void mmio_set_foreground_color(int fg) {
-    if (__svgalib_accel_bytesperpixel == 1) {
-        MMIOSETFOREGROUNDCOLOR(fg);
-        return;
-    }
-    if (__svgalib_accel_bytesperpixel == 2) {
-        MMIOSETFOREGROUNDCOLOR16(fg);
-        return;
-    }
-    MMIOSETFOREGROUNDCOLOR32(fg);
-}
-
-#define FINISHBACKGROUNDBLITS() \
-    if (__svgalib_accel_mode & BLITS_IN_BACKGROUND) \
-        WAITUNTILFINISHED();
-
-#define MMIOFINISHBACKGROUNDBLITS() \
-    if (__svgalib_accel_mode & BLITS_IN_BACKGROUND) \
-        MMIOWAITUNTILFINISHED();
-
-void __svgalib_cirrusaccel_FillBox(int x, int y, int width, int height) {
-    int destaddr;
-    destaddr = BLTBYTEADDRESS(x, y);
-    width *= __svgalib_accel_bytesperpixel;
-    FINISHBACKGROUNDBLITS();
-    SETSRCADDR(cirrus_pattern_address);
-    SETDESTADDR(destaddr);
-    SETWIDTH(width);
-    SETHEIGHT(height);
-    set_foreground_color(cirrus_accel_foreground_color);
-    SETBLTMODE(COLOREXPAND | PATTERNCOPY | cirrus_bitblt_pixelwidth);
-    STARTBLT();
-    WAITUNTILFINISHED();
-    /* Can't easily run in background because foreground color has */
-    /* to be restored. */
-    SETFOREGROUNDCOLOR(0x00);
-}
-
-void __svgalib_cirrusaccel_mmio_FillBox(int x, int y, int width, int height) {
-    int destaddr;
-    destaddr = BLTBYTEADDRESS(x, y);
-    width *= __svgalib_accel_bytesperpixel;
-    MMIOFINISHBACKGROUNDBLITS();
-    MMIOSETSRCADDR(cirrus_pattern_address);
-    MMIOSETDESTADDR(destaddr);
-    MMIOSETWIDTH(width);
-    MMIOSETHEIGHT(height);
-    MMIOSETBLTMODE(COLOREXPAND | PATTERNCOPY | cirrus_bitblt_pixelwidth);
-    MMIOSTARTBLT();
-    if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
-        MMIOWAITUNTILFINISHED();
-}
-
-void __svgalib_cirrusaccel_ScreenCopy(int x1, int y1, int x2, int y2, int width,
-                                      int height) {
-    int srcaddr, destaddr, dir;
-    width *= __svgalib_accel_bytesperpixel;
-    srcaddr = BLTBYTEADDRESS(x1, y1);
-    destaddr = BLTBYTEADDRESS(x2, y2);
-    dir = FORWARDS;
-    if ((y1 < y2 || (y1 == y2 && x1 < x2))
-        && y1 + height > y2) {
-        srcaddr += (height - 1) * __svgalib_accel_screenpitchinbytes + width - 1;
-        destaddr += (height - 1) * __svgalib_accel_screenpitchinbytes + width - 1;
-        dir = BACKWARDS;
-    }
-    FINISHBACKGROUNDBLITS();
-    SETSRCADDR(srcaddr);
-    SETDESTADDR(destaddr);
-    SETWIDTH(width);
-    SETHEIGHT(height);
-    SETBLTMODE(dir);
-    STARTBLT();
-    if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
-        WAITUNTILFINISHED();
-}
-
-void __svgalib_cirrusaccel_mmio_ScreenCopy(int x1, int y1, int x2, int y2, int width,
-                                           int height) {
-    int srcaddr, destaddr, dir;
-    width *= __svgalib_accel_bytesperpixel;
-    srcaddr = BLTBYTEADDRESS(x1, y1);
-    destaddr = BLTBYTEADDRESS(x2, y2);
-    dir = FORWARDS;
-    if ((y1 < y2 || (y1 == y2 && x1 < x2))
-        && y1 + height > y2) {
-        srcaddr += (height - 1) * __svgalib_accel_screenpitchinbytes + width - 1;
-        destaddr += (height - 1) * __svgalib_accel_screenpitchinbytes + width - 1;
-        dir = BACKWARDS;
-    }
-    MMIOFINISHBACKGROUNDBLITS();
-    MMIOSETSRCADDR(srcaddr);
-    MMIOSETDESTADDR(destaddr);
-    MMIOSETWIDTH(width);
-    MMIOSETHEIGHT(height);
-    MMIOSETBLTMODE(dir);
-    MMIOSTARTBLT();
-    if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
-        MMIOWAITUNTILFINISHED();
-}
-
-void __svgalib_cirrusaccel_SetFGColor(int fg) {
-    cirrus_accel_foreground_color = fg;
-}
-
-void __svgalib_cirrusaccel_mmio_SetFGColor(int fg) {
-    MMIOFINISHBACKGROUNDBLITS();
-    mmio_set_foreground_color(fg);
-}
-
-static unsigned char cirrus_rop_map[] =
-        {
-                0x0D,            /* ROP_COPY */
-                0x6D,            /* ROP_OR */
-                0x05,            /* ROP_AND */
-                0x59,            /* ROP_XOR */
-                0x0B            /* ROP_INVERT */
-        };
-
-void __svgalib_cirrusaccel_SetRasterOp(int rop) {
-    FINISHBACKGROUNDBLITS();
-    SETROP(cirrus_rop_map[rop]);
-}
-
-void __svgalib_cirrusaccel_mmio_SetRasterOp(int rop) {
-    MMIOFINISHBACKGROUNDBLITS();
-    MMIOSETROP(cirrus_rop_map[rop]);
-}
-
-void __svgalib_cirrusaccel_SetTransparency(int mode, int color) {
-    FINISHBACKGROUNDBLITS();
-    if (mode == DISABLE_TRANSPARENCY_COLOR) {
-        /* Disable. */
-        SETTRANSPARENCYCOLORMASK16(0xFFFF);
-        return;
-    }
-    if (mode == ENABLE_TRANSPARENCY_COLOR) {
-        if (__svgalib_accel_bytesperpixel == 1)
-            color += color << 8;
-        SETTRANSPARENCYCOLORMASK16(0x0000);
-        SETTRANSPARENCYCOLOR16(color);
-        return;
-    }
-    if (mode == DISABLE_BITMAP_TRANSPARENCY) {
-        __svgalib_accel_bitmaptransparency = 0;
-        return;
-    }
-    /* mode == ENABLE_BITMAP_TRANSPARENCY */
-    __svgalib_accel_bitmaptransparency = 1;
-}
-
-void __svgalib_cirrusaccel_Sync(void) {
-    WAITUNTILFINISHED();
-}
-
-void __svgalib_cirrusaccel_mmio_Sync(void) {
-    MMIOWAITUNTILFINISHED();
-}
-
-/*
- * Set up accelerator interface for pixels of size bpp and scanline width
- * of width_in_pixels.
- */
-
-static void init_acceleration_specs_for_mode(AccelSpecs *accelspecs, int bpp,
-                                             int width_in_pixels) {
-    accelspecs->operations = 0;
-    accelspecs->ropOperations = 0;
-    accelspecs->transparencyOperations = 0;
-    accelspecs->ropModes = 0;
-    accelspecs->transparencyModes = 0;
-    accelspecs->flags = ACCELERATE_ANY_LINEWIDTH;
-
-    if (cirrus_chiptype >= CLGD5426) {
-        accelspecs->operations |= ACCELFLAG_SETMODE | ACCELFLAG_SYNC;
-        if (bpp == 8 || bpp == 16) {
-            /* BitBLT engine available. */
-            accelspecs->operations |=
-                    ACCELFLAG_FILLBOX | ACCELFLAG_SETFGCOLOR |
-                    ACCELFLAG_SCREENCOPY |
-                    ACCELFLAG_SETRASTEROP |
-                    ACCELFLAG_SETTRANSPARENCY;
-            accelspecs->ropOperations =
-                    ACCELFLAG_FILLBOX | ACCELFLAG_SCREENCOPY;
-            accelspecs->transparencyOperations =
-                    ACCELFLAG_SCREENCOPY;
-            accelspecs->ropModes |= (1 << ROP_COPY) |
-                                    (1 << ROP_OR) | (1 << ROP_AND) | (1 << ROP_XOR) | (1 << ROP_INVERT);
-            accelspecs->transparencyModes |=
-                    (1 << ENABLE_TRANSPARENCY_COLOR) | (1 << ENABLE_BITMAP_TRANSPARENCY);
-        }
-        if (bpp == 24) {
-            /* Depth-independent BitBLT functions. */
-            accelspecs->operations |=
-                    ACCELFLAG_SCREENCOPY;
-            accelspecs->ropOperations =
-                    ACCELFLAG_SCREENCOPY;
-            accelspecs->ropModes |= (1 << ROP_COPY) |
-                                    (1 << ROP_OR) | (1 << ROP_AND) | (1 << ROP_XOR) | (1 << ROP_INVERT);
-        }
-    }
-    if (cirrus_chiptype >= CLGD5429)
-        if (bpp == 8 || bpp == 16) {
-            /* Newer chips don't have true color-compare. */
-            accelspecs->operations &= ~ACCELFLAG_SETTRANSPARENCY;
-            accelspecs->transparencyOperations = 0;
-            accelspecs->ropModes = 0;
-            accelspecs->transparencyModes = 0;
-        }
-    if (cirrus_chiptype >= CLGD5434)
-        if (bpp == 32) {
-            /* BitBLT engine available for 32bpp. */
-            accelspecs->operations |=
-                    ACCELFLAG_FILLBOX | ACCELFLAG_SETFGCOLOR |
-                    ACCELFLAG_SCREENCOPY |
-                    ACCELFLAG_SETRASTEROP |
-                    ACCELFLAG_SETTRANSPARENCY;
-            accelspecs->ropOperations =
-                    ACCELFLAG_FILLBOX | ACCELFLAG_SCREENCOPY;
-            accelspecs->ropModes |= (1 << ROP_COPY) |
-                                    (1 << ROP_OR) | (1 << ROP_AND) | (1 << ROP_XOR) | (1 << ROP_INVERT);
-        }
-#if 0                /* Full potential. */
-    /* 5420 */
-    if (bpp == 8)
-    /* Color-expand (extended write modes). */
-    accelspecs->operations =
-        ACCELFLAG_FILLBOX | ACCELFLAG_SETFGCOLOR | ACCELFLAG_DRAWHLINE |
-        ACCELFLAG_DRAWHLINELIST;
-    if (cirrus_chiptype >= CLGD5422)
-    if (bpp == 16)
-        /* Also for 16bpp. */
-        accelspecs->operations =
-        ACCELFLAG_FILLBOX | ACCELFLAG_SETFGCOLOR |
-        ACCELFLAG_DRAWHLINE | ACCELFLAG_DRAWHLINELIST;
-    if (cirrus_chiptype >= CLGD5426 && cirrus_memory >= 1024) {
-    if (bpp == 8 || bpp == 16) {
-        /* BitBLT engine available. */
-        accelspecs->operations |=
-        ACCELFLAG_SCREENCOPY | ACCELFLAG_PUTIMAGE |
-        ACCELFLAG_SETBGCOLOR | ACCELFLAG_SETRASTEROP |
-        ACCELFLAG_SETTRANSPARENCY |
-        ACCELFLAG_PUTIMAGE | ACCELFLAG_PUTBITMAP
-        ACCELFLAG_SCREENCOPYBITMAP;
-        accelspecs->ropOperations =
-        ACCELFLAG_FILLBOX | ACCELFLAG_SCREENCOPY |
-        ACCELFLAG_PUTIMAGE;
-        accelspecs->transparencyOperations =
-        ACCELFLAG_SCREENCOPY | ACCELFLAG_PUTIMAGE |
-        ACCELFLAG_PUTBITMAP;
-            accelspecs->ropModes |= (1<<ROP_COPY) |
-        (1<<ROP_OR) | (1<<ROP_AND) | (1<<ROP_XOR) | (1<<ROP_INVERT);
-        accelspecs->transparencyModes |=
-         (1<<ENABLE_TRANSPARENCY_COLOR) | (1<<ENABLE_BITMAP_TRANSPARENCY);
-    }
-    if (bpp == 24) {
-        /* Depth-independent BitBLT functions. */
-        accelspecs->operations |=
-        ACCELFLAG_SCREENCOPY | ACCELFLAG_PUTIMAGE;
-        accelspecs->ropOperations =
-        ACCELFLAG_SCREENCOPY | ACCELFLAG_PUTIMAGE;
-            accelspecs->ropModes |= (1<<ROP_COPY) |
-        (1<<ROP_OR) | (1<<ROP_AND) | (1<<ROP_XOR) | (1<<ROP_INVERT);
-        /*
-         * Possible additions: FILLBOX in bands, and
-         * weird PutBitmap with color 0x000000 (trippling
-         * bits with 8bpp operation).
-         */
-    }
-    }
-    if (cirrus_chiptype >= CLGD5429)
-    if (bpp == 8 || bpp == 16) {
-        /* Newer chips don't have true color-compare. */
-        accelspecs->transparencyOperations = ACCELFLAG_BITMAP;
-    }
-    if (cirrus_chiptype >= CLGD5434)
-    if (bpp == 32) {
-        /* BitBLT engine available for 32bpp. */
-        accelspecs->operations |=
-        ACCELFLAG_SCREENCOPY | ACCELFLAG_PUTIMAGE |
-        ACCELFLAG_SETBGCOLOR | ACCELFLAG_SETRASTEROP |
-        ACCELFLAG_SETTRANSPARENCY |
-        ACCELFLAG_PUTIMAGE | ACCELFLAG_PUTBITMAP
-        ACCELFLAG_SCREENCOPYBITMAP |
-        ACCELFLAG_DRAWHLINE | ACCELFLAG_DRAWHLINELIST;
-        accelspecs->ropOperations =
-        ACCELFLAG_FILLBOX |
-        ACCELFLAG_SCREENCOPY | ACCELFLAG_PUTIMAGE;
-        accelspecs->transparencyOperations =
-        ACCELFLAG_PUTBITMAP;
-            accelspecs->ropModes |= (1<<ROP_COPY) |
-        (1<<ROP_OR) | (1<<ROP_AND) | (1<<ROP_XOR) | (1<<ROP_INVERT);
-        accelspecs->transparencyModes |=
-         (1<<ENABLE_TRANSPARENCY_COLOR) | (1<<ENABLE_BITMAP_TRANSPARENCY);
-    }
-#endif
-    /* Set the function pointers; availability is handled by flags. */
-    accelspecs->FillBox = __svgalib_cirrusaccel_FillBox;
-    accelspecs->ScreenCopy = __svgalib_cirrusaccel_ScreenCopy;
-    accelspecs->SetFGColor = __svgalib_cirrusaccel_SetFGColor;
-    accelspecs->SetTransparency = __svgalib_cirrusaccel_SetTransparency;
-    accelspecs->SetRasterOp = __svgalib_cirrusaccel_SetRasterOp;
-    accelspecs->Sync = __svgalib_cirrusaccel_Sync;
-    if (cirrus_chiptype >= CLGD5429) {
-        accelspecs->FillBox = __svgalib_cirrusaccel_mmio_FillBox;
-        accelspecs->ScreenCopy = __svgalib_cirrusaccel_mmio_ScreenCopy;
-        accelspecs->SetFGColor = __svgalib_cirrusaccel_mmio_SetFGColor;
-        /* No mmio-version of SetTransparency. */
-        accelspecs->SetRasterOp = __svgalib_cirrusaccel_mmio_SetRasterOp;
-        accelspecs->Sync = __svgalib_cirrusaccel_mmio_Sync;
-    }
-}
-
 int cirrus_setmode(int mode, int prv_mode) {
     unsigned char moderegs[CIRRUS_TOTAL_REGS];
     ModeTiming modetiming;
@@ -1177,16 +465,6 @@ int cirrus_setmode(int mode, int prv_mode) {
 
     __svgalib_setregs(moderegs);    /* Set standard regs. */
     cirrus_setregs(moderegs, mode);    /* Set extended regs. */
-
-    __svgalib_InitializeAcceleratorInterface(&modeinfo);
-
-    init_acceleration_specs_for_mode(__svgalib_driverspecs->accelspecs,
-                                     modeinfo.bitsPerPixel,
-                                     modeinfo.lineWidth / modeinfo.bytesPerPixel);
-
-    __svgalib_cirrusaccel_init(__svgalib_driverspecs->accelspecs,
-                               modeinfo.bitsPerPixel,
-                               modeinfo.lineWidth / modeinfo.bytesPerPixel);
 
     return 0;
 }
@@ -1322,11 +600,11 @@ static void cirrus_initializemode(unsigned char *moderegs,
         /* XXX Needs more elaborate setting. */
         SETBITS(moderegs[CIRRUS_PERFTUNING], 0x0F, threshold);
     }
-    if (CHIP_HAS_MCLK_REGISTER())
-        if (programmedMCLK != actualMCLK
-            && modeinfo->bytesPerPixel > 0)
-            /* Program higher MCLK for packed-pixel modes. */
-            moderegs[CIRRUS_MCLKREGISTER] = programmedMCLK;
+
+    if (programmedMCLK != actualMCLK
+        && modeinfo->bytesPerPixel > 0)
+        /* Program higher MCLK for packed-pixel modes. */
+        moderegs[CIRRUS_MCLKREGISTER] = programmedMCLK;
 }
 
 /*
@@ -1338,7 +616,7 @@ static void cirrus_initializemode(unsigned char *moderegs,
  * @param mode
  * @return
  */
-ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode) {
+static ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode) {
     ModeInfo modeinfo;
     modeinfo.width = 1280;
     modeinfo.height = 1024;
@@ -1367,8 +645,8 @@ static int cirrus_saveregs(unsigned char regs[]) {
     regs[CIRRUSREG_CR(0x19)] = __svgalib_inCR(0x19);
     regs[CIRRUSREG_CR(0x1A)] = __svgalib_inCR(0x1A);
     regs[CIRRUSREG_CR(0x1B)] = __svgalib_inCR(0x1B);
-    if (CHIP_HAS_CR1D())
-        regs[CIRRUSREG_CR(0x1D)] = __svgalib_inCR(0x1D);
+
+    regs[CIRRUSREG_CR(0x1D)] = __svgalib_inCR(0x1D);
 
     /* Save extended graphics registers. */
     regs[CIRRUSREG_GR(0x09)] = __svgalib_inGR(0x09);
@@ -1379,23 +657,22 @@ static int cirrus_saveregs(unsigned char regs[]) {
     regs[CIRRUS_SR7] = __svgalib_inSR(0x07);
     regs[CIRRUS_VCLK3NUMERATOR] = __svgalib_inSR(0x0E);
     regs[CIRRUS_DRAMCONTROL] = __svgalib_inSR(0x0F);
-    if (CHIP_HAS_PERFTUNINGREGISTER())
-        regs[CIRRUS_PERFTUNING] = __svgalib_inSR(0x16);
-    if (CHIP_HAS_SR17())
-        regs[CIRRUS_SR17] = __svgalib_inSR(0x17);
+
+    regs[CIRRUS_PERFTUNING] = __svgalib_inSR(0x16);
+
+    regs[CIRRUS_SR17] = __svgalib_inSR(0x17);
     regs[CIRRUS_VCLK3DENOMINATOR] = __svgalib_inSR(0x1E);
-    if (CHIP_HAS_MCLK_REGISTER())
-        regs[CIRRUS_MCLKREGISTER] = __svgalib_inSR(0x1F);
+
+    regs[CIRRUS_MCLKREGISTER] = __svgalib_inSR(0x1F);
 
     /* Save Hicolor DAC register. */
-    if (CHIP_HAS_HIDDENDAC()) {
-        outb(0, 0x3c6);
-        outb(0xff, 0x3c6);
-        inb(0x3c6);
-        inb(0x3c6);
-        inb(0x3c6);
-        inb(0x3c6);
-        regs[CIRRUSREG_DAC] = inb(0x3c6);
-    }
+    outb(0, 0x3c6);
+    outb(0xff, 0x3c6);
+    inb(0x3c6);
+    inb(0x3c6);
+    inb(0x3c6);
+    inb(0x3c6);
+    regs[CIRRUSREG_DAC] = inb(0x3c6);
+
     return CIRRUS_TOTAL_REGS - VGA_TOTAL_REGS;
 }
