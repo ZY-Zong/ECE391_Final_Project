@@ -14,6 +14,7 @@
 #include "terminal.h"
 #include "task.h"
 #include "modex.h"
+#include "vga/vga.h"
 
 #define RUN_TESTS
 
@@ -182,8 +183,9 @@ void entry(unsigned long magic, unsigned long addr) {
     sti();
 
 #ifdef RUN_TESTS
+    cirrus_test();
     /* Run tests */
-    launch_tests();
+//    launch_tests();
 #endif
     /* Execute the first program ("shell") ... */
 
