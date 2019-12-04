@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Current working directory need to be set to MP3 repository
+
+# If given an argument 1, the test machine won't wait for gdb connection.
+# If no argument is given or other value is given, the test machine will wait for gdb connection.
+if [[ $1 -eq 1 ]]; then
+    debug_cmd=""
+else
+    debug_cmd="--delete"
+fi
+
+rsync \
+    -avche "ssh -p 10022" \
+    --delete \
+    . \
+    user@localhost:~/mp3_group_30/

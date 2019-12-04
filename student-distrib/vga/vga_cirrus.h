@@ -11,6 +11,7 @@ int cirrus_test_and_init();
 int cirrus_setmode(int mode, int prv_mode);
 void cirrus_setdisplaystart(int address);
 void cirrus_setlogicalwidth(int width);
+void cirrus_setlinear(int addr);
 void cirrus_setpage_2M(int page);
 void cirrus_setpage(int page);
 

@@ -52,14 +52,14 @@ int vga_setmode(int mode) {
 
             cirrus_setmode(mode, prev_mode);
 
-            cirrus_setdisplaystart(0xA0000);
-//            cirrus_setlogicalwidth(64);
+            cirrus_setdisplaystart(0);
+            cirrus_setlogicalwidth(1024 * 3);
+            cirrus_setlinear(0);
 
             /* clear screen (sets current color to 15) */
             vga_clear();
             vga_setpage(0);
         }
-
         vga_screenon();
     }
     restore_flags(interrupt_flags);

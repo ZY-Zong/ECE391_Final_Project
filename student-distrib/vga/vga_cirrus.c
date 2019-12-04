@@ -170,6 +170,13 @@ void cirrus_setlogicalwidth(int width) {
     /* write lw12 to bit 4 of Sequencer reg. 0x1b */
 }
 
+void cirrus_setlinear(int addr) {
+    int val;
+    outb(0x07, SEQ_I);
+    val = inb(SEQ_D);
+    outb((val & 0x0f) | (addr << 4), SEQ_D);
+}
+
 int cirrus_test_and_init() {
 
     int oldlockreg;
@@ -265,8 +272,8 @@ static int cirrus_init() {
         /* At least 16-bit DRAM bus. */
         DRAMbandwidth *= 2;
     if (cirrus_memory >= 2048)
-    /* 64-bit DRAM bus. */
-    DRAMbandwidth *= 2;
+        /* 64-bit DRAM bus. */
+        DRAMbandwidth *= 2;
     /*
      * Calculate highest acceptable DRAM bandwidth to be taken up
      * by screen refresh. Satisfies
@@ -407,7 +414,7 @@ int cirrus_setmode(int mode, int prv_mode) {
 
     cirrus_initializemode(moderegs, &modetiming, &modeinfo);
 
-    __svgalib_setregs(moderegs);    /* Set standard regs. */
+    __svgalib_setregs(moderegs);       /* Set standard regs. */
     cirrus_setregs(moderegs, mode);    /* Set extended regs. */
 
     return 0;

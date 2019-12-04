@@ -1,0 +1,9 @@
+#!/bin/bash
+
+devel_qcow_file="/Users/liuzikai/AppData/ece391/ece391_share/work/vm/devel.qcow"
+
+qemu-system-i386 \
+    -hda ${devel_qcow_file} \
+    -m 512 -name devel \
+    -net user,hostfwd=tcp::10022-:22 \
+    -net nic

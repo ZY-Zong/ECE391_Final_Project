@@ -1,0 +1,3 @@
+#!/bin/bash
+391_devel &
+sleep 50 && ssh user@localhost -p 10022

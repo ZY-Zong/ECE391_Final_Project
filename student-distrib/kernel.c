@@ -21,6 +21,11 @@
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags, bit)   ((flags) & (1 << (bit)))
 
+void __sleep() {
+    int i;
+    for (i = 0; i < 100000; i++) {}
+}
+
 extern void enable_paging();  // in boot.S
 
 /* Check if MAGIC is valid and print the Multiboot information structure
@@ -186,8 +191,14 @@ void entry(unsigned long magic, unsigned long addr) {
     vga_init();
     vga_setmode(G1024x768x16M);
     int x, y;
-    for (x = 300; x < 633; x++) {
-        for (y = 200; y <= 400; y++) {
+    for (x = 0; x < 50; x++) {
+        for (y = 0; y <= 50; y++) {
+            vga_drawpixel(x, y);
+        }
+    }
+
+    for (x = 973; x < 1023; x++) {
+        for (y = 717; y <= 767; y++) {
             vga_drawpixel(x, y);
         }
     }

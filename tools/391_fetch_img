@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Current working directory need to be set to MP3 repository
+
+rsync \
+    -avche "ssh -p 10022" \
+    user@localhost:/home/user/mp3_group_30/student-distrib/mp3.img \
+    student-distrib/mp3.img

@@ -34,7 +34,7 @@ int vga_drawpixel(int x, int y) {
     int c;
 
     // TODO: change to current color
-    c = 0xFFFFFF;
+    c = 0x00FF00;
     offset = y * CI.xbytes + x * 3;
 
     vga_setpage(offset >> 16);
