@@ -2,6 +2,7 @@
 // Created by liuzikai on 12/3/19.
 //
 
+#include "vga.h"
 #include "vga_regs.h"
 #include "vga_cirrus.h"
 #include "vga_timming.h"
@@ -196,4 +197,60 @@ int __svgalib_inmisc(void)
 void __svgalib_outmisc(int i)
 {
     outb(MIS_W,i);
+}
+
+void __svgalib_delay(void)
+{
+    int i;
+    for (i = 0; i < 10; i++);
+}
+
+int __svgalib_setregs(const unsigned char *regs)
+{
+    int i;
+
+    /* update misc output register */
+    __svgalib_outmisc(regs[MIS]);
+
+    /* synchronous reset on */
+    __svgalib_outseq(0x00,0x01);
+
+    /* write sequencer registers */
+    __svgalib_outseq(0x01,regs[SEQ + 1] | 0x20);
+    outb(1, SEQ_I);
+    outb(regs[SEQ + 1] | 0x20, SEQ_D);
+    for (i = 2; i < SEQ_C; i++) {
+        __svgalib_outseq(i,regs[SEQ + i]);
+    }
+
+    /* synchronous reset off */
+    __svgalib_outseq(0x00,0x03);
+
+
+    /* deprotect CRT registers 0-7 */
+    __svgalib_outcrtc(0x11,__svgalib_incrtc(0x11)&0x7f);
+
+
+    /* write CRT registers */
+    for (i = 0; i < CRT_C; i++) {
+        __svgalib_outcrtc(i,regs[CRT + i]);
+    }
+
+    /* write graphics controller registers */
+    for (i = 0; i < GRA_C; i++) {
+        outb(i, GRA_I);
+        outb(regs[GRA + i], GRA_D);
+    }
+
+    /* write attribute controller registers */
+    for (i = 0; i < ATT_C; i++) {
+        inb(__svgalib_IS1_R);		/* reset flip-flop */
+        __svgalib_delay();
+        outb(i, ATT_IW);
+        __svgalib_delay();
+        outb(regs[ATT + i], ATT_IW);
+        __svgalib_delay();
+    }
+
+    return 0;
 }

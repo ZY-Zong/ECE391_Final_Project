@@ -16,6 +16,60 @@
 #define VADJUSTED	0x80	/* Vertical CRTC timing adjusted. */
 #define USEPROGRCLOCK	0x100	/* A programmable clock is used. */
 
+/* This is for the hardware (card)-adjusted mode timing. */
+typedef struct {
+    int pixelClock;		/* Pixel clock in kHz. */
+    int HDisplay;		/* Horizontal Timing. */
+    int HSyncStart;
+    int HSyncEnd;
+    int HTotal;
+    int VDisplay;		/* Vertical Timing. */
+    int VSyncStart;
+    int VSyncEnd;
+    int VTotal;
+    int flags;
+/* The following field are optionally filled in according to card */
+/* specific parameters. */
+    int programmedClock;	/* Actual clock to be programmed. */
+    int selectedClockNo;	/* Index number of fixed clock used. */
+    int CrtcHDisplay;		/* Actual programmed horizontal CRTC timing. */
+    int CrtcHSyncStart;
+    int CrtcHSyncEnd;
+    int CrtcHTotal;
+    int CrtcVDisplay;		/* Actual programmed vertical CRTC timing. */
+    int CrtcVSyncStart;
+    int CrtcVSyncEnd;
+    int CrtcVTotal;
+} ModeTiming;
+
+/* Mode info. */
+typedef struct {
+/* Basic properties. */
+    short width;		/* Width of the screen in pixels. */
+    short height;		/* Height of the screen in pixels. */
+    char bytesPerPixel;		/* Number of bytes per pixel. */
+    char bitsPerPixel;		/* Number of bits per pixel. */
+    char colorBits;		/* Number of significant bits in pixel. */
+    char __padding1;
+/* Truecolor pixel specification. */
+    char redWeight;		/* Number of significant red bits. */
+    char greenWeight;		/* Number of significant green bits. */
+    char blueWeight;		/* Number of significant blue bits. */
+    char __padding2;
+    char redOffset;		/* Offset in bits of red value into pixel. */
+    char blueOffset;		/* Offset of green value. */
+    char greenOffset;		/* Offset of blue value. */
+    char __padding3;
+    unsigned redMask;		/* Pixel mask of read value. */
+    unsigned blueMask;		/* Pixel mask of green value. */
+    unsigned greenMask;		/* Pixel mask of blue value. */
+/* Structural properties of the mode. */
+    int lineWidth;		/* Offset in bytes between scanlines. */
+    short realWidth;		/* Real on-screen resolution. */
+    short realHeight;		/* Real on-screen resolution. */
+    int flags;
+} ModeInfo;
+
 /* This is the type of a basic (monitor-oriented) mode timing. */
 typedef struct _MMT_S MonitorModeTiming;
 struct _MMT_S {

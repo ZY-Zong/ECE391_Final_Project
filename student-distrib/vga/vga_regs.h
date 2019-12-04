@@ -8,6 +8,7 @@
 /* Register indices into mode state array. */
 
 #include "vga_cirrus.h"
+#include "vga_timming.h"
 
 #define VGA_CRTC_COUNT		24
 #define VGA_ATC_COUNT		21
@@ -127,5 +128,10 @@ void __svgalib_outbCR(int index, unsigned char value);
 unsigned char __svgalib_inGR(int index);
 unsigned char __svgalib_inSR(int index);
 unsigned char __svgalib_inCR(int index);
+
+extern int __svgalib_inmisc(void);
+extern void __svgalib_outmisc(int);
+
+int __svgalib_setregs(const unsigned char *regs);
 
 #endif //_VGA_REGS_H

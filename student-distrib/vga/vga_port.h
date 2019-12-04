@@ -42,4 +42,29 @@
 #define VGA_MISCOUTPUT		59	/* (single register) */
 #define VGA_TOTAL_REGS		60
 
+/* standard VGA indexes max counts */
+#define CRT_C   24		/* 24 CRT Controller Registers */
+#define ATT_C   21		/* 21 Attribute Controller Registers */
+#define GRA_C   9		/* 9  Graphics Controller Registers */
+#define SEQ_C   5		/* 5  Sequencer Registers */
+#define MIS_C   1		/* 1  Misc Output Register */
+
+/* VGA registers saving indexes */
+#define CRT     0		/* CRT Controller Registers start */
+#define ATT     (CRT+CRT_C)	/* Attribute Controller Registers start */
+#define GRA     (ATT+ATT_C)	/* Graphics Controller Registers start */
+#define SEQ     (GRA+GRA_C)	/* Sequencer Registers */
+#define MIS     (SEQ+SEQ_C)	/* General Registers */
+#define EXT     (MIS+MIS_C)	/* SVGA Extended Registers */
+
+/* Shorthands for chipset (driver) specific calls */
+#define chipset_saveregs __svgalib_driverspecs->saveregs
+#define chipset_setregs __svgalib_driverspecs->setregs
+#define chipset_unlock __svgalib_driverspecs->unlock
+#define chipset_test __svgalib_driverspecs->test
+#define chipset_setpage __svgalib_driverspecs->__svgalib_setpage
+#define chipset_setmode __svgalib_driverspecs->setmode
+#define chipset_modeavailable __svgalib_driverspecs->modeavailable
+#define chipset_getmodeinfo __svgalib_driverspecs->getmodeinfo
+
 #endif //_VGA_PORT_H

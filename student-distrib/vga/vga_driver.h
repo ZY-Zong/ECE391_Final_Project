@@ -50,4 +50,6 @@ typedef struct {
     Emulation *emul;
 } DriverSpecs;
 
+extern DriverSpecs *__svgalib_driverspecs;
+
 #endif //_VGA_DRIVER_H

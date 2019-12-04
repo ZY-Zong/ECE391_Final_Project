@@ -4,6 +4,7 @@
 
 #include "vga_cirrus.h"
 #include "vga_timming.h"
+#include "../lib.h"
 
 /* 1024x768 at 60 Hz, 48.4 kHz hsync */
 MonitorModeTiming TIMMING_1024_768_60HZ = {65000, 1024, 1032, 1176, 1344, 768, 771, 777, 806, NHSYNC | NVSYNC, NULL};
@@ -143,6 +144,6 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
         modetiming->CrtcVTotal /= 2;
         modetiming->flags |= VADJUSTED;
     }
-    current_timing=besttiming;
+//    current_timing=besttiming;
     return 0;			/* Succesful. */
 }

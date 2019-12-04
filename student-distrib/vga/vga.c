@@ -6,6 +6,7 @@
 #include "vga_port.h"
 
 #include "../lib.h"
+#include "vga_driver.h"
 
 // TODO: change all port_out to outb and all port_in to inb
 
@@ -18,11 +19,20 @@ int __svgalib_CRT_I = CRT_IM;		/* current CRT index register address */
 int __svgalib_CRT_D = CRT_DM;		/* current CRT data register address */
 int __svgalib_IS1_R = IS1_RM;		/* current input status register address */
 
+DriverSpecs *__svgalib_driverspecs = NULL;
+
+unsigned char * BANKED_MEM_POINTER=NULL, * LINEAR_MEM_POINTER, *MMIO_POINTER;
+unsigned char * B8000_MEM_POINTER=NULL;
+unsigned long int __svgalib_banked_mem_base, __svgalib_banked_mem_size;
+unsigned long int __svgalib_mmio_base, __svgalib_mmio_size=0;
+unsigned long int __svgalib_linear_mem_base=0, __svgalib_linear_mem_size=0;
+
 // TODO: rename this variable
 struct info CI;			/* current video parameters */
-struct info CI_G1280_1024_16M = {1280, 1024, 1 << 24, 1280 * 3, 3};
+struct info CI_G1024_768_16M = {1024, 768, 1 << 24, 1024 * 3, 3};
 
 static void setcoloremulation(void);
+int vga_clear(void);
 
 /**
  * Turn off screen for faster VGA memory access
@@ -40,6 +50,35 @@ void vga_screenon() {
     outb(inb(SEQ_D) & 0xDF, SEQ_D);
 }
 
+inline void vga_setpage(int p)
+{
+    p += vga_page_offset;
+    if (p == __svgalib_currentpage && !__svgalib_simple)
+        return;
+    (*__svgalib_setpage) (p);
+    __svgalib_currentpage = p;
+}
+
+
+void vga_setreadpage(int p)
+{
+    p += vga_page_offset;
+    if (p == __svgalib_currentpage)
+        return;
+    (*__svgalib_setrdpage) (p);
+    __svgalib_currentpage = -1;
+}
+
+
+void vga_setwritepage(int p)
+{
+    p += vga_page_offset;
+    if (p == __svgalib_currentpage)
+        return;
+    (*__svgalib_setwrpage) (p);
+    __svgalib_currentpage = -1;
+}
+
 /**
  * Transplanted function.
  * @param mode   Only support G1280x1024x16M (28)
@@ -47,9 +86,9 @@ void vga_screenon() {
  */
 int vga_set_mode(int mode) {
 
-    if (mode != G1280x1024x16M) {
+    if (mode != G1024x768x16M) {
         DEBUG_ERR("vag_set_mode(): only support entering G1028x1024x16M mode.");
-        return;
+        return -1;
     }
 
     int mode_flags = mode & 0xfffff000;
@@ -80,37 +119,19 @@ int vga_set_mode(int mode) {
         /* shift to color emulation */
         setcoloremulation();
 
-        CI = CI_G1280_1024_16M;
+        CI = CI_G1024_768_16M;
 
         // TODO: MARK
-        chipset_setmode(mode, prv_mode);
-        MODEX = 0;
+        chipset_setmode(mode, prev_mode);
 
-        /* Set default claimed memory (moved here from initialize - Michael.) */
-        if (mode == G320x200x256)
-            VMEM = 65536;
-        else if (STDVGAMODE(mode))
-            VMEM = 256 * 1024;    /* Why always 256K ??? - Michael */
-        else {
-            vga_modeinfo *modeinfo;
-
-            modeinfo = vga_getmodeinfo(mode);
-            VMEM = modeinfo->linewidth * modeinfo->height;
-            CI.xbytes = modeinfo->linewidth;
-        }
-
-        if (!flip) {
-            /* set default palette */
-            if (CI.colors <= 256)
-                restorepalette(default_red, default_green, default_blue);
 
             /* clear screen (sets current color to 15) */
             __svgalib_currentpage = -1;
-            if (!(mode_flags & 0x8000))vga_clear();
+            if (!(mode_flags & 0x8000)) vga_clear();
 
             if (SVGAMODE(__svgalib_cur_mode))
                 vga_setpage(0);
-        }
+
         __svgalib_currentpage = -1;
         currentlogicalwidth = CI.xbytes;
         currentdisplaystart = 0;
@@ -121,13 +142,6 @@ int vga_set_mode(int mode) {
         if (!flip)
             vga_screenon();
 
-        if (mouse_support && mouse_open) {
-            /* vga_lockvc(); */
-            mouse_setxrange(0, CI.xdim - 1);
-            mouse_setyrange(0, CI.ydim - 1);
-            mouse_setwrap(MOUSE_NOWRAP);
-            mouse_mode = mode;
-        }
         {
             vga_modeinfo *modeinfo;
             modeinfo = vga_getmodeinfo(mode);
@@ -149,6 +163,30 @@ int vga_set_mode(int mode) {
     return 0;
 }
 
+int vga_clear(void)
+{
+    vga_screenoff();
+
+
+    /*int i;
+    int pages = (CI.ydim * CI.xbytes + 65535) >> 16;
+
+    for (i = 0; i < pages; ++i) {
+        vga_setpage(i);
+
+
+        *//* clear video memory *//*
+        memset(GM, 0, 65536);
+    }
+
+
+    vga_setcolor(15);*/
+
+    vga_screenon();
+
+    return 0;
+}
+
 static void setcoloremulation(void)
 {
     /* shift to color emulation */
@@ -157,3 +195,4 @@ static void setcoloremulation(void)
     __svgalib_IS1_R = IS1_RC;
     outb(inb(MIS_R) | 0x01, MIS_W);
 }
+
