@@ -10,14 +10,12 @@
 #include "vga_regs.h"
 #include "vga_cirrus.h"
 
-// TODO: change all port_out to outb and all port_in to inb
-
-int prev_mode;
 int curr_mode = TEXT;
 
-// TODO: rename this variable
-struct vga_info CI;            /* current video parameters */
-static const struct vga_info CI_G1024_768_16M = {1024, 768, 1 << 24, 1024 * 3, 3};
+vga_info_t vga_info;            /* current video parameters */
+static const vga_info_t CI_G1024_768_16M = {1024, 768, 1 << 24, 1024 * 3, 3};
+
+static int curr_page = -1;
 
 static void setcoloremulation(void);
 
@@ -33,13 +31,11 @@ int vga_setmode(int mode) {
         return -1;
     }
 
-    mode &= 0xfff;
+    mode &= 0xFFF;
 
     unsigned int interrupt_flags;
     cli_and_save(interrupt_flags);
     {
-
-        prev_mode = curr_mode;
         curr_mode = mode;
 
         /* disable video */
@@ -48,9 +44,9 @@ int vga_setmode(int mode) {
             /* shift to color emulation */
             setcoloremulation();
 
-            CI = CI_G1024_768_16M;
+            vga_info = CI_G1024_768_16M;
 
-            cirrus_setmode(mode, prev_mode);
+            cirrus_setmode(mode);
 
             cirrus_setdisplaystart(0);
             cirrus_setlogicalwidth(1024 * 3);
@@ -68,23 +64,18 @@ int vga_setmode(int mode) {
 }
 
 int vga_clear(void) {
+
     vga_screenoff();
+    {
+        int i;
+        int pages = (vga_info.ydim * vga_info.xbytes + 65535) >> 16;
 
-    // TODO: implement this function
-    int i;
-    int pages = (CI.ydim * CI.xbytes + 65535) >> 16;
+        for (i = 0; i < pages; ++i) {
+            vga_setpage(i);
+            memset(VGA_GM, 0, 65536);
+        }
 
-    for (i = 0; i < pages; ++i) {
-        vga_setpage(i);
-
-
-        // clear video memory
-        memset(0xA0000, 0xF0, 65536);
     }
-
-
-    /*vga_setcolor(15);*/
-
     vga_screenon();
 
     return 0;
@@ -99,9 +90,9 @@ static void setcoloremulation(void) {
 }
 
 void vga_setpage(int page) {
-    // TODO: implement current page judgement
-    cirrus_setpage_2M(page);
-//     cirrus_setpage(page);
+    if (page == curr_page) return;
+    cirrus_setpage_64k(page);
+    curr_page = page;
 }
 
 /**

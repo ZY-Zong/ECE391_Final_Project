@@ -9,7 +9,7 @@
 /* 1024x768 at 60 Hz, 48.4 kHz hsync */
 MonitorModeTiming TIMMING_1024_768_60HZ = {65000, 1024, 1032, 1176, 1344, 768, 771, 777, 806, NHSYNC | NVSYNC, NULL};
 
-static int timing_within_monitor_spec(MonitorModeTiming * mmtp);
+static int timing_within_monitor_spec(MonitorModeTiming *mmtp);
 
 /*
  * Clock allowance in 1/1000ths. 10 (1%) corresponds to a 250 kHz
@@ -19,8 +19,7 @@ static int timing_within_monitor_spec(MonitorModeTiming * mmtp);
 
 #define PROGRAMMABLE_CLOCK_MAGIC_NUMBER 0x1234
 
-static int findclock(int clock, CardSpecs * cardspecs)
-{
+static int findclock(int clock, CardSpecs *cardspecs) {
     int i;
     /* Find a clock that is close enough. */
     for (i = 0; i < cardspecs->nClocks; i++) {
@@ -44,11 +43,10 @@ static int findclock(int clock, CardSpecs * cardspecs)
     return -1;
 }
 
-int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
-                            CardSpecs * cardspecs)
-{
+int __svgalib_getmodetiming(ModeTiming *modetiming, ModeInfo *modeinfo,
+                            CardSpecs *cardspecs) {
     int maxclock, desiredclock;
-    MonitorModeTiming *besttiming=NULL;
+    MonitorModeTiming *besttiming = NULL;
 
     maxclock = cardspecs->maxPixelClock24bpp;
 
@@ -64,7 +62,7 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
      */
 
     modetiming->flags = besttiming->flags;
-    modetiming->pixelClock = besttiming->pixelClock;	/* Formal clock. */
+    modetiming->pixelClock = besttiming->pixelClock;    /* Formal clock. */
 
     /*
      * We know a close enough clock is available; the following is the
@@ -75,13 +73,8 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
 
     /* Fill in the best-matching clock that will be programmed. */
     modetiming->selectedClockNo = findclock(desiredclock, cardspecs);
-    /*if (modetiming->selectedClockNo == PROGRAMMABLE_CLOCK_MAGIC_NUMBER) {
-        modetiming->programmedClock =
-                cardspecs->matchProgrammableClock(desiredclock);
-        modetiming->flags |= USEPROGRCLOCK;
-    } else*/
-        modetiming->programmedClock = cardspecs->clocks[
-                modetiming->selectedClockNo];
+
+    modetiming->programmedClock = cardspecs->clocks[modetiming->selectedClockNo];
 
     modetiming->HDisplay = besttiming->HDisplay;
     modetiming->HSyncStart = besttiming->HSyncStart;
@@ -97,7 +90,7 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
     modetiming->VSyncStart = besttiming->VSyncStart;
     modetiming->VSyncEnd = besttiming->VSyncEnd;
     modetiming->VTotal = besttiming->VTotal;
-    if (modetiming->flags & DOUBLESCAN){
+    if (modetiming->flags & DOUBLESCAN) {
         modetiming->VDisplay <<= 1;
         modetiming->VSyncStart <<= 1;
         modetiming->VSyncEnd <<= 1;
@@ -122,5 +115,5 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
         modetiming->CrtcVTotal /= 2;
         modetiming->flags |= VADJUSTED;
     }
-    return 0;			/* Succesful. */
+    return 0;            /* Succesful. */
 }

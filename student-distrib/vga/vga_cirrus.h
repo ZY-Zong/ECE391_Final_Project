@@ -8,12 +8,12 @@
 #include "vga_port.h"
 
 int cirrus_test_and_init();
-int cirrus_setmode(int mode, int prv_mode);
+int cirrus_setmode(int mode);
 void cirrus_setdisplaystart(int address);
 void cirrus_setlogicalwidth(int width);
 void cirrus_setlinear(int addr);
-void cirrus_setpage_2M(int page);
-void cirrus_setpage(int page);
+void cirrus_setpage_64k(int page);
+void cirrus_setpage_4k(int page);
 
 /* Cards specifications. */
 typedef struct {

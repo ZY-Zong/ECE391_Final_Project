@@ -127,13 +127,12 @@ static void cirrus_lock(void) {
 static int cirrus_init();
 
 /* Bank switching function -- set 64K page number */
-
-void cirrus_setpage_2M(int page) {
+void cirrus_setpage_64k(int page) {
     /* Cirrus banking register has been set to 16K granularity */
     outw((page << 10) + 0x09, GRA_I);
 }
 
-void cirrus_setpage(int page) {
+void cirrus_setpage_4k(int page) {
     /* default 4K granularity */
     outw((page << 12) + 0x09, GRA_I);
 }
@@ -155,9 +154,9 @@ void cirrus_setdisplaystart(int address) {
          | ((address & 0x80000) >> 17)    /* sa19: write to bit 2 */
          | ((address & 0x100000) >> 17), CRT_DC);    /* sa20: write to bit 3 */
     outb(0x1d, CRT_IC);
-    if (cirrus_memory > 2048)
-        outb((inb(CRT_DC) & 0x7f)
-             | ((address & 0x200000) >> 14), CRT_DC);    /* sa21: write to bit 7 */
+    if (cirrus_memory > 2048){
+        outb((inb(CRT_DC) & 0x7f) | ((address & 0x200000) >> 14), CRT_DC);    /* sa21: write to bit 7 */
+    }
 }
 
 
@@ -209,7 +208,7 @@ int cirrus_test_and_init() {
             outb(0x06, SEQ_I);
             outb(oldlockreg, SEQ_D);
             DEBUG_ERR("Error Cirrus Chip");
-            return 0;
+            return 1;
     }
 
     if (cirrus_init())
@@ -244,20 +243,23 @@ static int cirrus_init() {
     cirrus_memory = 512;
     outb(0x0f, SEQ_I);
     SRF = inb(SEQ_D);
-    if (SRF & 0x10)
+    if (SRF & 0x10){
         /* 32-bit DRAM bus. */
         cirrus_memory *= 2;
-    if ((SRF & 0x18) == 0x18)
+    }
+    if ((SRF & 0x18) == 0x18){
         /* 64-bit DRAM data bus width; assume 2MB. */
         /* Also indicates 2MB memory on the 5430. */
         cirrus_memory *= 2;
-    if (cirrus_chiptype != CLGD5430 && (SRF & 0x80))
+    }
+    if (cirrus_chiptype != CLGD5430 && (SRF & 0x80)){
         /* If DRAM bank switching is enabled, there */
         /* must be twice as much memory installed. */
         /* (4MB on the 5434) */
         cirrus_memory *= 2;
+    }
 
-    // CHIP_HAS_MCLK_REGISTER()
+
     actualMCLK = __svgalib_inSR(0x1F) & 0x3F;
 
 
@@ -265,15 +267,15 @@ static int cirrus_init() {
 
     DRAMbandwidth = 14318 * (int) programmedMCLK / 16;
 
-
-//    DEBUG_PRINT("cirrus_memory = %d", cirrus_memory);
     // TODO: simplify the following based on experiment that cirrus_memory = 4096
-    if (cirrus_memory >= 512)
+    if (cirrus_memory >= 512){
         /* At least 16-bit DRAM bus. */
         DRAMbandwidth *= 2;
-    if (cirrus_memory >= 2048)
+    }
+    if (cirrus_memory >= 2048){
         /* 64-bit DRAM bus. */
         DRAMbandwidth *= 2;
+    }
     /*
      * Calculate highest acceptable DRAM bandwidth to be taken up
      * by screen refresh. Satisfies
@@ -400,7 +402,7 @@ static void cirrus_setregs(const unsigned char regs[], int mode) {
     __svgalib_outSR(0x1F, regs[CIRRUS_MCLKREGISTER]);
 }
 
-int cirrus_setmode(int mode, int prv_mode) {
+int cirrus_setmode(int mode) {
     unsigned char moderegs[CIRRUS_TOTAL_REGS];
     ModeTiming modetiming;
     ModeInfo modeinfo;
@@ -466,6 +468,7 @@ static void cirrus_initializemode(unsigned char *moderegs,
                 ((modetiming->CrtcHTotal / 8) - 5) / 2;
         moderegs[CIRRUS_CR1A] |= 0x01;
     }
+
 /* Scanline offset */
     if (modeinfo->bytesPerPixel == 4) {
         /* At 32bpp the chip does an extra multiplication by two. */

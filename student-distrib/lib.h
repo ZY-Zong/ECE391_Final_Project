@@ -10,6 +10,8 @@
 extern int screen_x;
 extern int screen_y;
 
+#define VIDEO       0xA0000
+
 /** System Calls */
 
 int32_t halt(uint8_t status);

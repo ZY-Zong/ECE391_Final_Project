@@ -4,7 +4,6 @@
 #include "lib.h"
 #include "modex.h"
 
-#define VIDEO       0xA0000
 #define NUM_COLS    40
 #define NUM_ROWS    12
 #define ATTRIB      0x7
