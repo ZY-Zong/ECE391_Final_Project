@@ -183,7 +183,16 @@ void entry(unsigned long magic, unsigned long addr) {
     sti();
 
 #ifdef RUN_TESTS
-    cirrus_test();
+    vga_init();
+    vga_setmode(G1024x768x16M);
+    int x, y;
+    for (x = 300; x < 633; x++) {
+        for (y = 200; y <= 400; y++) {
+            vga_drawpixel(x, y);
+        }
+    }
+    while(1) {}
+
     /* Run tests */
 //    launch_tests();
 #endif

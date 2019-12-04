@@ -6,6 +6,15 @@
 
 #include "vga.h"
 
+#define GM    ((char *) 0xA0000)
+
+#define gr_readb(off)		(((volatile unsigned char *)GM)[(off)])
+#define gr_readw(off)		(*(volatile unsigned short*)((GM)+(off)))
+#define gr_readl(off)		(*(volatile unsigned long*)((GM)+(off)))
+#define gr_writeb(v,off)	(GM[(off)] = (v))
+#define gr_writew(v,off)	(*(unsigned short*)((GM)+(off)) = (v))
+#define gr_writel(v,off)	(*(unsigned long*)((GM)+(off)) = (v))
+
 static inline int RGB2BGR(int c)
 {
     /* a bswap would do the same as the first 3 but in only ONE! cycle. */
@@ -25,7 +34,7 @@ int vga_drawpixel(int x, int y) {
     int c;
 
     // TODO: change to current color
-    c = 0x00FF00;
+    c = 0xFFFFFF;
     offset = y * CI.xbytes + x * 3;
 
     vga_setpage(offset >> 16);

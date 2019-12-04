@@ -10,9 +10,9 @@
 #include "../lib.h"
 
 // TODO: are these initial values correct?
-int __svgalib_CRT_I = CRT_IM;        /* current CRT index register address */
-int __svgalib_CRT_D = CRT_DM;        /* current CRT data register address */
-int __svgalib_IS1_R = IS1_RM;        /* current input status register address */
+int __svgalib_CRT_I = CRT_IC;        /* current CRT index register address */
+int __svgalib_CRT_D = CRT_DC;        /* current CRT data register address */
+int __svgalib_IS1_R = IS1_RC;        /* current input status register address */
 
 /*
  * Setup VGA registers for SVGA mode timing. Adapted from XFree86,

@@ -3,10 +3,12 @@
 //
 
 #include "vga_cirrus.h"
-#include "vga_timming.h"
+
 #include "../lib.h"
-#include "vga_regs.h"
+
 #include "vga.h"
+#include "vga_regs.h"
+#include "vga_timming.h"
 
 /* Enable support for > 85 MHz dot clocks on the 5434. */
 #define SUPPORT_5434_PALETTE_CLOCK_DOUBLING
@@ -58,7 +60,6 @@ static ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode);
 static int cirrus_saveregs(unsigned char regs[]);
 
 static CardSpecs cardspecs;
-// TODO: fill this variable from cirrus_init
 
 #define NU_FIXED_CLOCKS 21
 
@@ -123,7 +124,7 @@ static void cirrus_lock(void) {
     outb(0x0F, SEQ_D);        /* relock cirrus special */
 }
 
-static int cirrus_init(int force, int par1, int par2);
+static int cirrus_init();
 
 /* Bank switching function -- set 64K page number */
 
@@ -140,8 +141,7 @@ void cirrus_setpage(int page) {
 
 /* Set display start address (not for 16 color modes) */
 /* Cirrus supports any address in video memory (up to 2Mb) */
-// TODO: when to use
-static void cirrus_setdisplaystart(int address) {
+void cirrus_setdisplaystart(int address) {
     outw(0x0d + ((address >> 2) & 0x00ff) * 256, CRT_IC);    /* sa2-sa9 */
     outw(0x0c + ((address >> 2) & 0xff00), CRT_IC);    /* sa10-sa17 */
     inb(0x3da);            /* set ATC to addressing mode */
@@ -163,70 +163,14 @@ static void cirrus_setdisplaystart(int address) {
 
 /* Set logical scanline length (usually multiple of 8) */
 /* Cirrus supports multiples of 8, up to 4088 */
-// TODO: when to use
-static void cirrus_setlogicalwidth(int width) {
+void cirrus_setlogicalwidth(int width) {
     outw(0x13 + (width >> 3) * 256, CRT_IC);    /* lw3-lw11 */
     outb(0x1b, CRT_IC);
     outb((inb(CRT_DC) & 0xef) | ((width & 0x800) >> 7), CRT_DC);
     /* write lw12 to bit 4 of Sequencer reg. 0x1b */
 }
 
-static void cirrus_setlinear(int addr) {
-    int val;
-    outb(0x07, SEQ_I);
-    val = inb(SEQ_D);
-    outb((val & 0x0f) | (addr << 4), SEQ_D);
-}
-
-static int cirrus_linear(int op, int param) {
-    if (op == LINEAR_ENABLE) {
-        cirrus_setlinear(0xE);
-        return 0;
-    }
-    if (op == LINEAR_DISABLE) {
-        cirrus_setlinear(0);
-        return 0;
-    }
-    if (cirrus_chiptype >= CLGD5430) {
-        if (op == LINEAR_QUERY_BASE) {
-            if (cirrus_pci_linear)return cirrus_pci_linear;
-            if (param == 0)
-                return 0x04000000;    /* 64MB */
-            if (param == 1)
-                return 0x80000000;    /* 2048MB */
-            if (param == 2)
-                return 0x02000000;    /* 32MB */
-            if (param == 3)
-                return 0x08000000;    /* 128MB */
-            /* While we're busy, try some common PCI */
-            /* motherboard-configured addresses as well. */
-            /* We only read, so should be safe. */
-            if (param == 4)
-                return 0xA0000000;
-            if (param == 5)
-                return 0xA8000000;
-            if (param == 6)
-                return 0xE0000000;
-            if (param == 7)
-                return 0XFE000000;
-            /*
-             * Some PCI/VL motherboards only seem to let the
-             * VL slave slot respond at addresses >= 2048MB.
-             */
-            if (param == 8)
-                return 0x84000000;
-            if (param == 9)
-                return 0x88000000;
-            return -1;
-        }
-    }
-    if (op == LINEAR_QUERY_RANGE || op == LINEAR_QUERY_GRANULARITY)
-        return 0;        /* No granularity or range. */
-    else
-        return -1;        /* Unknown function. */
-}
-
-static int cirrus_test(void) {
+int cirrus_test_and_init() {
 
     int oldlockreg;
     int lockreg;
@@ -261,13 +205,14 @@ static int cirrus_test(void) {
             return 0;
     }
 
-    if (cirrus_init(0, 0, 0))
+    if (cirrus_init())
         return 0;        /* failure */
+
     return 1;
 }
 
 
-static int cirrus_init(int force, int par1, int par2) {
+static int cirrus_init() {
     unsigned char v;
     cirrus_unlock();
 
@@ -314,12 +259,12 @@ static int cirrus_init(int force, int par1, int par2) {
     DRAMbandwidth = 14318 * (int) programmedMCLK / 16;
 
 
-    DEBUG_PRINT("cirrus_memory = %d", cirrus_memory);
-    // TODO: simplify the following
+//    DEBUG_PRINT("cirrus_memory = %d", cirrus_memory);
+    // TODO: simplify the following based on experiment that cirrus_memory = 4096
     if (cirrus_memory >= 512)
         /* At least 16-bit DRAM bus. */
         DRAMbandwidth *= 2;
-    if (cirrus_memory >= 2048 /*&& CHIP_HAS_64BIT_DRAM_BUS(*/))
+    if (cirrus_memory >= 2048)
     /* 64-bit DRAM bus. */
     DRAMbandwidth *= 2;
     /*
@@ -394,12 +339,11 @@ static int cirrus_init(int force, int par1, int par2) {
     cardspecs.maxPixelClock4bpp = 0;
 /* end: Initialize card specs. */
 
-    __svgalib_banked_mem_base = 0xa0000;
-    __svgalib_banked_mem_size = 0x10000;
-    __svgalib_linear_mem_base = cirrus_pci_linear;
-    __svgalib_linear_mem_size = cirrus_memory * 0x400;
-    __svgalib_mmio_size = 32768;
-    __svgalib_mmio_base = 0xb8000;
+
+    /**
+     * TODO: {videoMemory = 4096, maxPixelClock4bpp = 0, maxPixelClock8bpp = 135300, maxPixelClock16bpp = 73216, maxPixelClock24bpp = 28666, maxPixelClock32bpp = 36608, flags = 6,
+  nClocks = 21,	clocks = 0x40fa00, maxHorizontalCrtc = 2040, mapClock = 0, matchProgrammableClock = 0, mapHorizontalCrtc = 0}
+     */
     return 0;
 }
 

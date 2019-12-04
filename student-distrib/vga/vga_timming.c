@@ -71,50 +71,28 @@ int __svgalib_getmodetiming(ModeTiming * modetiming, ModeInfo * modeinfo,
      * exact clock that fits the mode. This is probably different
      * from the best matching clock that will be programmed.
      */
-    desiredclock = cardspecs->mapClock(modeinfo->bitsPerPixel,
-                                       besttiming->pixelClock);
+    desiredclock = besttiming->pixelClock;
 
     /* Fill in the best-matching clock that will be programmed. */
     modetiming->selectedClockNo = findclock(desiredclock, cardspecs);
-    if (modetiming->selectedClockNo == PROGRAMMABLE_CLOCK_MAGIC_NUMBER) {
+    /*if (modetiming->selectedClockNo == PROGRAMMABLE_CLOCK_MAGIC_NUMBER) {
         modetiming->programmedClock =
                 cardspecs->matchProgrammableClock(desiredclock);
         modetiming->flags |= USEPROGRCLOCK;
-    } else
+    } else*/
         modetiming->programmedClock = cardspecs->clocks[
                 modetiming->selectedClockNo];
+
     modetiming->HDisplay = besttiming->HDisplay;
     modetiming->HSyncStart = besttiming->HSyncStart;
     modetiming->HSyncEnd = besttiming->HSyncEnd;
     modetiming->HTotal = besttiming->HTotal;
-    if (cardspecs->mapHorizontalCrtc(modeinfo->bitsPerPixel,
-                                     modetiming->programmedClock,
-                                     besttiming->HTotal)
-        != besttiming->HTotal) {
-        /* Horizontal CRTC timings are scaled in some way. */
-        modetiming->CrtcHDisplay =
-                cardspecs->mapHorizontalCrtc(modeinfo->bitsPerPixel,
-                                             modetiming->programmedClock,
-                                             besttiming->HDisplay);
-        modetiming->CrtcHSyncStart =
-                cardspecs->mapHorizontalCrtc(modeinfo->bitsPerPixel,
-                                             modetiming->programmedClock,
-                                             besttiming->HSyncStart);
-        modetiming->CrtcHSyncEnd =
-                cardspecs->mapHorizontalCrtc(modeinfo->bitsPerPixel,
-                                             modetiming->programmedClock,
-                                             besttiming->HSyncEnd);
-        modetiming->CrtcHTotal =
-                cardspecs->mapHorizontalCrtc(modeinfo->bitsPerPixel,
-                                             modetiming->programmedClock,
-                                             besttiming->HTotal);
-        modetiming->flags |= HADJUSTED;
-    } else {
-        modetiming->CrtcHDisplay = besttiming->HDisplay;
-        modetiming->CrtcHSyncStart = besttiming->HSyncStart;
-        modetiming->CrtcHSyncEnd = besttiming->HSyncEnd;
-        modetiming->CrtcHTotal = besttiming->HTotal;
-    }
+
+    modetiming->CrtcHDisplay = besttiming->HDisplay;
+    modetiming->CrtcHSyncStart = besttiming->HSyncStart;
+    modetiming->CrtcHSyncEnd = besttiming->HSyncEnd;
+    modetiming->CrtcHTotal = besttiming->HTotal;
+
     modetiming->VDisplay = besttiming->VDisplay;
     modetiming->VSyncStart = besttiming->VSyncStart;
     modetiming->VSyncEnd = besttiming->VSyncEnd;

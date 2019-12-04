@@ -3,10 +3,11 @@
 //
 
 #include "vga.h"
-#include "vga_port.h"
 
 #include "../lib.h"
-#include "vga_driver.h"
+
+#include "vga_port.h"
+#include "vga_regs.h"
 #include "vga_cirrus.h"
 
 // TODO: change all port_out to outb and all port_in to inb
@@ -14,17 +15,9 @@
 int prev_mode;
 int curr_mode = TEXT;
 
-DriverSpecs *__svgalib_driverspecs = NULL;
-
-unsigned char *BANKED_MEM_POINTER = NULL, *LINEAR_MEM_POINTER, *MMIO_POINTER;
-unsigned char *B8000_MEM_POINTER = NULL;
-unsigned long int __svgalib_banked_mem_base, __svgalib_banked_mem_size;
-unsigned long int __svgalib_mmio_base, __svgalib_mmio_size = 0;
-unsigned long int __svgalib_linear_mem_base = 0, __svgalib_linear_mem_size = 0;
-
 // TODO: rename this variable
-struct info CI;            /* current video parameters */
-struct info CI_G1024_768_16M = {1024, 768, 1 << 24, 1024 * 3, 3};
+struct vga_info CI;            /* current video parameters */
+static const struct vga_info CI_G1024_768_16M = {1024, 768, 1 << 24, 1024 * 3, 3};
 
 static void setcoloremulation(void);
 
@@ -59,6 +52,9 @@ int vga_setmode(int mode) {
 
             cirrus_setmode(mode, prev_mode);
 
+            cirrus_setdisplaystart(0xA0000);
+//            cirrus_setlogicalwidth(64);
+
             /* clear screen (sets current color to 15) */
             vga_clear();
             vga_setpage(0);
@@ -75,19 +71,19 @@ int vga_clear(void) {
     vga_screenoff();
 
     // TODO: implement this function
-    /*int i;
+    int i;
     int pages = (CI.ydim * CI.xbytes + 65535) >> 16;
 
     for (i = 0; i < pages; ++i) {
         vga_setpage(i);
 
 
-        *//* clear video memory *//*
-        memset(GM, 0, 65536);
+        // clear video memory
+        memset(0xA0000, 0xF0, 65536);
     }
 
 
-    vga_setcolor(15);*/
+    /*vga_setcolor(15);*/
 
     vga_screenon();
 
@@ -105,7 +101,7 @@ static void setcoloremulation(void) {
 void vga_setpage(int page) {
     // TODO: implement current page judgement
     cirrus_setpage_2M(page);
-    // cirrus_setpage(page);
+//     cirrus_setpage(page);
 }
 
 /**
@@ -122,4 +118,12 @@ void vga_screenoff() {
 void vga_screenon() {
     outb(0x01, SEQ_I);
     outb(inb(SEQ_D) & 0xDF, SEQ_D);
+}
+
+void vga_init() {
+    unsigned int interrupt_flags;
+    cli_and_save(interrupt_flags);
+    {
+        cirrus_test_and_init();
+    }
 }
