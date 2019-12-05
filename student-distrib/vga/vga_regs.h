@@ -1,5 +1,7 @@
 //
 // Created by liuzikai on 12/3/19.
+// This file is adaptation of vgaregs.h from SVGAlib 1.4.3. See SVGALIB_LICENSE for license.
+// Code here is the instantiation for CIRRUS 5436 (QEMU), 1024×768, 16M (24-bit) color, 60Hz. Much code is eliminated.
 //
 
 #ifndef _VGA_REGS_H
