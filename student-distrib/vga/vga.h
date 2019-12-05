@@ -28,6 +28,7 @@ void vga_screenon();
 
 void vga_setcolor(unsigned int rgb);
 int vga_drawpixel(int x, int y);
+unsigned int vga_getpixel(int x, int y);
 
 /* graphics mode information */
 typedef struct vga_info_t vga_info_t;

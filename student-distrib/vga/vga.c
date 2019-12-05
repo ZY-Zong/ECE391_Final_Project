@@ -12,12 +12,12 @@
 #include "vga_regs.h"
 #include "vga_cirrus.h"
 
-#define gr_readb(off)		(((volatile unsigned char *)VGA_GM)[(off)])
-#define gr_readw(off)		(*(volatile unsigned short*)((VGA_GM)+(off)))
-#define gr_readl(off)		(*(volatile unsigned long*)((VGA_GM)+(off)))
-#define gr_writeb(v,off)	(VGA_GM[(off)] = (v))
-#define gr_writew(v,off)	(*(unsigned short*)((VGA_GM)+(off)) = (v))
-#define gr_writel(v,off)	(*(unsigned long*)((VGA_GM)+(off)) = (v))
+#define gr_readb(off)        (((volatile unsigned char *)VGA_GM)[(off)])
+#define gr_readw(off)        (*(volatile unsigned short*)((VGA_GM)+(off)))
+#define gr_readl(off)        (*(volatile unsigned long*)((VGA_GM)+(off)))
+#define gr_writeb(v, off)    (VGA_GM[(off)] = (v))
+#define gr_writew(v, off)    (*(unsigned short*)((VGA_GM)+(off)) = (v))
+#define gr_writel(v, off)    (*(unsigned long*)((VGA_GM)+(off)) = (v))
 
 
 vga_info_t vga_info;            /* current video parameters */
@@ -185,5 +185,30 @@ int vga_drawpixel(int x, int y) {
             break;
     }
 
+    return 0;
+}
+
+unsigned int vga_getpixel(int x, int y) {
+    unsigned long offset;
+    int pix = 0;
+
+    offset = y * vga_info.xbytes + x * 3;
+    vga_setpage(offset >> 16);
+    switch (offset & 0xffff) {
+        case 0xfffe:
+            pix = gr_readw(0xfffe);
+            vga_setpage((offset >> 16) + 1);
+            return pix + (gr_readb(0) << 16);
+
+        case 0xffff:
+            pix = gr_readb(0xffff);
+            vga_setpage((offset >> 16) + 1);
+            return pix + (gr_readw(0) << 8);
+
+        default:
+            offset &= 0xffff;
+            return gr_readw(offset) + (gr_readb(offset + 2) << 26);
+
+    }
     return 0;
 }
