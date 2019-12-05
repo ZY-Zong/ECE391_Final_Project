@@ -92,9 +92,18 @@ void mouse_init() {
     send_command_to_60(0xF4);
 }
 void mouse_interrupt_handler() {
-    // printf("test mouse driver");
-    // TODO: why use try_read?
-    uint8_t flags = read_from_60();
+    /**
+     * Firstly, we need to check two things:
+     * 1. Whether port 60 is ready for read (check bit 1 of port 64)
+     * 2. Whether port 60 gives data for keyboard or mouse (check bit 5 of port 64)
+     */
+    if (0 == (inb(PORT_64) & 0x1)) {
+        return;
+    }
+    if (0 == inb(PORT_64) & 0x20) {
+        return;
+    }
+    uint8_t flags = inb(MOUSE_PORT_60);
     if (ACK == flags) {
         return;  // ignore the ACK
     } else {

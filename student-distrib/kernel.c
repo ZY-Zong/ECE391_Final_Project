@@ -17,7 +17,7 @@
 #include "mouse.h"
 #include "vga/vga.h"
 
-#define RUN_TESTS
+//#define RUN_TESTS
 
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags, bit)   ((flags) & (1 << (bit)))
@@ -214,8 +214,9 @@ void entry(unsigned long magic, unsigned long addr) {
     while(1) {}
 
     /* Run tests */
-//    launch_tests();
+//
 #endif
+    launch_tests();
     /* Execute the first program ("shell") ... */
 
     /* Spin (nicely, so we don't chew up cycles) */
