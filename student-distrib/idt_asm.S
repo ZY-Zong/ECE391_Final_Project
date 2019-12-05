@@ -100,6 +100,7 @@ interrupt_entry_\irq:
 
 INTERRUPT_ENTRY 1, keyboard_interrupt_handler
 INTERRUPT_ENTRY 8, rtc_interrupt_handler
+INTERRUPT_ENTRY 12, mouse_interrupt_handler
 
 
 /* Low-level handlers (entry points) for system calls */

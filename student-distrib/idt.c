@@ -74,6 +74,10 @@ void idt_init() {
     SET_IDT_ENTRY(idt[IDT_ENTRY_RTC], interrupt_entry_8);
     idt[IDT_ENTRY_RTC].present = 1;
 
+    // Set mouse handler (defined in idt_asm.S)
+    SET_IDT_ENTRY(idt[IDT_ENTRY_MOUSE], interrupt_entry_12);
+    idt[IDT_ENTRY_MOUSE].present = 1;
+
     // Set system calls handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], system_call_entry);
     idt[IDT_ENTRY_SYSTEM_CALL].present = 1;

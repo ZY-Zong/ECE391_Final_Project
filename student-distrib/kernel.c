@@ -14,6 +14,7 @@
 #include "terminal.h"
 #include "task.h"
 #include "modex.h"
+#include "mouse.h"
 #include "vga/vga.h"
 
 #define RUN_TESTS
@@ -159,6 +160,11 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the keyboard */
     keyboard_init();
     enable_irq(KEYBOARD_IRQ_NUM);
+
+    /* Init the mouse */
+    mouse_init();
+    enable_irq(MOUSE_IRQ_NUM);
+    printf("mouse initialized!!!!!!!!");
 
     /* Init the RTC */
     rtc_init();

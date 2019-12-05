@@ -11,6 +11,7 @@
 #define IDT_ENTRY_INTEL          0x20  // number of vectors used by intel
 #define IDT_ENTRY_KEYBOARD       0x21  // the vector number of keyboard
 #define IDT_ENTRY_RTC            0x28  // the vector number of RTC
+#define IDT_ENTRY_MOUSE          0x2C  // the vector number of mouse
 #define IDT_ENTRY_SYSTEM_CALL    0x80  // the vector number of system calls
 
 // Defined in idt_asm.S
@@ -39,6 +40,7 @@ extern void exception_entry_30();
 // Defined in idt_asm.S
 extern void interrupt_entry_1();
 extern void interrupt_entry_8();
+extern void interrupt_entry_12();
 
 // Defined in idt_asm.S
 extern void system_call_entry();

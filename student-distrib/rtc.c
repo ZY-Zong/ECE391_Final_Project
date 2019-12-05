@@ -21,7 +21,7 @@ void rtc_init() {
     rtc_interrupt_occured = 0;  // reset flag to be 0, no interrupt happens
 
     // Turn on IRQ 8
-    cli();  // disable interrupts
+//    cli();  // disable interrupts
     {
         outb(RTC_STATUS_REGISTER_B, RTC_REGISTER_PORT);  // select register B and disable NMI
         char prev = inb(RTC_RW_DATA_PORT);  // read the current value of register B
@@ -30,17 +30,17 @@ void rtc_init() {
         outb (prev | 0x40,
               RTC_RW_DATA_PORT);  // write the previous value ORed with 0x40. This turns on bit 6 of register B
     }
-    sti();
+//    sti();
 
     // Default frequency is 2 Hz
-    cli();  // disable interrupts
+//    cli();  // disable interrupts
     {
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // set index to register A, disable NMI
         char prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
         outb((prev & 0xF0) | RTC_MAX_RATE, RTC_RW_DATA_PORT);   // write rate 2 Hz to A
     }
-    sti();
+//    sti();
 }
 
 /**
