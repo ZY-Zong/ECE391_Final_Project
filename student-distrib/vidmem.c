@@ -103,7 +103,7 @@ void vidmem_init() {
  * @return          0 for success, -1 for fail
  * @effect          PDE will be changed
  */
-int terminal_vidmem_open(const int term_id) {
+int terminal_vidmem_open(const int term_id, char** char_on_screen) {
     if (term_id < 0 || term_id >= TERMINAL_MAX_COUNT) {
         DEBUG_ERR("terminal_vidmem_open(): no such ter_id: %d", term_id);
         return -1;
@@ -113,6 +113,8 @@ int terminal_vidmem_open(const int term_id) {
     }
 
     terminal_opened[term_id] = TERMINAL_VID_OPENED;
+    *char_on_screen = (char*)( (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + 
+                        (USER_VRAM_PAGE_ENTRY + term_id) * SIZE_4K );
 
     return 0;
 }
@@ -225,15 +227,15 @@ int terminal_vidmem_set(const int term_id) {
 
     // Set the PDE for 0-4MB pointing to corresponding PT
     /* no longer needed in svga */
-    // if (term_id == NULL_TERMINAL_ID || term_id == terminal_active) {
-    //     if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
-    //                           (uint32_t) &kernel_page_table_1, 1, 0, 1))
-    //         return -1;
-    // } else {
+    if (term_id == NULL_TERMINAL_ID ) { // NULL_TERMINAL_ID: draw the screen 
+        if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+                              (uint32_t) &kernel_page_table_0, 1, 0, 1))
+            return -1;
+    } else {
         if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
                               (uint32_t) &kernel_video_memory_pt[term_id], 1, 0, 1))
             return -1;
-    // }
+    }
 
     terminal_running = term_id;  // for focus switch
 

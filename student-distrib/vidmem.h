@@ -25,7 +25,7 @@
  */
 
 void vidmem_init();
-int terminal_vidmem_open(const int term_id);
+int terminal_vidmem_open(const int term_id, char** char_on_screen);
 int terminal_vidmem_close(const int term_id);
 int terminal_vidmem_switch_active(const int new_active_id, const int pre_active_id);
 int terminal_vidmem_set(const int term_id);
