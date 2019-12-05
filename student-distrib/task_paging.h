@@ -19,6 +19,9 @@
  *
  * Version 5.0 Tingkai Liu 2019.11.27
  * Support multi-terminal and scheduling
+ * 
+ * Version 6.0 Tingkai Liu 2019.12.4
+ * Support sVGA by moving the place for the tasks downwards 
  */
 
 void task_paging_init();

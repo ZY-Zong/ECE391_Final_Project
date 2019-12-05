@@ -13,12 +13,13 @@
 .globl gdt_desc_ptr
 .globl idt_desc_ptr, idt
 
-# mp3.1 page table
+# PDs and PTs
 .globl kernel_page_directory
 .globl kernel_page_table
 .globl kernel_page_table_0
 .globl kernel_page_table_1
 .globl user_page_table_0
+.globl kernel_vidmem_buffer
 
 .align 4
 
@@ -127,21 +128,27 @@ idt_bottom:
 .align SIZE_4K  # Align to 4 kB
 kernel_page_directory:
 
-    # Index 0: 0-4MB, map to a page table, set above
+    # Index 0: 0-4MB, map to a page table, in boot.S
     .long   0x00000003  # the 3 is for present and W/R flag
 
     # Index 1: 4-8MB, map to physical memory 4-8MB
     .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 4MB place
 
-    # Index 2-1023: not presented
-    .rept KERNEL_PAGE_DIRECTORY_SIZE - 2  # 1024 - 2
+    # kernel offsets: hard coded: should changed according to KERNEL_PAGE_OFFSET
+    .long   0x00800083
+
+    kernel_vidmem_buffer:
+    .long   0x00000003  # set in boot.S 
+
+    # remaining: not presented
+    .rept KERNEL_PAGE_DIRECTORY_SIZE - KERNEL_PAGE_OFFSET - 3  
     .long 0
     .endr
 
 
 .align SIZE_4K  # Align to 4 kB
 kernel_page_table:
-kernel_page_table_0:
+kernel_page_table_0: # the page that can access physical VRAM (modeX), FIXME: incorrect in this branch
     # Fill index 0-0xB7
     .rept VIDEO_MEMORY_START_PAGE   # 0xB8
     .long 0
@@ -154,17 +161,9 @@ kernel_page_table_0:
     .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1
     .long 0
     .endr
-kernel_page_table_1:
-    # Fill index 0-0xB7
-    .rept VIDEO_MEMORY_START_PAGE   # 0xB8
-    .long 0
-    .endr
-
-    # 0xB8: video memory
-    .long   0x000B8003  # the 3 is for present and W/R flag
-
-    # Fill the rest to 1024
-    .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1
+kernel_page_table_1: # the page that can access all buffer, for PDE VRAM_BUFFER_PD_ENTRY * 4MB ~ +1
+    # Filled in vidmem.c init 
+    .rept SIZE_K  
     .long 0
     .endr
 user_page_table_0:

@@ -6,6 +6,7 @@
 
 #include "lib.h"
 #include "paging.h"
+#include "x86_desc.h"
 
 #include "task.h"
 #include "terminal.h"
@@ -19,6 +20,7 @@
 #define     VIDMAP_USER_START_ADDR    (TASK_IMG_END + VIDMEM_PAGE_ENTRY * SIZE_4K)  // 132MB + 0xB8 * 4K
 
 #define     USER_VRAM_PAGE_ENTRY        0xB9    // real VRAM is at 0xB8
+#define     VRAM_BUFFER_PD_ENTRY        (KERNEL_PAGE_OFFSET + 2)
 
 #define     TERMINAL_VID_OPENED         777     // funny number
 #define     TERMINAL_VID_NOT_OPENED     0
@@ -30,20 +32,21 @@ static int terminal_opened[TERMINAL_MAX_COUNT];
 static page_table_t user_video_memory_pt[TERMINAL_MAX_COUNT];
 static page_table_t kernel_video_memory_pt[TERMINAL_MAX_COUNT];
 
-
+/* has been modified for svga */
 /**
  * Reference for page tables
  * kernel_page_table_0: PDE 0~4MB
- *      the page that can access all video memory buffers
- *      useful for copying between buffers
- * kernel_page_table_1: PDE 0~4MB
- *      the page for active terminal, mapping directly to physical VRAM
+ *      the page that can access physical VRAM (modeX)
+ *      useful for copying from buffers and write the screen 
+ * kernel_page_table_1: PDE VRAM_BUFFER_PD_ENTRY * 4MB ~ +1 
+ *      (no need to set for copy since no one will change it)
+ *      the page that can access all buffer 
+ *      useful for copying from buffers and write the screen
  * kernel_video_memory_pt: PDE 0~4MB
- *      the page for inactive terminal, mapping to its buffer
- * user_page_table_0: PDE 132~136MB
- *      the page for user process on active terminal, mapping directly to physical VRAM
+ *      the page for terminal, mapping to its buffer
+ * user_page_table_0: deleted 
  * user_video_memory_pt: PDE 132~136MB
- *      the page for user process on inactive terminal, mapping to its buffer
+ *      the page for user process on terminal, mapping to its buffer
  */
 
 
@@ -68,19 +71,26 @@ void vidmem_init() {
         }
 
         // User video memory page
-        // Map the 0xB8 to corresponding page at (0xB9 + pid) * 4kB
+        // Map the 0xB8 to corresponding page at (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (0xB9 + pid) * 4kB
         set_PTE((PTE_t *) (&user_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY]),
-                (USER_VRAM_PAGE_ENTRY + i) * SIZE_4K, 1, 1, 1);
+                (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (USER_VRAM_PAGE_ENTRY + i) * SIZE_4K, 1, 1, 1);
 
         // Kernel video memory page
-        // Map the 0xB8 to corresponding page at (0xB9 + pid) * 4kB
+        // Map the 0xB8 to corresponding page at (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (0xB9 + pid) * 4kB
         set_PTE((PTE_t *) (&kernel_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY]),
-                (USER_VRAM_PAGE_ENTRY + i) * SIZE_4K, 1, 0, 1);
+                (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (USER_VRAM_PAGE_ENTRY + i) * SIZE_4K, 1, 0, 1);
 
+        // Upate kernel_page_table_1 for copying 
+        kernel_page_table_1.entry[USER_VRAM_PAGE_ENTRY + i] = kernel_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY];
+        
+        /* no longer needed for svga */ 
         // Update 0-4MB kernel page
-        kernel_page_table_0.entry[USER_VRAM_PAGE_ENTRY + i] = kernel_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY];
+        // kernel_page_table_0.entry[USER_VRAM_PAGE_ENTRY + i] = kernel_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY];
 
     }
+    // update the PDE for vidmem buffer 
+    set_PDE_4kB( (PDE_4kB_t *)(&kernel_page_directory.entry[KERNEL_PAGE_OFFSET + 2]) , 
+                (uint32_t) &kernel_page_table_1, 1, 0, 1);
 
     FLUSH_TLB();
 }
@@ -165,30 +175,31 @@ int terminal_vidmem_switch_active(const int new_active_id, const int pre_active_
 
     if (new_active_id == pre_active_id) return 0;
 
+    /* no longer needed for svga */
     // Turn on the kernel page for copy
-    if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
-                          (uint32_t) &kernel_page_table_0, 1, 0, 1)) {
-        return -1;
-    }
-    FLUSH_TLB();
+    // if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+    //                       (uint32_t) &kernel_page_table_0, 1, 0, 1)) {
+    //     return -1;
+    // }
+    // FLUSH_TLB();
 
 
-    if (pre_active_id != NULL_TERMINAL_ID) {
-        // Copy the previous terminal VRAM from physical VRAM to its buffer
-        memcpy((uint8_t *) ((VIDMEM_PAGE_ENTRY + pre_active_id + 1) * SIZE_4K),
-               (uint8_t *) (VIDMEM_PAGE_ENTRY * SIZE_4K), SIZE_4K);
-    }
+    // if (pre_active_id != NULL_TERMINAL_ID) {
+    //     // Copy the previous terminal VRAM from physical VRAM to its buffer
+    //     memcpy((uint8_t *) ((VIDMEM_PAGE_ENTRY + pre_active_id + 1) * SIZE_4K),
+    //            (uint8_t *) (VIDMEM_PAGE_ENTRY * SIZE_4K), SIZE_4K);
+    // }
 
-    if (new_active_id != NULL_TERMINAL_ID) {
-        // Copy the current terminal VRAM from its buffer to physical VRAM
-        memcpy((uint8_t *) (VIDMEM_PAGE_ENTRY * SIZE_4K),
-               (uint8_t *) ((VIDMEM_PAGE_ENTRY + new_active_id + 1) * SIZE_4K), SIZE_4K);
-    }
+    // if (new_active_id != NULL_TERMINAL_ID) {
+    //     // Copy the current terminal VRAM from its buffer to physical VRAM
+    //     memcpy((uint8_t *) (VIDMEM_PAGE_ENTRY * SIZE_4K),
+    //            (uint8_t *) ((VIDMEM_PAGE_ENTRY + new_active_id + 1) * SIZE_4K), SIZE_4K);
+    // }
 
     // Update active terminal. Must before terminal_vidmem_set()
     terminal_active = new_active_id;
 
-    // Restore kernel page
+    // Map the vram for the new terminal 
     terminal_vidmem_set(terminal_running);
 
     return 0;
@@ -213,15 +224,16 @@ int terminal_vidmem_set(const int term_id) {
     }
 
     // Set the PDE for 0-4MB pointing to corresponding PT
-    if (term_id == NULL_TERMINAL_ID || term_id == terminal_active) {
-        if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
-                              (uint32_t) &kernel_page_table_1, 1, 0, 1))
-            return -1;
-    } else {
+    /* no longer needed in svga */
+    // if (term_id == NULL_TERMINAL_ID || term_id == terminal_active) {
+    //     if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
+    //                           (uint32_t) &kernel_page_table_1, 1, 0, 1))
+    //         return -1;
+    // } else {
         if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
                               (uint32_t) &kernel_video_memory_pt[term_id], 1, 0, 1))
             return -1;
-    }
+    // }
 
     terminal_running = term_id;  // for focus switch
 
@@ -272,13 +284,14 @@ void task_set_user_vidmap(int term_id) {
         // Close user vidmap
         clear_PDE_4kB(user_vram_pde);
     } else {
-        if (term_id == terminal_active) {
-            // Map to focus terminal
-            set_PDE_4kB(user_vram_pde, (uint32_t) (&user_page_table_0), 1, 1, 1);
-        } else {
+        /* no longer needed for svga */
+        // if (term_id == terminal_active) {
+        //     // Map to focus terminal
+        //     set_PDE_4kB(user_vram_pde, (uint32_t) (&user_page_table_0), 1, 1, 1);
+        // } else {
             // Map to background terminal
             set_PDE_4kB(user_vram_pde, (uint32_t) (&user_video_memory_pt[term_id]), 1, 1, 1);
-        }
+        // }
     }
 
     FLUSH_TLB();
