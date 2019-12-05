@@ -34,6 +34,7 @@
 #define VIDEO_MEMORY_START_PAGE         0xB8
 #define PAGE_4KB_ALIGN_TEST           0x00FFF
 #define KERNEL_PAGE_OFFSET              1  // beside 4-8MB, the number of 4MB page that the kernel need 
+                                            // need to change x86_desc.S when change!
 
 #ifndef ASM
 
