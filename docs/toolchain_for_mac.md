@@ -32,6 +32,7 @@ brew install i386-elf-gcc
 4. Install dependencies of fuse-ext2
 ```shell
 brew install m4 autoconf automake libtool e2fsprogs
+xcode-select --installs
 ```
 5. Clone, compile and install [fuse-ext2](https://github.com/alperakcan/fuse-ext2)
  (instead of using install script on its README, we install dependencies manually)

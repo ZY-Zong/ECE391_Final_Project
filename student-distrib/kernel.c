@@ -205,7 +205,7 @@ void entry(unsigned long magic, unsigned long addr) {
         }
     }
 
-    vga_setcolor(0xFF00FF);
+    vga_setcolor(0x0000FF);
     for (x = 973; x < 1023; x++) {
         for (y = 717; y <= 767; y++) {
             vga_drawpixel(x, y);
