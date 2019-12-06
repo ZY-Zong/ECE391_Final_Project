@@ -16,6 +16,7 @@
 #include "modex.h"
 #include "mouse.h"
 #include "vga/vga.h"
+#include "png/png.h"
 
 //#define RUN_TESTS
 
