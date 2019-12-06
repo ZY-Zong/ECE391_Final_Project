@@ -1,183 +1,110 @@
 //
 // Created by Zhenyu Zong on 2019/12/4.
 //
-// Based on C++ library png.h, pngconf.h, pnglibconf.h
+// Based on public domain image loader stb-image.h library.
+// Available at https://github.com/nothings/stb.
 //
 
 #ifndef _PNG_H
 #define _PNG_H
+//
+//#include "lib.h"
+//
+//#define PNG_SIGNATURE       ((10<<56) + (26<<48) + (10<<40) + (13<<32) + (71<<24) + (78<<16) + (80<<8) + 137)
+//#define CHUNK_LENGTH_BYTES  4
+//#define CHUNK_TYPE_BYTES    4
+//#define IMAGE_WIDTH_BYTES   4
+//#define IMAGE_HEIGHT_BYTES  4
+//#define CHUNK_LAYOUT_BYTES  4
+//#define FDICT_BYTES         4
+//
+//
+//
+//// Swap the byte order of unsigned int input
+//unsigned int swap_uint(unsigned int p);
+//
+//// Get pixels information of image
+//unsigned char* get_pixel(unsigned char* file_data, unsigned int width, unsigned int height, unsigned int* pixel_bits);
+//
+//unsigned int string_to_uint(const char* str);
+//
+//unsigned int get_string_length(const char* str);
 
-#include "stdio.h"
+/*
+uPNG -- derived from LodePNG version 20100808
 
-#define  FILE_SIGNATURE_SIZE 8
+Copyright (c) 2005-2010 Lode Vandevenne
+Copyright (c) 2010 Sean Middleditch
 
-/* Version information for png.h - this should match the version in png.c */
-#define PNG_LIBPNG_VER_STRING "1.6.37"
-#define PNG_HEADER_VERSION_STRING " libpng version 1.6.37 - April 14, 2019\n"
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
 
-// Some setting define
-#define PNG_LINKAGE_API extern
-#define PNGARG(arglist) arglist
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
 
-#define PNGCAPI
-#define PNGCBAPI PNGCAPI
-#define PNGAPI PNGCAPI
+		1. The origin of this software must not be misrepresented; you must not
+		claim that you wrote the original software. If you use this software
+		in a product, an acknowledgment in the product documentation would be
+		appreciated but is not required.
 
-#define PNG_IMPEXP
-#define PNG_FUNCTION(type, name, args, attributes) attributes type name args
-#define PNG_EXPORT_TYPE(type) PNG_IMPEXP type
+		2. Altered source versions must be plainly marked as such, and must not be
+		misrepresented as being the original software.
 
-#define PNG_EXPORTA(ordinal, type, name, args, attributes) \
-    PNG_FUNCTION(PNG_EXPORT_TYPE(type), (PNGAPI name), PNGARG(args), \
-    PNG_LINKAGE_API attributes)
-
-#define PNG_EMPTY /*empty list*/
-#define PNG_EXPORT(ordinal, type, name, args) \
-    PNG_EXPORTA(ordinal, type, name, args, PNG_EMPTY)
-#define PNG_REMOVED(ordinal, type, name, args, attributes)
-#define PNG_CALLBACK(type, name, args) type (PNGCBAPI name) PNGARG(args)
-
-#define PNG_ALLOCATED
-#define PNG_RESTRICT
-
-/* Basic control structions. Read libpng-manual.txt or libpng.3 for more info.
-*
-* png_struct is the cache of information used while reading or writing a single
-* PNG file.  One of these is always required, although the simplified API
-* (below) hides the creation and destruction of it.
+		3. This notice may not be removed or altered from any source
+		distribution.
 */
-typedef struct png_struct_def png_struct;
-typedef const png_struct * png_const_structp;
-typedef png_struct * png_structp;
-typedef png_struct ** png_structpp;
 
-/* png_info contains information read from or to be written to a PNG file.  One
- * or more of these must exist while reading or creating a PNG file.  The
- * information is not used by libpng during read but is used to control what
- * gets written when a PNG file is created.  "png_get_" function calls read
- * information during read and "png_set_" functions calls write information
- * when creating a PNG.
- * been moved into a separate header file that is not accessible to
- * applications.  Read libpng-manual.txt or libpng.3 for more info.
- */
-typedef struct png_info_def png_info;
-typedef png_info * png_infop;
-typedef const png_info * png_const_infop;
-typedef png_info ** png_info_pp;
+typedef enum upng_error {
+    UPNG_EOK			= 0, /* success (no error) */
+    UPNG_ENOMEM			= 1, /* memory allocation failed */
+    UPNG_ENOTFOUND		= 2, /* resource not found (file missing) */
+    UPNG_ENOTPNG		= 3, /* image data does not have a PNG header */
+    UPNG_EMALFORMED		= 4, /* image data is not a valid PNG image */
+    UPNG_EUNSUPPORTED	= 5, /* critical PNG chunk type is not supported */
+    UPNG_EUNINTERLACED	= 6, /* image interlacing is not supported */
+    UPNG_EUNFORMAT		= 7, /* image color format is not supported */
+    UPNG_EPARAM			= 8  /* invalid parameter to method call */
+} upng_error;
 
-/* Types with names ending 'p' are pointer types.  The corresponding types with
- * names ending 'rp' are identical pointer types except that the pointer is
- * marked 'restrict', which means that it is the only pointer to the object
- * passed to the function.  Applications should not use the 'restrict' types;
- * it is always valid to pass 'p' to a pointer with a function argument of the
- * corresponding 'rp' type.  Different compilers have different rules with
- * regard to type matching in the presence of 'restrict'.  For backward
- * compatibility libpng callbacks never have 'restrict' in their parameters and,
- * consequentially, writing portable application code is extremely difficult if
- * an attempt is made to use 'restrict'.
- */
-typedef png_struct * PNG_RESTRICT png_structrp;
-typedef const png_struct * PNG_RESTRICT png_const_structrp;
-typedef png_info * PNG_RESTRICT png_inforp;
-typedef const png_info * PNG_RESTRICT png_const_inforp;
+typedef enum upng_format {
+    UPNG_BADFORMAT,
+    UPNG_RGB8,
+    UPNG_RGB16,
+    UPNG_RGBA8,
+    UPNG_RGBA16,
+    UPNG_LUMINANCE1,
+    UPNG_LUMINANCE2,
+    UPNG_LUMINANCE4,
+    UPNG_LUMINANCE8,
+    UPNG_LUMINANCE_ALPHA1,
+    UPNG_LUMINANCE_ALPHA2,
+    UPNG_LUMINANCE_ALPHA4,
+    UPNG_LUMINANCE_ALPHA8
+} upng_format;
 
-/* Add typedefs for pointers */
-typedef unsigned char png_byte;
-typedef png_byte              * png_bytep;
-typedef const png_byte        * png_const_bytep;
-typedef const char            * png_const_charp;
-typedef void                  * png_voidp;
-typedef png_byte              ** png_bytepp;
+typedef struct upng_t upng_t;
 
-typedef FILE                  * png_FILE_p;
+upng_t*		upng_new_from_bytes	(const unsigned char* buffer, unsigned long size);
+upng_t*		upng_new_from_file	(const char* path);
+void		upng_free			(upng_t* upng);
 
-typedef PNG_CALLBACK(void, *png_error_ptr, (png_structp, png_const_charp));
+upng_error	upng_header			(upng_t* upng);
+upng_error	upng_decode			(upng_t* upng);
 
-// Some typedefs to start
-typedef unsigned char png_byte;
-typedef unsigned char png_byte;
-typedef png_byte * png_bytep;
+upng_error	upng_get_error		(const upng_t* upng);
+unsigned	upng_get_error_line	(const upng_t* upng);
 
-//#if UINT_MAX > 4294967294U
-typedef unsigned int png_uint_32;
-//#elif ULONG_MAX > 4294967294U
-//typedef unsigned long int png_uint_32;
+unsigned	upng_get_width		(const upng_t* upng);
+unsigned	upng_get_height		(const upng_t* upng);
+unsigned	upng_get_bpp		(const upng_t* upng);
+unsigned	upng_get_bitdepth	(const upng_t* upng);
+unsigned	upng_get_components	(const upng_t* upng);
+unsigned	upng_get_pixelsize	(const upng_t* upng);
+upng_format	upng_get_format		(const upng_t* upng);
 
-// Image information
-typedef struct ImageInf {
-    int bit_depth;
-    int color_type;
-    unsigned int width;
-    unsigned int height;
-    unsigned int row_bytes;
-    unsigned char** rows;
-}ImageInf;
-
-/* Tell lib we have already handled the first <num_bytes> magic bytes.
- * Handling more than 8 bytes from the beginning of the file is an error.
- */
-PNG_EXPORT(2, void, png_set_sig_bytes, (png_structrp png_ptr, int num_bytes));
-
-/* Check sig[start] through sig[start + num_to_check - 1] to see if it's a
- * PNG file.  Returns zero if the supplied bytes match the 8-byte PNG
- * signature, and non-zero otherwise.  Having num_to_check == 0 or
- * start > 7 will always fail (ie return non-zero).
- */
-PNG_EXPORT(3, int, png_sig_cmp, (png_const_bytep sig, size_t start, size_t num_to_check));
-
-/* Allocate and initialize png_ptr struct for reading, and any other memory. */
-PNG_EXPORTA(4, png_structp, png_create_read_struct,
-            (png_const_charp user_png_ver, png_voidp error_ptr,
-                    png_error_ptr error_fn, png_error_ptr warn_fn),
-            PNG_ALLOCATED);
-
-/* Allocate and initialize the info structure */
-PNG_EXPORTA(18, png_infop, png_create_info_struct, (png_const_structrp png_ptr),
-            PNG_ALLOCATED);
-
-/* Read the information before the actual image data. */
-PNG_EXPORT(22, void, png_read_info,
-           (png_structrp png_ptr, png_inforp info_ptr));
-
-/* Have the code handle the interlacing.  Returns the number of passes.
- * MUST be called before png_read_update_info or png_start_read_image,
- * otherwise it will not have the desired effect.  Note that it is still
- * necessary to call png_read_row or png_read_rows png_get_image_height
- * times for each pass.
-*/
-PNG_EXPORT(45, int, png_set_interlace_handling, (png_structrp png_ptr));
-
-/* Optional call to update the users info structure */
-PNG_EXPORT(54, void, png_read_update_info, (png_structrp png_ptr,
-        png_inforp info_ptr));
-
-/* Read the whole image into memory at once. */
-PNG_EXPORT(57, void, png_read_image, (png_structrp png_ptr, png_bytepp image));
-
-/* Initialize the input/output for the PNG file to the default functions. */
-PNG_EXPORT(74, void, png_init_io, (png_structrp png_ptr, png_FILE_p fp));
-
-/* Returns number of bytes needed to hold a transformed row. */
-PNG_EXPORT(111, size_t, png_get_rowbytes, (png_const_structrp png_ptr,
-        png_const_inforp info_ptr));
-
-/* Returns image width in pixels. */
-PNG_EXPORT(115, png_uint_32, png_get_image_width, (png_const_structrp png_ptr,
-        png_const_inforp info_ptr));
-
-/* Returns image height in pixels. */
-PNG_EXPORT(116, png_uint_32, png_get_image_height, (png_const_structrp png_ptr,
-        png_const_inforp info_ptr));
-
-/* Returns image bit_depth. */
-PNG_EXPORT(117, png_byte, png_get_bit_depth, (png_const_structrp png_ptr,
-        png_const_inforp info_ptr));
-
-/* Returns image color_type. */
-PNG_EXPORT(118, png_byte, png_get_color_type, (png_const_structrp png_ptr,
-        png_const_inforp info_ptr));
-
-// Load png image
-ImageInf* png_image_load(char* file_name, ImageInf* image, png_bytep* row_pointers);
+const unsigned char*	upng_get_buffer		(const upng_t* upng);
+unsigned				upng_get_size		(const upng_t* upng);
 
 #endif //_PNG_H
