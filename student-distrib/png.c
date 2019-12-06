@@ -2,278 +2,8 @@
 // Created by Zhenyu Zong on 2019/12/4.
 //
 // PNG file structure comes from: http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html.
-
-#include "png.h"
-#include "lib.c"
+// Codes originally from https://github.com/elanthis/upng
 //
-//// Macro to check failure
-//#define return_val_if_fail(p, ret) if(!(p)) \
-//{printf("%s:%d Warning: "#p" failed.\n",\
-//__func__, __LINE__); return (ret);}
-//
-///**
-// *
-// * @param file_data
-// * @param width
-// * @param height
-// * @param pixel_bits
-// * @return
-// */
-//unsigned char* get_pixel(unsigned char* file_data, unsigned int width, unsigned int height, unsigned int* pixel_bits) {
-//    unsigned int i;
-//
-//    // 8-byte PNG file signature
-//    unsigned long long png_signature = *(unsigned long long*)file_data;
-//    file_data += 8;
-//    if (png_signature != PNG_SIGNATURE) {
-//        printf("NOT PNG file! Wrong file signature: %llu\n", png_signature);
-//        return 0;
-//    }
-//
-//    unsigned int image_size = 0;
-//    unsigned char* compressed_data = 0;
-//    unsigned int compressed_data_size = 0;
-//    int continue_check_chunks = 1;
-//
-//    // Check all chunks
-//    while (continue_check_chunks) {
-//        // A 4-byte unsigned integer giving the length of the chunk
-//        unsigned int chunk_len = swap_uint(*(unsigned int*)file_data);
-//        file_data += CHUNK_LENGTH_BYTES;
-//
-//        // A 4-byte chunk type code
-//        unsigned int chunk_type = swap_uint(*(unsigned int*)file_data);
-//        file_data += CHUNK_TYPE_BYTES;
-//
-//        // IHDR Image header, http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html.
-//        if (string_to_uint("IHDR") == chunk_type){
-//            // Image size information
-//            width = swap_uint(*(unsigned int*)file_data);
-//            file_data += IMAGE_WIDTH_BYTES;
-//            height = swap_uint(*(unsigned int*)file_data);
-//            file_data += IMAGE_HEIGHT_BYTES;
-//
-//            unsigned char bit_depth = *file_data++;
-//            unsigned char color_type = *file_data++;
-//            unsigned char compression_method = *file_data++;
-//            unsigned char filter_method = *file_data++;
-//            unsigned char interlace_method = *file_data++;
-//
-//            switch(color_type){
-//                case 0:     // 0       1,2,4,8,16  Each pixel is a grayscale sample.
-//                    break;
-//                case 2:{    // 2       8,16        Each pixel is an R,G,B triple.
-//                    *pixel_bits = bit_depth * 3;
-//                    break;
-//                }
-//                case 3:{    // 3       1,2,4,8     Each pixel is a palette index; a PLTE chunk must appear.
-//                    *pixel_bits = bit_depth;
-//                    break;
-//                }
-//                case 4:{    // 4       8,16        Each pixel is a grayscale sample, followed by an alpha sample.
-//                    *pixel_bits = bit_depth * 3;
-//                    break;
-//                }
-//                case 6:{    // 6       8,16        Each pixel is an R,G,B triple, followed by an alpha sample.
-//                    *pixel_bits = bit_depth * 4;
-//                    break;
-//                }
-//            }
-//
-//            image_size = width * height;
-//        }
-//        // Can contain one or more IDAT chunks
-//        else if (string_to_uint("IDAT") == chunk_type) {
-//            compressed_data_size += chunk_len;
-//            compressed_data = (unsigned char*)realloc(compressed_data, compressed_data_size);
-//            for (i = compressed_data_size - chunk_len; i < compressed_data_size; i++){
-//                compressed_data[i] = *file_data++;
-//            }
-//        }
-//        // End of all chunks - IEND chunk
-//        else if (string_to_uint("IEND") == chunk_type) {
-//            continue_check_chunks = 0;
-//        }
-//        else {
-//            file_data += chunk_len;
-//        }
-//
-//        // Chunk layout CRC
-//        unsigned int crc = swap_uint(*(unsigned int*)file_data);
-//        file_data += CHUNK_LAYOUT_BYTES;
-//    }
-//
-//
-///*  
-// *  IHDR & IDAT data example: (https://blog.csdn.net/liuzxQAQ/article/details/79749981)
-// *	CMF = 78       : CINFO = 7  -> window.width = 2^(7+8)
-// *		           : CM    = 8  -> 32K windows deflate compression method
-// *	FLG = 9C       :  10011-----1-------00
-// * 				     FCHECK | FDICT | FLEVEL
-// *	                 -> FCHECK = 10011 : unkonw
-// *	                 -> FDICT = 1
-// *	                 -> FLEVEL = 00 : Use the fastest algorithm
-// */
-//    // Ignore FCHECK & FLEVEL
-//    unsigned char cmf = *compressed_data++;
-//    unsigned char flg = *compressed_data++;
-//    unsigned char fdict = (flg >> 2) & 0x04;
-//    if (fdict) {
-//        compressed_data += FDICT_BYTES;
-//    }
-//
-//    unsigned int offset = 0;
-//    unsigned char bfinal = readBitsFromArray(compressed_data, offset++, 1);
-//    unsigned char btype = readBitsFromArray(compressed_data, offset, 2);
-//    offset += 2;
-//
-//    printf("bfinal: %u\n", bfinal);
-//    printf("btype: %u\n", btype);
-//
-//    switch(btype){
-//        case 3: {
-//            return 0;
-//        }
-//        case 0: {
-//            break;
-//        }
-//        case 1: {
-//            break;
-//        }
-//        case 2: {
-//            unsigned int hlit = readBitsFromArray(compressed_data, offset, 5) + 257;
-//            offset += 5;
-//            unsigned int hdist = readBitsFromArray(compressed_data, offset, 5) + 1;
-//            offset += 5;
-//            unsigned int hclen = readBitsFromArray(compressed_data, offset, 4) + 4;
-//            offset += 4;
-//
-//            printf("hclen: \t%u\n", hclen);
-//            printf("hlit: \t%u\n", hlit);
-//            printf("hdist: \t%u\n", hdist);
-//
-//            unsigned char codeLengthAlphabet[] = {
-//                    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
-//            };
-//
-//            unsigned int codeLengths[19] = {};
-//
-//            for(unsigned int i = 0; i < hclen; i++){
-//                codeLengths[codeLengthAlphabet[i]] = readBitsFromArray(compressed_data, offset, 3);
-//                offset += 3;
-//            }
-//
-//            PNGHuffman cLenHuff = generatePNGHuffmanFromCodeLengths(19, codeLengths, 7);
-//
-//            unsigned int lenDistTotal = hlit + hdist;
-//            unsigned int lenDistFound = 0;
-//            unsigned int* lenDistCodeLengths = ALLOCATE_MEMORY(unsigned int, lenDistTotal);
-//
-//            while(lenDistFound < lenDistTotal){
-//                unsigned int code = parseHuffmanCodeFromData(compressed_data, &offset, &cLenHuff);
-//                if(code < 16){
-//                    lenDistCodeLengths[lenDistFound++] = code;
-//                }else if(code == 16){
-//                    unsigned int extraBits = readBitsFromArray(compressed_data, offset, 2) + 3;
-//                    offset += 2;
-//                    for(unsigned int i = 0; i < extraBits; i++){
-//                        lenDistCodeLengths[lenDistFound++] = lenDistCodeLengths[lenDistFound - 1];
-//                    }
-//                }else if(code == 17){
-//                    unsigned int extraBits = readBitsFromArray(compressed_data, offset, 3) + 3;
-//                    offset += 3;
-//                    for(unsigned int i = 0; i < extraBits; i++){
-//                        lenDistCodeLengths[lenDistFound++] = 0;
-//                    }
-//                }else if(code == 18){
-//                    unsigned int extraBits = readBitsFromArray(compressed_data, offset, 7) + 11;
-//                    offset += 7;
-//                    for(unsigned int i = 0; i < extraBits; i++){
-//                        lenDistCodeLengths[lenDistFound++] = 0;
-//                    }
-//                }else{
-//                    return 0;
-//                }
-//            }
-//
-//            PNGHuffman litLenHuff = generatePNGHuffmanFromCodeLengths(hlit, lenDistCodeLengths, 15);
-//            PNGHuffman distHuff = generatePNGHuffmanFromCodeLengths(hdist, lenDistCodeLengths + hlit, 15);
-//
-//            while(true){
-//                unsigned int code = parseHuffmanCodeFromData(compressed_data, &offset, &litLenHuff);
-//                if(code == 256){
-//                    printf("256 END!\n");
-//                    break;
-//                }else if(code < 256){
-//                    printf("code: %u\n", code);
-//                }else if(code < 265){
-//                    unsigned int distCode = parseHuffmanCodeFromData(compressed_data, &offset, &distHuff);
-//                    unsigned int length = code - 254;
-//                    printf("code: %u\tlen: %u\tdist:%u\n", code, length, distCode);
-//                }else if(code < 268){
-//
-//                }
-//            }
-//
-//            break;
-//        }
-//        default : {}
-//    }
-//
-//    return 0;
-//}
-//
-//void freeImageData(unsigned char** imageData){
-//    if(*imageData){
-//        delete[] *imageData;
-//        *imageData = 0;
-//    }
-//}
-//
-///**
-// * Extend unsigned char to unsigned int
-// * @param p
-// * @return unsigned int of p
-// */
-//unsigned int swap_uint(unsigned int p) {
-//    return (((p >> 24) & 0xff) |        // 0x000000ff
-//            ((p >> 8) & 0xff00) |       // 0x0000ff00
-//            ((p << 8) & 0xff0000) |     // 0x00ff0000
-//            ((p << 24) & 0xff000000));  // 0xff000000
-//}
-//
-///**
-// * Change one string to its unsigned int value
-// * @param str A string input
-// * @return unsigned int value
-// */
-//unsigned int string_to_uint(const char* str) {
-//    unsigned int length = get_string_length(str);
-//    unsigned int result = 0;
-//    int i;
-//
-//    // Convert to unsigned int value
-//    for (i = 0; i < length; i++) {
-//        result |= str[i] << (8 * (length - 1 - i));
-//    }
-//    return result;
-//}
-//
-///**
-// * Get length of one input string
-// * @param str input string
-// * @return length of string
-// */
-//unsigned int get_string_length(const char* str) {
-//    unsigned int length = 0;
-//
-//    // Get string length
-//    while (*str != '\0') {
-//        length++;
-//        str++;
-//    }
-//    return length;
-//}
 
 /*
 uPNG -- derived from LodePNG version 20100808
@@ -377,6 +107,9 @@ typedef struct huffman_tree {
     unsigned maxbitlen;	// Maximum number of bits a single code can get
     unsigned numcodes;	// Number of symbols in the alphabet = number of codes */
 } huffman_tree;
+
+static unsigned char fake_malloced_space_one[MAX_PNG_SIZE];
+static unsigned char fake_malloced_space_two[MAX_PNG_SIZE];
 
 /* The base lengths represented by codes 257-285 */
 static const unsigned LENGTH_BASE[29] = {
@@ -1350,7 +1083,10 @@ upng_error upng_decode(upng_t* upng)
     }
 
     /* allocate enough space for the (compressed and filtered) image data */
-    compressed = (unsigned char*)malloc(compressed_size);
+//    compressed = (unsigned char*)malloc(compressed_size);
+    if (sanity_check_good(compressed_size)) {
+        compressed = fake_malloced_space_one;
+    }
     if (compressed == NULL) {
         SET_ERROR(upng, UPNG_ENOMEM);
         return upng->error;
@@ -1379,7 +1115,11 @@ upng_error upng_decode(upng_t* upng)
 
     /* allocate space to store inflated (but still filtered) data */
     inflated_size = ((upng->width * (upng->height * upng_get_bpp(upng) + 7)) / 8) + upng->height;
-    inflated = (unsigned char*)malloc(inflated_size);
+//    inflated = (unsigned char*)malloc(inflated_size);
+    if (sanity_check_good(inflated_size)) {
+        inflated = fake_malloced_space_two;
+    }
+
     if (inflated == NULL) {
         compressed = NULL;  // Free compressed
         SET_ERROR(upng, UPNG_ENOMEM);
@@ -1397,9 +1137,10 @@ upng_error upng_decode(upng_t* upng)
     /* free the compressed compressed data */
     compressed = NULL;
 
-    /* allocate final image buffer */
+    /* buffer should be alloced by the user in upng structure */
     upng->size = (upng->height * upng->width * upng_get_bpp(upng) + 7) / 8;
-    upng->buffer = (unsigned char*)malloc(upng->size);
+//    upng->buffer = (unsigned char*)malloc(upng->size);
+
     if (upng->buffer == NULL) {
         inflated = NULL;    // Free inflated
         upng->size = 0;
@@ -1423,91 +1164,6 @@ upng_error upng_decode(upng_t* upng)
 
     return upng->error;
 }
-
-static upng_t* upng_new(void)
-{
-    upng_t* upng;
-
-    upng = (upng_t*)malloc(sizeof(upng_t));
-    if (upng == NULL) {
-        return NULL;
-    }
-
-    upng->buffer = NULL;
-    upng->size = 0;
-
-    upng->width = upng->height = 0;
-
-    upng->color_type = UPNG_RGBA;
-    upng->color_depth = 8;
-    upng->format = UPNG_RGBA8;
-
-    upng->state = UPNG_NEW;
-
-    upng->error = UPNG_EOK;
-    upng->error_line = 0;
-
-    upng->source.buffer = NULL;
-    upng->source.size = 0;
-    upng->source.owning = 0;
-
-    return upng;
-}
-
-upng_t* upng_new_from_bytes(const unsigned char* buffer, unsigned long size)
-{
-    upng_t* upng = upng_new();
-    if (upng == NULL) {
-        return NULL;
-    }
-
-    upng->source.buffer = buffer;
-    upng->source.size = size;
-    upng->source.owning = 0;
-
-    return upng;
-}
-
-// upng_t* upng_new_from_file(const char *filename)
-// {
-// 	upng_t* upng;
-// 	unsigned char *buffer;
-// 	FILE *file;
-// 	long size;
-
-// 	upng = upng_new();
-// 	if (upng == NULL) {
-// 		return NULL;
-// 	}
-
-// 	file = fopen(filename, "rb");
-// 	if (file == NULL) {
-// 		SET_ERROR(upng, UPNG_ENOTFOUND);
-// 		return upng;
-// 	}
-
-// 	/* get filesize */
-// 	fseek(file, 0, SEEK_END);
-// 	size = ftell(file);
-// 	rewind(file);
-
-// 	/* read contents of the file into the vector */
-// 	buffer = (unsigned char *)malloc((unsigned long)size);
-// 	if (buffer == NULL) {
-// 		fclose(file);
-// 		SET_ERROR(upng, UPNG_ENOMEM);
-// 		return upng;
-// 	}
-// 	fread(buffer, 1, (unsigned long)size, file);
-// 	fclose(file);
-
-// 	/* set the read buffer as our source buffer, with owning flag set */
-// 	upng->source.buffer = buffer;
-// 	upng->source.size = size;
-// 	upng->source.owning = 1;
-
-// 	return upng;
-// }
 
 void upng_free(upng_t* upng)
 {
@@ -1589,4 +1245,9 @@ const unsigned char* upng_get_buffer(const upng_t* upng)
 unsigned upng_get_size(const upng_t* upng)
 {
     return upng->size;
+}
+
+unsigned sanity_check_good(unsigned long size)
+{
+    return (size <= sizeof(fake_malloced_space_one));
 }

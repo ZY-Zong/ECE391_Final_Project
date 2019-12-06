@@ -1,34 +1,8 @@
 //
 // Created by Zhenyu Zong on 2019/12/4.
 //
-// Based on public domain image loader stb-image.h library.
-// Available at https://github.com/nothings/stb.
+// Codes originally from https://github.com/elanthis/upng.
 //
-
-#ifndef _PNG_H
-#define _PNG_H
-//
-//#include "lib.h"
-//
-//#define PNG_SIGNATURE       ((10<<56) + (26<<48) + (10<<40) + (13<<32) + (71<<24) + (78<<16) + (80<<8) + 137)
-//#define CHUNK_LENGTH_BYTES  4
-//#define CHUNK_TYPE_BYTES    4
-//#define IMAGE_WIDTH_BYTES   4
-//#define IMAGE_HEIGHT_BYTES  4
-//#define CHUNK_LAYOUT_BYTES  4
-//#define FDICT_BYTES         4
-//
-//
-//
-//// Swap the byte order of unsigned int input
-//unsigned int swap_uint(unsigned int p);
-//
-//// Get pixels information of image
-//unsigned char* get_pixel(unsigned char* file_data, unsigned int width, unsigned int height, unsigned int* pixel_bits);
-//
-//unsigned int string_to_uint(const char* str);
-//
-//unsigned int get_string_length(const char* str);
 
 /*
 uPNG -- derived from LodePNG version 20100808
@@ -56,7 +30,16 @@ freely, subject to the following restrictions:
 		distribution.
 */
 
-#define INT_MAX         2147483647      /* max value for an int */
+#ifndef _PNG_H
+#define _PNG_H
+
+#include "lib.c"
+
+#define INT_MAX      2147483647      /* max value for an int */
+#define MAX_PNG_HEIGHT      768      /* max # of pixels of height */
+#define MAX_PNG_WIDTH      1024      /* max # of pixels of width */
+#define RGBA_BYTES            4
+#define MAX_PNG_SIZE    (MAX_PNG_HEIGHT * MAX_PNG_WIDTH * RGBA_BYTES)   /* Max size of the png file */
 
 typedef enum upng_error {
     UPNG_EOK			= 0, /* success (no error) */
@@ -88,8 +71,6 @@ typedef enum upng_format {
 
 typedef struct upng_t upng_t;
 
-upng_t*		upng_new_from_bytes	(const unsigned char* buffer, unsigned long size);
-upng_t*		upng_new_from_file	(const char* path);
 void		upng_free			(upng_t* upng);
 
 upng_error	upng_header			(upng_t* upng);
@@ -108,5 +89,7 @@ upng_format	upng_get_format		(const upng_t* upng);
 
 const unsigned char*	upng_get_buffer		(const upng_t* upng);
 unsigned				upng_get_size		(const upng_t* upng);
+
+unsigned    sanity_check_good   (unsigned long size);
 
 #endif //_PNG_H
