@@ -100,7 +100,7 @@ void mouse_interrupt_handler() {
     if (0 == (inb(PORT_64) & 0x1)) {
         return;
     }
-    if (0 == inb(PORT_64) & 0x20) {
+    if (0 == (inb(PORT_64) & 0x20)) {
         return;
     }
     uint8_t flags = inb(MOUSE_PORT_60);

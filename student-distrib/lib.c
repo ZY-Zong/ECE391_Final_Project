@@ -3,13 +3,17 @@
 
 #include "lib.h"
 #include "modex.h"
-
-#define NUM_COLS    40
-#define NUM_ROWS    12
+#define CUR_TERMINAL_WIDTH 320
+#define CUR_TERMINAL_HEIGHT 200
+#define MAX_TERMINAL_WIDTH 640
+#define MAX_TERMINAL_HEIGHT 480
 #define ATTRIB      0x7
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 16
-
+#define NUM_COLS    (CUR_TERMINAL_WIDTH / FONT_WIDTH)
+#define NUM_ROWS    (CUR_TERMINAL_HEIGHT / FONT_HEIGHT)
+#define MAX_COLS    (MAX_TERMINAL_WIDTH / FONT_WIDTH)
+#define MAX_ROWS    (MAX_TERMINAL_HEIGHT / FONT_HEIGHT)
 /*
  * macro used to target a specific video plane or planes when writing
  * to video memory in mode X; bits 8-11 in the mask_hi_bits enable writes
@@ -27,7 +31,8 @@ do {                                                                    \
 int screen_x;
 int screen_y;
 static char* video_mem = (char *)VIDEO;
-static uint8_t screen_char[NUM_ROWS][NUM_COLS];
+// Always keep the screen_char buffer its largest size (takes 2.4kB)
+static uint8_t screen_char[MAX_COLS * MAX_ROWS];
 
 /**
  * Reset input point to the upper left corner of the screen
@@ -57,9 +62,9 @@ void clear(void) {
             *(uint8_t *)(video_mem + j) = OFF_PIXEL;
         }
     }
-    for (i = 0; i < NUM_COLS; i++) {
-        for (j = 0; j < NUM_ROWS; j++) {
-            screen_char[j][i] = 0;
+    for (i = 0; i < MAX_COLS; i++) {
+        for (j = 0; j < MAX_ROWS; j++) {
+            screen_char[j * MAX_COLS + i] = 0;
         }
     }
 }
@@ -212,7 +217,7 @@ void putc(uint8_t c) {
         if (screen_x < NUM_COLS - 1) {
             int i;
             for (i = screen_x; i < NUM_COLS; i++) {
-                screen_char[screen_y][i] = 0;
+                screen_char[screen_y * MAX_COLS + i] = 0;
             }
         }
         screen_x = 0;
@@ -242,7 +247,7 @@ void putc(uint8_t c) {
                 *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
-        screen_char[screen_y][screen_x] = 0;
+        screen_char[screen_y * MAX_COLS + screen_x] = 0;
 
 
         // Don't increase screen_x since next time we need to start from the same location for a new character
@@ -258,7 +263,7 @@ void putc(uint8_t c) {
                 *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
             }
         }
-        screen_char[screen_y][screen_x] = c;
+        screen_char[screen_y * MAX_COLS + screen_x] = c;
         screen_x++;
         if (NUM_COLS == screen_x) {
             // We need a new line
@@ -302,11 +307,11 @@ void scroll_up() {
             for (i = 0; i < 4; i++) {  // Loop over four planes
                 SET_WRITE_MASK(1 << (8 + i));
                 for (j = 0; j < FONT_HEIGHT; j++) {
-                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2))) = font_data[screen_char[y][x]][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[screen_char[y][x]][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2))) = font_data[screen_char[y * MAX_COLS + x]][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[screen_char[y * MAX_COLS + x]][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
                 }
             }
-            screen_char[y - 1][x] = screen_char[y][x];
+            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
         }
     }
     // Clean up the last line
