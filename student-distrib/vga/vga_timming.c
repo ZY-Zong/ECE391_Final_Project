@@ -47,10 +47,8 @@ static int findclock(int clock, CardSpecs *cardspecs) {
 
 int __svgalib_getmodetiming(ModeTiming *modetiming, ModeInfo *modeinfo,
                             CardSpecs *cardspecs) {
-    int maxclock, desiredclock;
+    int desiredclock;
     MonitorModeTiming *besttiming = NULL;
-
-    maxclock = cardspecs->maxPixelClock24bpp;
 
     /*
      * Check user defined timings first.

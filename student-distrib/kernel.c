@@ -16,6 +16,7 @@
 #include "modex.h"
 #include "mouse.h"
 #include "vga/vga.h"
+#include "png/png.h"
 
 #define RUN_TESTS
 
@@ -193,7 +194,7 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Enabling Interrupts\n");
     sti();
 
-#ifdef RUN_TESTS
+
     vga_init();
     vga_setmode(G1024x768x16M);
     vga_clear();
@@ -214,8 +215,7 @@ void entry(unsigned long magic, unsigned long addr) {
 //    }
 
     /* Run tests */
-//
-#endif
+
     launch_tests();
     /* Execute the first program ("shell") ... */
 

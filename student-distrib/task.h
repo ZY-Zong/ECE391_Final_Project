@@ -41,7 +41,20 @@ union process_kernel_memory_t {
 #define PROCESS_MAX_CNT    2  // maximum number of processes running at the same time
 extern uint32_t process_cnt;
 
-extern inline process_t* cur_process();  // get current process based on ESP, only used in kernel state
+/**
+ * Get current process based on ESP. Only for usage in kernel state.
+ * @return Pointer to current process
+ */
+static inline process_t* cur_process() {
+    process_t* ret;
+    asm volatile ("movl %%esp, %0  \n\
+                   andl $0xFFFFE000, %0    /* PKM_ALIGN_MASK */" \
+                   : "=r" (ret) \
+                   : \
+                   : "cc", "memory" \
+                   );
+    return ret;
+}
 
 void task_init();
 void task_run_initial_process();
