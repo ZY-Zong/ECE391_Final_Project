@@ -17,7 +17,7 @@
 #include "mouse.h"
 #include "vga/vga.h"
 
-//#define RUN_TESTS
+#define RUN_TESTS
 
 /* Check if the bit BIT in FLAGS is set. */
 #define CHECK_FLAG(flags, bit)   ((flags) & (1 << (bit)))
@@ -196,22 +196,22 @@ void entry(unsigned long magic, unsigned long addr) {
 #ifdef RUN_TESTS
     vga_init();
     vga_setmode(G1024x768x16M);
+    vga_clear();
 
-    vga_setcolor(0xFF0000);
-    int x, y;
-    for (x = 0; x < 50; x++) {
-        for (y = 0; y <= 50; y++) {
-            vga_drawpixel(x, y);
-        }
-    }
-
-    vga_setcolor(0x0000FF);
-    for (x = 973; x < 1023; x++) {
-        for (y = 717; y <= 767; y++) {
-            vga_drawpixel(x, y);
-        }
-    }
-    while(1) {}
+//    vga_setcolor(0xFF0000);
+//    int x, y;
+//    for (x = 0; x < 50; x++) {
+//        for (y = 0; y <= 50; y++) {
+//            vga_drawpixel(x, y);
+//        }
+//    }
+//
+//    vga_setcolor(0x0000FF);
+//    for (x = 973; x < 1023; x++) {
+//        for (y = 717; y <= 767; y++) {
+//            vga_drawpixel(x, y);
+//        }
+//    }
 
     /* Run tests */
 //

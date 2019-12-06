@@ -3,10 +3,26 @@
 
 #include "lib.h"
 #include "modex.h"
-#define CUR_TERMINAL_WIDTH 320
-#define CUR_TERMINAL_HEIGHT 200
+#include "vga/vga.h"
+// Constants for different sizes of screen
+#define MODE_SVGA
+// #define MODE_X
+
+#ifdef MODE_SVGA
+#define CUR_TERMINAL_WIDTH 640
+#define CUR_TERMINAL_HEIGHT 480
+#endif
+
+#ifdef MODE_X
+#define CUR_TERMINAL_WIDTH 640
+#define CUR_TERMINAL_HEIGHT 480
+#endif
+
+
 #define MAX_TERMINAL_WIDTH 640
 #define MAX_TERMINAL_HEIGHT 480
+#define SVGA_WIDTH 1024
+#define SVGA_HEIGHT 768
 #define ATTRIB      0x7
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 16
@@ -14,6 +30,9 @@
 #define NUM_ROWS    (CUR_TERMINAL_HEIGHT / FONT_HEIGHT)
 #define MAX_COLS    (MAX_TERMINAL_WIDTH / FONT_WIDTH)
 #define MAX_ROWS    (MAX_TERMINAL_HEIGHT / FONT_HEIGHT)
+#define BLACK 0x000000
+#define WHITE 0xFFFFFF
+
 /*
  * macro used to target a specific video plane or planes when writing
  * to video memory in mode X; bits 8-11 in the mask_hi_bits enable writes
@@ -49,12 +68,8 @@ void reset_cursor() {
  * Inputs: void
  * Return Value: none
  * Function: Clears video memory */
+#ifdef MODE_X
 void clear(void) {
-//    int32_t i;
-//    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
-//        *(uint8_t *)(video_mem + (i << 1)) = ' ';
-//        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
-//    }
     int i, j;
     for (i = 0; i < 4; i++) {  // Loop over four planes
         SET_WRITE_MASK(1 << (8 + i));
@@ -68,6 +83,21 @@ void clear(void) {
         }
     }
 }
+#endif
+
+#ifdef MODE_SVGA
+void clear(void) {
+    int i, j;
+    vga_setcolor(BLACK);
+    for(i = 0; i < CUR_TERMINAL_WIDTH; i++){
+        for (j = 0; j < CUR_TERMINAL_HEIGHT; j++){
+            vga_drawpixel(i, j);
+        }
+    }
+    // TODO: Preserve the last line
+}
+
+#endif
 
 /* Standard printf().
  * Only supports the following format strings:
@@ -212,6 +242,7 @@ int32_t puts(int8_t* s) {
  * Inputs: uint_8* c = character to print
  * Return Value: void
  *  Function: Output a character to the console */
+#ifdef MODE_X
 void putc(uint8_t c) {
     if(c == '\n' || c == '\r') {
         if (screen_x < NUM_COLS - 1) {
@@ -237,8 +268,6 @@ void putc(uint8_t c) {
         } else { // Normal cases for backspace
             screen_x--;
         }
-//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = ' ';
-//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
         int i, j;
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
@@ -249,12 +278,9 @@ void putc(uint8_t c) {
         }
         screen_char[screen_y * MAX_COLS + screen_x] = 0;
 
-
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-//        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
         int i, j;
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
@@ -275,31 +301,90 @@ void putc(uint8_t c) {
         }
     }
 }
+#endif
+
+#ifdef MODE_SVGA
+void putc(uint8_t c) {
+    if(c == '\n' || c == '\r') {
+        if (screen_x < NUM_COLS - 1) {
+            int i;
+            for (i = screen_x; i < NUM_COLS; i++) {
+                screen_char[screen_y * MAX_COLS + i] = 0;
+            }
+        }
+        screen_x = 0;
+        screen_y++;
+        if (NUM_ROWS == screen_y) {
+            scroll_up();
+        }
+    } else if ('\b' == c) {
+        // If user types backspace
+        if (0 == screen_x) {
+            if (0 == screen_y) { // At the top left corner of the screen
+                return;
+            } else { // Originally at the start of a new line, now at the end of last line
+                screen_x = NUM_COLS - 1;
+                screen_y--;
+            }
+        } else { // Normal cases for backspace
+            screen_x--;
+        }
+        int i, j;
+//        for (i = 0; i < 4; i++) {  // Loop over four planes
+//            SET_WRITE_MASK(1 << (8 + i));
+//            for (j = 0; j < FONT_HEIGHT; j++) {
+//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+//            }
+//        }
+        for (i = 0; i < FONT_WIDTH; i++) {
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                vga_setcolor(font_data[' '][j] & (1 << (7 - i))? WHITE : BLACK);
+                vga_drawpixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
+            }
+        }
+        screen_char[screen_y * MAX_COLS + screen_x] = 0;
+
+        // Don't increase screen_x since next time we need to start from the same location for a new character
+    } else {
+        // Normal cases for a character
+        int i, j;
+//        for (i = 0; i < 4; i++) {  // Loop over four planes
+//            SET_WRITE_MASK(1 << (8 + i));
+//            for (j = 0; j < FONT_HEIGHT; j++) {
+//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
+//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
+//            }
+//        }
+        for (i = 0; i < FONT_WIDTH; i++) {
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                vga_setcolor(font_data[c][j] & (1 << (7 - i))? WHITE : BLACK);
+                vga_drawpixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
+            }
+        }
+        screen_char[screen_y * MAX_COLS + screen_x] = c;
+        screen_x++;
+        if (NUM_COLS == screen_x) {
+            // We need a new line
+            screen_x %= NUM_COLS;
+            screen_y++;
+            if (NUM_ROWS == screen_y) {
+                scroll_up();
+            }
+        }
+    }
+}
+#endif
 /**
  * scroll_up
  * This function is called whenever the cursor moves to NUM_ROWS row (which should not happen).
  * Then we move the screen one line up so that we can continuously type words.
  * Side Effect: Discard the top most line of the screen.
  */
+#ifdef MODE_X
 void scroll_up() {
     int x,y;
     int i, j;
-    // Move up the last NUM_ROWS - 1 lines
-//    for (y = 0; y < NUM_ROWS - 1; y++) {
-//        for (x = 0; x < NUM_COLS; x++) {
-//            for (i = 0; i < 4; i++) {  // Loop over four planes
-//                SET_WRITE_MASK(1 << (8 + i));
-//                for (j = 0; j < FONT_HEIGHT; j++) {
-//                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2))) = *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y + 1) * 16 + j) + x * 2)));
-//                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * 16 + j) + x * 2 + 1))) = *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y + 1) * 16 + j) + x * 2 + 1)));
-//                }
-//            }
-//        }
-//    }
-//    for (i = 0; i < 4; i++) {  // Loop over four planes
-//        SET_WRITE_MASK(1 << (8 + i));
-//        memcpy(video_mem, video_mem + IMAGE_X_WIDTH * FONT_HEIGHT, IMAGE_X_WIDTH * (NUM_ROWS - 1) * FONT_HEIGHT);
-//    }
     screen_x = 0;
     screen_y = 0;
     for (y = 1; y < NUM_ROWS; y++) {
@@ -317,8 +402,6 @@ void scroll_up() {
     // Clean up the last line
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
-//        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1)) = ' ';
-//        *(uint8_t *)(video_mem + ((NUM_COLS * y + x) << 1) + 1) = ATTRIB;
         for (i = 0; i < 4; i++) {  // Loop over four planes
             SET_WRITE_MASK(1 << (8 + i));
             for (j = 0; j < FONT_HEIGHT; j++) {
@@ -332,6 +415,47 @@ void scroll_up() {
     screen_y = NUM_ROWS - 1;
     screen_x = 0;
 }
+#endif
+
+#ifdef MODE_SVGA
+void scroll_up() {
+    int x, y;
+    int i, j;
+    vga_setcolor(BLACK);
+    for (y = 0; y < CUR_TERMINAL_HEIGHT; y++) {
+        for (x = 0; x < CUR_TERMINAL_WIDTH; x++) {
+            vga_drawpixel(x, y);
+        }
+    }
+    vga_setcolor(WHITE);
+    for (y = 1; y < NUM_ROWS; y++) {
+        for (x = 0; x < NUM_COLS; x++) {
+            for (i = 0; i < FONT_WIDTH; i++) {
+                for (j = 0; j < FONT_HEIGHT; j++) {
+                    if (font_data[screen_char[(y - 1) * MAX_COLS + x]][j] & (1 << (7 - i))) {
+                        vga_drawpixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
+                    }
+                }
+            }
+            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
+        }
+    }
+    // Clean up the last line
+    y = NUM_ROWS - 1;
+    for (x = 0; x < NUM_COLS; x++) {
+        vga_setcolor(BLACK);
+        for (i = 0; i < FONT_WIDTH; i++) {
+            for (j = 0; j < FONT_HEIGHT; j++) {
+                vga_drawpixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
+            }
+        }
+        screen_char[y * MAX_COLS + x] = 0x0;
+    }
+    // Reset the cursor to the column 0, row (NUM_ROWS - 1)
+    screen_y = NUM_ROWS - 1;
+    screen_x = 0;
+}
+#endif
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
  * Inputs: uint32_t value = number to convert
