@@ -56,6 +56,8 @@ freely, subject to the following restrictions:
 		distribution.
 */
 
+#define INT_MAX         2147483647      /* max value for an int */
+
 typedef enum upng_error {
     UPNG_EOK			= 0, /* success (no error) */
     UPNG_ENOMEM			= 1, /* memory allocation failed */
