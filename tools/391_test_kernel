@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current working directory need to be set to MP3 repository
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"  # script dir
 
 # If given an argument 1, the test machine won't wait for gdb connection.
 # If no argument is given or other value is given, the test machine will wait for gdb connection.
@@ -11,7 +11,7 @@ else
 fi
 
 qemu-system-i386 \
-    -hda "student-distrib/mp3.img" \
+    -hda "${DIR}/../student-distrib/mp3.img" \
     -m 256 \
     -gdb tcp:127.0.0.1:1234 \
     ${debug_cmd} \

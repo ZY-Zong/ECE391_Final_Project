@@ -16,10 +16,18 @@ mkdir "${mnt_path}"
 
 echo "[1/4] Attaching MP3 img..."
 disk=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount student-distrib/mp3.img)
+if [[ $? -ne 0 ]]; then
+  echo "Failed"
+  exit 1
+fi
 disk=$(echo $disk | awk '{print $1}')
 
 echo "[2/4] Mounting MP3 img..."
 tools/mount_fuse-ext2 -o loop,offset=32256 "${disk}s1" "${mnt_path}"
+if [[ $? -ne 0 ]]; then
+  echo "Failed"
+  exit 1
+fi
 
 echo "[3/4] Copying files..."
 cp student-distrib/bootimg "${mnt_path}"
