@@ -13,7 +13,7 @@ Notice that we can't guarantee that the OS behaves the same using
 this toolchain as compiling in the devel VM. Use it at your own risk.
 And it's highly recommended to have test with original configuration.
 
-## Overview
+### Overview
 
 The toolchain consists of the following parts.
 * i386-elf-gcc for code compiling 
@@ -21,7 +21,7 @@ The toolchain consists of the following parts.
 with script debug_mac.sh (adapted from debug.sh)
 * Other scripts
 
-## Installation
+### Installation
 
 1. Install [Homebrew](https://brew.sh/)
 2. Install i386-elf-gcc
@@ -49,7 +49,7 @@ sudo make install
 chown <your user> /tmp/loggg
 ```
 
-## Configuration in CLion
+### Configuration in CLion
 
 If CMakeLists.txt is load correctly, a target called "AuroraOS" will appears on the top right of CLion
 
@@ -78,5 +78,31 @@ Duplicate `Aurora_DEBUG`, rename it to Aurora_NODEBUG, but this time set Program
 Now you can compile the OS with one-click on Build, and run test VM with Run buttons.
 
 ![](resources/2019-12-05-22-01-50.png)
+
+## Remote GDB
+
+What's more, we can achieve remote gdb inside CLion, with the support of i386-elf-gdb.
+
+### Installation
+```shell
+brew install i386-elf-gdb
+```
+
+### Configuration in CLion
+
+Edit Configuration. Add a GDB Remote Debug configuration.
+
+![](resources/2019-12-05-22-30-58.png)
+
+Set as follows:
+
+![](resources/2019-12-05-22-34-37.png)
+
+First run AuroraOS_DEBUG, then switch to remote debug confiuration and start debug, 
+test VM will start to run and you can use debug functions provides by CLion.
+
+![](resources/2019-12-05-22-38-00.png)
+
+
 
 
