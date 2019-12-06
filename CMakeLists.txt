@@ -2,13 +2,31 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(UnnamedOS)
+include(tools/toolchain_i386_elf_gcc.cmake)
 
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_PROCESSOR i386)
+project(AuroraOS C ASM)
 
-file(GLOB_RECURSE ALL_C_FILES *.c */*.c)
-file(GLOB_RECURSE ALL_S_FILES *.S */*.S)
-file(GLOB_RECURSE ALL_HEADER_FILES *.h */*.h)
-add_executable(ALL_FILES ${ALL_C_FILES} ${ALL_S_FILES} ${ALL_HEADER_FILES} student-distrib/terminal.c student-distrib/terminal.h student-distrib/text.c student-distrib/text.h student-distrib/modex.c student-distrib/modex.h student-distrib/mouse.c student-distrib/mouse.h)
-add_custom_target(NULL)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fno-builtin -fno-stack-protector -nostdlib -Wno-builtin-declaration-mismatch -Wno-implicit-int")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nostdlib -static -Ttext=0x400000")
+
+set(CMAKE_VERBOSE_MAKEFILE OFF)  # Enable this if you want to see verbose log
+
+file(GLOB_RECURSE OS_C_SRC  student-distrib/*.c)
+file(GLOB_RECURSE OS_S_SRC  student-distrib/*.S)
+list(REMOVE_ITEM  OS_S_SRC  student-distrib/boot.S)  # boot.S must be compiled and linked first
+file(GLOB_RECURSE OS_HEADER student-distrib/*.h)
+
+add_executable(AuroraOS student-distrib/boot.S ${OS_S_SRC} ${OS_C_SRC} ${OS_HEADER})
+
+set(ELF_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/student-distrib)
+set(ELF_OUTPUT_NAME bootimg)
+
+set_target_properties(AuroraOS PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${ELF_OUTPUT_PATH}
+        OUTPUT_NAME ${ELF_OUTPUT_NAME})
+
+# Generate
+add_custom_command(TARGET AuroraOS POST_BUILD
+        COMMENT "Generating MP3 img..."
+        COMMAND cd ${PROJECT_SOURCE_DIR} && ${PROJECT_SOURCE_DIR}/debug_mac.sh)
+

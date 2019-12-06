@@ -106,7 +106,6 @@ static unsigned short mode_X_graphics[NUM_GRAPHICS_REGS] = {
 
 
 /* local functions--see function headers for details */
-static int open_memory_and_ports ();
 static void VGA_blank (int blank_bit);
 static void set_seq_regs_and_reset (unsigned short table[NUM_SEQUENCER_REGS],
                                     unsigned char val);

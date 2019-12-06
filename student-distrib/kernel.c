@@ -193,7 +193,7 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Enabling Interrupts\n");
     sti();
 
-#ifdef RUN_TESTS
+
     vga_init();
     vga_setmode(G1024x768x16M);
 
@@ -205,7 +205,7 @@ void entry(unsigned long magic, unsigned long addr) {
         }
     }
 
-    vga_setcolor(0x0000FF);
+    vga_setcolor(0xFF00FF);
     for (x = 973; x < 1023; x++) {
         for (y = 717; y <= 767; y++) {
             vga_drawpixel(x, y);
@@ -214,8 +214,7 @@ void entry(unsigned long magic, unsigned long addr) {
     while(1) {}
 
     /* Run tests */
-//
-#endif
+
     launch_tests();
     /* Execute the first program ("shell") ... */
 

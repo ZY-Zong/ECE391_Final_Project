@@ -68,21 +68,6 @@ uint32_t process_cnt = 0;
 static process_t *process_remove_from_list(process_t *proc);
 
 /**
- * Get current process based on ESP. Only for usage in kernel state.
- * @return Pointer to current process
- */
-process_t* cur_process() {
-    process_t* ret;
-    asm volatile ("movl %%esp, %0  \n\
-                   andl $0xFFFFE000, %0    /* PKM_ALIGN_MASK */" \
-                   : "=r" (ret) \
-                   : \
-                   : "cc", "memory" \
-                   );
-    return ret;
-}
-
-/**
  * Initialize process list
  */
 void task_init() {
