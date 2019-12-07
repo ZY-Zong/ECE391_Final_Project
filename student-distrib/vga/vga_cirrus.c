@@ -11,6 +11,7 @@
 #include "vga.h"
 #include "vga_regs.h"
 #include "vga_timming.h"
+#include "vga_accel.h"
 
 /* Enable support for > 85 MHz dot clocks on the 5434. */
 #define SUPPORT_5434_PALETTE_CLOCK_DOUBLING
@@ -46,7 +47,7 @@ enum {
     CLGD5428, CLGD5429, CLGD5430, CLGD5434, CLGD5436
 };
 
-static int cirrus_memory;
+int cirrus_memory;
 static int cirrus_chiptype;
 static int cirrus_chiprev;
 //static int cirrus_pci_linear = 0;
@@ -156,7 +157,7 @@ void cirrus_setdisplaystart(int address) {
          | ((address & 0x80000) >> 17)    /* sa19: write to bit 2 */
          | ((address & 0x100000) >> 17), CRT_DC);    /* sa20: write to bit 3 */
     outb(0x1d, CRT_IC);
-    if (cirrus_memory > 2048){
+    if (cirrus_memory > 2048) {
         outb((inb(CRT_DC) & 0x7f) | ((address & 0x200000) >> 14), CRT_DC);    /* sa21: write to bit 7 */
     }
 }
@@ -245,16 +246,16 @@ static int cirrus_init() {
     cirrus_memory = 512;
     outb(0x0f, SEQ_I);
     SRF = inb(SEQ_D);
-    if (SRF & 0x10){
+    if (SRF & 0x10) {
         /* 32-bit DRAM bus. */
         cirrus_memory *= 2;
     }
-    if ((SRF & 0x18) == 0x18){
+    if ((SRF & 0x18) == 0x18) {
         /* 64-bit DRAM data bus width; assume 2MB. */
         /* Also indicates 2MB memory on the 5430. */
         cirrus_memory *= 2;
     }
-    if (cirrus_chiptype != CLGD5430 && (SRF & 0x80)){
+    if (cirrus_chiptype != CLGD5430 && (SRF & 0x80)) {
         /* If DRAM bank switching is enabled, there */
         /* must be twice as much memory installed. */
         /* (4MB on the 5434) */
@@ -270,11 +271,11 @@ static int cirrus_init() {
     DRAMbandwidth = 14318 * (int) programmedMCLK / 16;
 
     // TODO: simplify the following based on experiment that cirrus_memory = 4096
-    if (cirrus_memory >= 512){
+    if (cirrus_memory >= 512) {
         /* At least 16-bit DRAM bus. */
         DRAMbandwidth *= 2;
     }
-    if (cirrus_memory >= 2048){
+    if (cirrus_memory >= 2048) {
         /* 64-bit DRAM bus. */
         DRAMbandwidth *= 2;
     }
@@ -350,6 +351,10 @@ static int cirrus_init() {
     cardspecs.maxPixelClock4bpp = 0;
 /* end: Initialize card specs. */
 
+    __svgalib_mmio_size = 32768;
+    __svgalib_mmio_base = 0xb8000;
+    if (__svgalib_mmio_size)
+        MMIO_POINTER = __svgalib_mmio_base;
 
     /**
      * TODO: {videoMemory = 4096, maxPixelClock4bpp = 0, maxPixelClock8bpp = 135300, maxPixelClock16bpp = 73216, maxPixelClock24bpp = 28666, maxPixelClock32bpp = 36608, flags = 6,
@@ -420,6 +425,11 @@ int cirrus_setmode(int mode) {
 
     __svgalib_setregs(moderegs);       /* Set standard regs. */
     cirrus_setregs(moderegs, mode);    /* Set extended regs. */
+
+    __svgalib_InitializeAcceleratorInterface(&modeinfo);
+
+    cirrus_accel_init(modeinfo.bitsPerPixel,
+                               modeinfo.lineWidth / modeinfo.bytesPerPixel);
 
     return 0;
 }

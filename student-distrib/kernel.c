@@ -217,12 +217,13 @@ void entry(unsigned long magic, unsigned long addr) {
 
     int x, y;
 
-    vga_screen_off();
+//    vga_screen_off();
     {
         vga_set_color_argb(0xCCFFFF00);
         for (x = 0; x < 300; x++) {
             for (y = 0; y <= 300; y++) {
                 vga_draw_pixel(x, y);
+//                __sleep();
             }
         }
 
@@ -233,7 +234,10 @@ void entry(unsigned long magic, unsigned long addr) {
             }
         }
     }
-    vga_screen_on();
+//    vga_screen_on();
+
+    vga_screen_copy(0, 0, 200, 200, 100, 100);
+//    vga_screen_copy(1, 100, 0, 0, 1024, 600);
 
 //    while (1) {}
 

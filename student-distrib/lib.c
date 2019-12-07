@@ -399,17 +399,18 @@ void scroll_up() {
 void scroll_up() {
     int x, y;
 
-    for (y = 1; y < NUM_ROWS; y++) {
-        for (x = 0; x < NUM_COLS; x++) {
-            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
-        }
-    }
-    vga_print_char_array(0, 0, (char *) screen_char, NUM_ROWS - 1, NUM_COLS, WHITE, BLACK);
+//    for (y = 1; y < NUM_ROWS; y++) {
+//        for (x = 0; x < NUM_COLS; x++) {
+//            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
+//        }
+//    }
+    vga_screen_copy(0, FONT_HEIGHT, 0, 0, CUR_TERMINAL_WIDTH, CUR_TERMINAL_WIDTH - FONT_HEIGHT);
+//    vga_print_char_array(0, 0, (char *) screen_char, NUM_ROWS - 1, NUM_COLS, WHITE, BLACK);
 
     // Clean up the last line
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
-        vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
+//        vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
         screen_char[y * MAX_COLS + x] = 0x0;
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)

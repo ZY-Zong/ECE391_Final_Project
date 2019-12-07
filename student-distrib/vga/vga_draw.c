@@ -7,15 +7,6 @@
 
 #include "text.h"
 
-//#undef GM
-//#define GM gm_buffer
-#define gr_readb(off)        (((volatile unsigned char *)GM)[(off)])
-#define gr_readw(off)        (*(volatile unsigned short*)((GM)+(off)))
-#define gr_readl(off)        (*(volatile unsigned long*)((GM)+(off)))
-#define gr_writeb(v, off)    (GM[(off)] = (v))
-#define gr_writew(v, off)    (*(unsigned short*)((GM)+(off)) = (v))
-#define gr_writel(v, off)    (*(unsigned long*)((GM)+(off)) = (v))
-
 #define alpha(color)    (((color) >> 24) & 0xFF)
 
 static inline unsigned int channel_blend(unsigned int a, unsigned int b, unsigned int alpha) {

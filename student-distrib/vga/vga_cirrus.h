@@ -60,5 +60,6 @@ typedef struct {
 #define CIRRUSREG_DAC (VGA_TOTAL_REGS + 5 + 27 + 15)
 #define CIRRUS_TOTAL_REGS (VGA_TOTAL_REGS + 5 + 27 + 15 + 1)
 
+extern int cirrus_memory;
 
 #endif //_VGA_CIRRUS_H

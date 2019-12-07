@@ -11,6 +11,7 @@
 #include "vga_port.h"
 #include "vga_regs.h"
 #include "vga_cirrus.h"
+#include "vga_accel.h"
 
 static void __svgalib_delay(void);
 
@@ -151,4 +152,8 @@ void vga_init() {
 static void __svgalib_delay() {
     int i;
     for (i = 0; i < 10; i++);
+}
+
+void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
+    cirrus_accel_mmio_screen_copy(x1, y1, x2, y2, width, height);
 }
