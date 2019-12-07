@@ -198,7 +198,7 @@ void entry(unsigned long magic, unsigned long addr) {
     int i;
 
     vga_init();
-    vga_set_mode(G1024x768x16M);
+    vga_set_mode(G1024x768x64K);
 
     gui_obj_load();
 

@@ -583,21 +583,25 @@ static void cirrus_initializemode(unsigned char *moderegs,
  * @return
  */
 static ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode) {
-    ModeInfo modeinfo;
-    modeinfo.width = 1280;
-    modeinfo.height = 1024;
-    modeinfo.bytesPerPixel = 3;
 
-    modeinfo.colorBits = 24;
+    // TODO: here is highly specific to 1024x768x64K mode
+
+    ModeInfo modeinfo;
+
+    modeinfo.width = 1024;
+    modeinfo.height = 768;
+    modeinfo.bytesPerPixel = 2;
+
+    modeinfo.colorBits = 16;
     modeinfo.blueOffset = 0;
-    modeinfo.greenOffset = 8;
-    modeinfo.redOffset = 16;
-    modeinfo.blueWeight = 8;
-    modeinfo.greenWeight = 8;
-    modeinfo.redWeight = 8;
+    modeinfo.greenOffset = 5;
+    modeinfo.redOffset = 11;
+    modeinfo.blueWeight = 5;
+    modeinfo.greenWeight = 6;
+    modeinfo.redWeight = 5;
 
     modeinfo.bitsPerPixel = modeinfo.bytesPerPixel * 8;
-    modeinfo.lineWidth = 1280 * 3;
+    modeinfo.lineWidth = modeinfo.width * modeinfo.bytesPerPixel;
     return modeinfo;
 }
 

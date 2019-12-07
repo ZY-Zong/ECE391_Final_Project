@@ -307,9 +307,7 @@ void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, in
     MMIOFINISHBACKGROUNDBLITS();
     MMIOSETSRCADDR(srcaddr);
     MMIOSETDESTADDR(destaddr);
-    MMIOSETSRCPITCH(1024 * 3);
-    MMIOSETDESTPITCH(1024 * 3);
-    // FIXME: why __svgalib_accel_screenpitchinbytes does not work?????
+    MMIOSETSRCPITCH(__svgalib_accel_screenpitchinbytes);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
     MMIOSETBLTMODE(dir);
@@ -326,9 +324,8 @@ void cirrus_accel_mmio_buf_copy(int srcaddr, int x2, int y2, int width, int heig
     MMIOFINISHBACKGROUNDBLITS();
     MMIOSETSRCADDR(srcaddr);
     MMIOSETDESTADDR(destaddr);
-//    MMIOSETSRCPITCH(1024*3);
-    MMIOSETDESTPITCH(1024 * 3);
-    // FIXME: why __svgalib_accel_screenpitchinbytes does not work?????
+//    MMIOSETSRCPITCH(__svgalib_accel_screenpitchinbytes);
+    MMIOSETDESTPITCH(__svgalib_accel_screenpitchinbytes);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
     MMIOSETBLTMODE(dir | SYSTEMSRC);

@@ -6,7 +6,7 @@
 
 /**
  * QEMU uses chip set of Cirrus 5446 (treated as CLGD5436)
- * We only support entering mode 1024×768, 16M, 60Hz from text mode
+ * We only support entering mode 1024×768, 64K, 60Hz from text mode
  */
 
 #ifndef _VGA_H
@@ -19,12 +19,12 @@
 
 #define VGA_WIDTH              1024
 #define VGA_HEIGHT             768
-#define VGA_BYTES_PER_PIXEL    3
+#define VGA_BYTES_PER_PIXEL    2
 #define VGA_BYTES_PER_LINE     (VGA_WIDTH * VGA_BYTES_PER_PIXEL)
 #define VGA_SCREEN_BYTES       (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_PIXEL)
 
 #define TEXT 	          0
-#define G1024x768x16M     25
+#define G1024x768x64K     24
 
 #define GM    ((char *) VIDEO)
 #define gr_readb(off)        (((volatile unsigned char *)GM)[(off)])

@@ -7,6 +7,7 @@
 
 typedef unsigned int vga_rgb;
 typedef unsigned int vga_argb;
+typedef unsigned short vga_color;  // 16-bit RRRRRGGGGGGBBBBB color
 
 void vga_set_color_argb(vga_argb color);
 void vga_draw_pixel(int x, int y);
