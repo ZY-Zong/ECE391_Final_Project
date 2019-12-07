@@ -33,7 +33,7 @@ freely, subject to the following restrictions:
 #ifndef _PNG_H
 #define _PNG_H
 
-#include "../lib.c"
+#include "../lib.h"
 
 #define INT_MAX      2147483647      /* max value for an int */
 #define MAX_PNG_HEIGHT      768      /* max # of pixels of height */

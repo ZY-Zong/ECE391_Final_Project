@@ -8,11 +8,16 @@
 #include "mouse.h"
 #include "lib.h"
 #include "modex.h"
+#include "vga/vga.h"
 // Local constants
 #define MOUSE_PORT_60 0x60
 #define PORT_64 0x64
 #define ACK 0xFA
 #define RESET 0xFF
+#define SVGA_WIDTH 1024
+#define SVGA_HEIGHT 768
+#define BLACK 0x000000
+#define WHITE 0xFFFFFF
 /**
  * The first byte of the packet received from mouse is in the following format
  * Y overflow	X overflow	Y sign bit	X sign bit	Always 1	Middle Btn	Right Btn	Left Btn
@@ -26,6 +31,8 @@
 #define MID_BUTTON 0x04
 #define RIGHT_BUTTON 0x02
 #define LEFT_BUTTON 0x01
+#define CURSOR_WIDTH 8
+#define CURSOR_HEIGHT 8
 
 // Local helper functions
 uint8_t read_from_60();
@@ -33,7 +40,7 @@ void write_byte_to_port(uint8_t byte, uint8_t port);
 void send_command_to_60(uint8_t command);
 static int16_t mouse_x = 0;
 static int16_t mouse_y = 0;
-
+static unsigned int origin_pixels[CURSOR_WIDTH][CURSOR_HEIGHT];
 
 
 /**
@@ -90,6 +97,13 @@ void mouse_init() {
 //    }
     // Enable Packet Streaming
     send_command_to_60(0xF4);
+    // Initialize the buffer
+    int i, j;
+    for (i = 0; i < CURSOR_WIDTH; i++) {
+        for (j = 0; j < CURSOR_HEIGHT; j++) {
+            origin_pixels[i][j] = BLACK;
+        }
+    }
 }
 void mouse_interrupt_handler() {
     /**
@@ -117,6 +131,7 @@ void mouse_interrupt_handler() {
             printf("mouse overflow occurred!\n");
             return;
         }
+        // Button press
         if (flags & LEFT_BUTTON) {
             printf("left button pressed\n");
         }
@@ -126,29 +141,49 @@ void mouse_interrupt_handler() {
         if (flags & RIGHT_BUTTON) {
             printf("right button pressed\n");
         }
-
+        // Preserve the original color of pixels at old position of cursor
+        int i, j;
+        for (i = 0; i < CURSOR_WIDTH; i++) {
+            for (j = 0; j < CURSOR_HEIGHT; j++) {
+                vga_setcolor(origin_pixels[i][j]);
+                vga_drawpixel(mouse_x + i, mouse_y + j);
+            }
+        }
+        // Update mouse location
         if (flags & X_SIGN) {
             x_movement |= 0xFFFFFF00;
         }
         if (mouse_x + x_movement < 0) {
             mouse_x = 0;
-        } else if (mouse_x + x_movement > IMAGE_X_WIDTH - 1) {
-            mouse_x = IMAGE_X_WIDTH - 1;
+        } else if (mouse_x + x_movement > SVGA_WIDTH - 1 - CURSOR_WIDTH) {
+            mouse_x = SVGA_WIDTH - 1- CURSOR_WIDTH;
         } else {
             mouse_x += x_movement;
         }
-        printf("X movement = %d mouse_x = %d\n", x_movement, mouse_x);
+        //printf("X movement = %d mouse_x = %d\n", x_movement, mouse_x);
         if (flags & Y_SIGN) {
             y_movement |= 0xFFFFFF00;
         }
         // TODO: For y_movement, should negate the result, don't know why.
         if (mouse_y - y_movement < 0) {
             mouse_y = 0;
-        } else if (mouse_y - y_movement > IMAGE_Y_DIM - 1) {
-            mouse_y = IMAGE_Y_DIM - 1;
+        } else if (mouse_y - y_movement > SVGA_HEIGHT - 1 - CURSOR_HEIGHT) {
+            mouse_y = SVGA_HEIGHT - 1 - CURSOR_HEIGHT;
         } else {
             mouse_y -= y_movement;
         }
-        printf("Y movement is %d mouse_y = %d\n", y_movement, mouse_y);
+        //printf("Y movement is %d mouse_y = %d\n", y_movement, mouse_y);
+        // Record the current pixels covered by the cursor
+        for (i = 0; i < CURSOR_WIDTH; i++) {
+            for (j = 0; j < CURSOR_HEIGHT; j++) {
+                origin_pixels[i][j] = vga_getpixel(mouse_x + i, mouse_y + j);
+            }
+        }
+        vga_setcolor(WHITE);
+        for (i = 0; i < CURSOR_WIDTH; i++) {
+            for (j = 0; j < CURSOR_HEIGHT; j++) {
+                vga_drawpixel(mouse_x + i, mouse_y + j);
+            }
+        }
     }
 }
