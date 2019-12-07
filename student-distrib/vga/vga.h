@@ -14,7 +14,6 @@
 
 #include "../lib.h"
 
-#include "vga_cirrus.h"
 #include "vga_draw.h"
 
 #define VGA_WIDTH              1024
@@ -38,15 +37,13 @@ void vga_init();
 int vga_set_mode(int mode);
 int vga_clear(void);
 
-static void inline vga_set_page(int page) {
-    cirrus_setpage_64k(page);
-}
+void vga_set_page(int page);
 
 void vga_screen_off();
 void vga_screen_on();
 
 void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height);
-void vga_buf_copy(int srcaddr, int x2, int y2, int width, int height);
+void vga_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg);
 
 /* graphics mode information */
 typedef struct vga_info_t vga_info_t;

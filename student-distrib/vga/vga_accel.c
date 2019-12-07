@@ -282,8 +282,6 @@ void cirrus_accel_screen_copy(int x1, int y1, int x2, int y2, int width, int hei
     FINISHBACKGROUNDBLITS();
     SETSRCADDR(srcaddr);
     SETDESTADDR(destaddr);
-    SETSRCPITCH(__svgalib_accel_screenpitchinbytes);
-    SETDESTPITCH(__svgalib_accel_screenpitchinbytes);
     SETWIDTH(width);
     SETHEIGHT(height);
     SETBLTMODE(dir);
@@ -307,7 +305,6 @@ void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, in
     MMIOFINISHBACKGROUNDBLITS();
     MMIOSETSRCADDR(srcaddr);
     MMIOSETDESTADDR(destaddr);
-    MMIOSETSRCPITCH(__svgalib_accel_screenpitchinbytes);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
     MMIOSETBLTMODE(dir);
@@ -316,19 +313,63 @@ void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, in
         MMIOWAITUNTILFINISHED();
 }
 
-void cirrus_accel_mmio_buf_copy(int srcaddr, int x2, int y2, int width, int height) {
-    int destaddr, dir;
-    width *= __svgalib_accel_bytesperpixel;
+void cirrus_accel_set_foreground_color(int fg)
+{
+    MMIOFINISHBACKGROUNDBLITS();
+    if (__svgalib_accel_bytesperpixel == 1) {
+        MMIOSETFOREGROUNDCOLOR(fg);
+        return;
+    }
+    if (__svgalib_accel_bytesperpixel == 2) {
+        MMIOSETFOREGROUNDCOLOR16(fg);
+        return;
+    }
+    MMIOSETFOREGROUNDCOLOR32(fg);
+}
+
+void cirrus_accel_set_background_color(int bg)
+{
+    MMIOFINISHBACKGROUNDBLITS();
+    if (__svgalib_accel_bytesperpixel == 1) {
+        MMIOSETBACKGROUNDCOLOR(bg);
+        return;
+    }
+    if (__svgalib_accel_bytesperpixel == 2) {
+        MMIOSETBACKGROUNDCOLOR16(bg);
+        return;
+    }
+    MMIOSETBACKGROUNDCOLOR32(bg);
+}
+
+static unsigned char cirrus_rop_map[] =
+        {
+                0x0D,			/* ROP_COPY */
+                0x6D,			/* ROP_OR */
+                0x05,			/* ROP_AND */
+                0x59,			/* ROP_XOR */
+                0x0B			/* ROP_INVERT */
+        };
+
+void cirrus_accel_mmio_set_raster_op(int rop)
+{
+    MMIOFINISHBACKGROUNDBLITS();
+    MMIOSETROP(cirrus_rop_map[rop]);
+}
+
+void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg) {
+
+    cirrus_accel_set_foreground_color(fg);
+    cirrus_accel_set_background_color(bg);
+    cirrus_accel_mmio_set_raster_op(ROP_COPY);
+
+    int destaddr;
     destaddr = BLTBYTEADDRESS(x2, y2);
-    dir = FORWARDS;
     MMIOFINISHBACKGROUNDBLITS();
     MMIOSETSRCADDR(srcaddr);
     MMIOSETDESTADDR(destaddr);
-//    MMIOSETSRCPITCH(__svgalib_accel_screenpitchinbytes);
-    MMIOSETDESTPITCH(__svgalib_accel_screenpitchinbytes);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
-    MMIOSETBLTMODE(dir | SYSTEMSRC);
+    MMIOSETBLTMODE(COLOREXPAND | PIXELWIDTH16 | SYSTEMSRC);
     MMIOSTARTBLT();
     if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
         MMIOWAITUNTILFINISHED();

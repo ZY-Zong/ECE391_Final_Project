@@ -199,6 +199,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     vga_init();
     vga_set_mode(G1024x768x64K);
+    vga_clear();
 
     gui_obj_load();
 
@@ -239,7 +240,7 @@ void entry(unsigned long magic, unsigned long addr) {
     }
 //    vga_screen_on();
 
-    vga_screen_copy(0, 0, 200, 200, 100, 100);
+    vga_screen_copy(0, 0, 600, 600, 100, 100);
 //    vga_screen_copy(1, 100, 0, 0, 1024, 600);
 
 //    while (1) {}

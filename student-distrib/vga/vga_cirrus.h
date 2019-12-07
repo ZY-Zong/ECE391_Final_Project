@@ -16,11 +16,7 @@ void cirrus_setdisplaystart(int address);
 void cirrus_setlogicalwidth(int width);
 void cirrus_setlinear(int addr);
 
-static void inline cirrus_setpage_64k(int page) {
-    /* Cirrus banking register has been set to 16K granularity */
-    outw((page << 10) + 0x09, GRA_I);
-}
-
+void cirrus_setpage_64k(int page);
 void cirrus_setpage_4k(int page);
 
 /* Cards specifications. */

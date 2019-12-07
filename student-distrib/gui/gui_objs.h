@@ -9,13 +9,14 @@
 
 typedef struct gui_object_t gui_object_t;
 struct gui_object_t {
-    char* src_addr;
+    int x;
+    int y;
     int width;
     int height;
 };
 
-#define GUI_FONT_FORECOLOR    0xFFFFFF
-#define GUI_FONT_BACKCOLOR    0x000000
+#define GUI_FONT_FORECOLOR_ARGB    0xFFFFFFFF
+#define GUI_FONT_BACKCOLOR_ARGB    0xFF000000
 
 void gui_obj_load();
 

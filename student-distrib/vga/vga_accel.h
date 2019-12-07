@@ -115,10 +115,22 @@ void __svgalib_InitializeAcceleratorInterface(ModeInfo * modeinfo);
 extern unsigned char *MMIO_POINTER;
 extern unsigned long int __svgalib_mmio_base, __svgalib_mmio_size;
 
+/* Raster ops. */
+#define ROP_COPY			0	/* Straight copy. */
+#define ROP_OR				1	/* Source OR destination. */
+#define ROP_AND				2	/* Source AND destination. */
+#define ROP_XOR				3	/* Source XOR destination. */
+#define ROP_INVERT			4	/* Invert destination. */
+
 void cirrus_accel_init(int bpp, int width_in_pixels);
 void cirrus_accel_screen_copy(int x1, int y1, int x2, int y2, int width, int height);
 void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, int height);
-void cirrus_accel_mmio_buf_copy(int srcaddr, int x2, int y2, int width, int height);
+void cirrus_accel_set_foreground_color(int fg);
+void cirrus_accel_set_background_color(int bg);
+void cirrus_accel_mmio_set_raster_op(int rop);
+void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg);
+
+
 
 
 #endif //_VGA_ACCEL_H
