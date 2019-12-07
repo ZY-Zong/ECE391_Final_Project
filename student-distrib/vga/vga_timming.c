@@ -11,8 +11,6 @@
 /* 1024x768 at 60 Hz, 48.4 kHz hsync */
 MonitorModeTiming TIMMING_1024_768_60HZ = {65000, 1024, 1032, 1176, 1344, 768, 771, 777, 806, NHSYNC | NVSYNC, NULL};
 
-static int timing_within_monitor_spec(MonitorModeTiming *mmtp);
-
 /*
  * Clock allowance in 1/1000ths. 10 (1%) corresponds to a 250 kHz
  * deviation at 25 MHz, 1 MHz at 100 MHz

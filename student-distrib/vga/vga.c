@@ -12,20 +12,12 @@
 #include "vga_regs.h"
 #include "vga_cirrus.h"
 
-#define gr_readb(off)        (((volatile unsigned char *)VGA_GM)[(off)])
-#define gr_readw(off)        (*(volatile unsigned short*)((VGA_GM)+(off)))
-#define gr_readl(off)        (*(volatile unsigned long*)((VGA_GM)+(off)))
-#define gr_writeb(v, off)    (VGA_GM[(off)] = (v))
-#define gr_writew(v, off)    (*(unsigned short*)((VGA_GM)+(off)) = (v))
-#define gr_writel(v, off)    (*(unsigned long*)((VGA_GM)+(off)) = (v))
-
+#define VGA_CHECK_CURRENT_PAGE    1
 
 vga_info_t vga_info;            /* current video parameters */
 static const vga_info_t CI_G1024_768_16M = {1024, 768, 1 << 24, 1024 * 3, 3};
 
-static int curr_mode = TEXT;
 static int curr_page = -1;
-static unsigned int curr_color = 0;
 
 
 static void set_color_emulation(void);
@@ -35,7 +27,7 @@ static void set_color_emulation(void);
  * @param mode   Only support G1280x1024x16M (28)
  * @return 0 for success, other values for failure
  */
-int vga_setmode(int mode) {
+int vga_set_mode(int mode) {
 
     if (mode != G1024x768x16M) {
         DEBUG_ERR("vag_set_mode(): only support entering G1028x1024x16M mode.");
@@ -47,10 +39,8 @@ int vga_setmode(int mode) {
     unsigned int interrupt_flags;
     cli_and_save(interrupt_flags);
     {
-        curr_mode = mode;
-
         /* disable video */
-        vga_screenoff();
+        vga_screen_off();
         {
             /* shift to color emulation */
             set_color_emulation();
@@ -65,9 +55,9 @@ int vga_setmode(int mode) {
 
             /* clear screen (sets current color to 15) */
             vga_clear();
-            vga_setpage(0);
+            vga_set_page(0);
         }
-        vga_screenon();
+        vga_screen_on();
     }
     restore_flags(interrupt_flags);
 
@@ -80,18 +70,18 @@ int vga_setmode(int mode) {
  */
 int vga_clear(void) {
 
-    vga_screenoff();
+    vga_screen_off();
     {
         int i;
         int pages = (vga_info.ydim * vga_info.xbytes + 65535) >> 16;
 
         for (i = 0; i < pages; ++i) {
-            vga_setpage(i);
-            memset(VGA_GM, 0, 65536);
+            vga_set_page(i);
+            memset(GM, 0, 65536);
         }
 
     }
-    vga_screenon();
+    vga_screen_on();
 
     return 0;
 }
@@ -111,16 +101,20 @@ static void set_color_emulation(void) {
  * Set VGA paging
  * @param page
  */
-void vga_setpage(int page) {
-    if (page == curr_page) return;
-    cirrus_setpage_64k(page);
-    curr_page = page;
-}
+//void vga_set_page(int page) {
+//#if VGA_CHECK_CURRENT_PAGE
+//    if (page == curr_page) return;
+//#endif
+//    cirrus_setpage_64k(page);
+//#if VGA_CHECK_CURRENT_PAGE
+//    curr_page = page;
+//#endif
+//}
 
 /**
  * Turn off screen for faster VGA memory access
  */
-void vga_screenoff() {
+void vga_screen_off() {
     outb(0x01, SEQ_I);
     outb(inb(SEQ_D) | 0x20, SEQ_D);
 }
@@ -128,7 +122,7 @@ void vga_screenoff() {
 /**
  * Turn on screen
  */
-void vga_screenon() {
+void vga_screen_on() {
     outb(0x01, SEQ_I);
     outb(inb(SEQ_D) & 0xDF, SEQ_D);
 }
@@ -142,73 +136,4 @@ void vga_init() {
     {
         cirrus_test_and_init();
     }
-}
-
-/**
- * Set color to draw
- * @param rgb    RRGGBB
- */
-void vga_setcolor(unsigned rgb) {
-    curr_color = rgb;
-}
-
-/**
- * Draw a pixel using color set by vga_setcolor()
- * @param x    X coordinate of pixel
- * @param y    Y coordinate of pixel
- * @return 0 for success, other values for failure
- */
-int vga_drawpixel(int x, int y) {
-
-    unsigned long offset = y * vga_info.xbytes + x * 3;
-    int c = curr_color;
-
-    vga_setpage(offset >> 16);
-
-    switch (offset & 0xffff) {
-        case 0xfffe:
-            gr_writew(c, 0xfffe);
-
-            vga_setpage((offset >> 16) + 1);
-            gr_writeb(c >> 16, 0);
-            break;
-        case 0xffff:
-            gr_writeb(c, 0xffff);
-
-            vga_setpage((offset >> 16) + 1);
-            gr_writew(c >> 8, 0);
-            break;
-        default:
-            offset &= 0xffff;
-            gr_writew(c, offset);
-            gr_writeb(c >> 16, offset + 2);
-            break;
-    }
-
-    return 0;
-}
-
-unsigned int vga_getpixel(int x, int y) {
-    unsigned long offset;
-    int pix = 0;
-
-    offset = y * vga_info.xbytes + x * 3;
-    vga_setpage(offset >> 16);
-    switch (offset & 0xffff) {
-        case 0xfffe:
-            pix = gr_readw(0xfffe);
-            vga_setpage((offset >> 16) + 1);
-            return pix + (gr_readb(0) << 16);
-
-        case 0xffff:
-            pix = gr_readb(0xffff);
-            vga_setpage((offset >> 16) + 1);
-            return pix + (gr_readw(0) << 8);
-
-        default:
-            offset &= 0xffff;
-            return gr_readw(offset) + (gr_readb(offset + 2) << 26);
-
-    }
-    return 0;
 }

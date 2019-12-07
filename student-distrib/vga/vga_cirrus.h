@@ -7,6 +7,7 @@
 #ifndef _VGA_CIRRUS_H
 #define _VGA_CIRRUS_H
 
+#include "../lib.h"
 #include "vga_port.h"
 
 int cirrus_test_and_init();
@@ -14,7 +15,12 @@ int cirrus_setmode(int mode);
 void cirrus_setdisplaystart(int address);
 void cirrus_setlogicalwidth(int width);
 void cirrus_setlinear(int addr);
-void cirrus_setpage_64k(int page);
+
+void inline cirrus_setpage_64k(int page) {
+    /* Cirrus banking register has been set to 16K granularity */
+    outw((page << 10) + 0x09, GRA_I);
+}
+
 void cirrus_setpage_4k(int page);
 
 /* Cards specifications. */

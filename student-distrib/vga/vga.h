@@ -14,21 +14,24 @@
 
 #include "../lib.h"
 
+#include "vga_cirrus.h"
+#include "vga_draw.h"
+
 #define TEXT 	          0
 #define G1024x768x16M     25
 
-#define VGA_GM    ((char *) VIDEO)
+#define GM    ((char *) VIDEO)
 
 void vga_init();
-int vga_setmode(int mode);
-void vga_setpage(int page);
+int vga_set_mode(int mode);
 int vga_clear(void);
-void vga_screenoff();
-void vga_screenon();
 
-void vga_setcolor(unsigned int rgb);
-int vga_drawpixel(int x, int y);
-unsigned int vga_getpixel(int x, int y);
+void inline vga_set_page(int page) {
+    cirrus_setpage_64k(page);
+}
+
+void vga_screen_off();
+void vga_screen_on();
 
 /* graphics mode information */
 typedef struct vga_info_t vga_info_t;

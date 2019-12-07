@@ -10,7 +10,7 @@
 // S#include <unistd.h>
 
 #include "modex.h"
-#include "text.h"
+//#include "vga/text.h"
 #include "lib.h"
 
 

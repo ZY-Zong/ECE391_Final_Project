@@ -173,10 +173,10 @@ void entry(unsigned long magic, unsigned long addr) {
     rtc_restart_interrupt();  // in case that an interrupt happens after rtc_init() and before enable_irq
 
     /* Init the file system */
-    if (mbi->mods_count == 0){
+    if (mbi->mods_count == 0) {
         printf("WARNING: no file system loaded\n");
     } else {
-         init_file_system((module_t *)mbi->mods_addr);
+        init_file_system((module_t *) mbi->mods_addr);
     }
 
     /* Enable interrupts */
@@ -194,25 +194,48 @@ void entry(unsigned long magic, unsigned long addr) {
     //printf("Enabling Interrupts\n");
     sti();
 
+    int i;
 
     vga_init();
-    vga_setmode(G1024x768x16M);
-    vga_clear();
+    vga_set_mode(G1024x768x16M);
 
-//    vga_setcolor(0xFF0000);
-//    int x, y;
-//    for (x = 0; x < 50; x++) {
-//        for (y = 0; y <= 50; y++) {
-//            vga_drawpixel(x, y);
+//    vga_screen_off();
+//    {
+//        for (i = 0; i < 1000; i++) {
+//            vga_clear();
 //        }
 //    }
+//    vga_screen_on();
 //
-//    vga_setcolor(0x0000FF);
-//    for (x = 973; x < 1023; x++) {
-//        for (y = 717; y <= 767; y++) {
-//            vga_drawpixel(x, y);
+//    vga_screen_off();
+//    {
+//        for (i = 0; i < 1000 * 1024 * 768; i++) {
+//            vga_draw_pixel(0, 0);
 //        }
 //    }
+//    vga_screen_on();
+
+    int x, y;
+
+    vga_screen_off();
+    {
+        vga_set_color_argb(0xCCFFFF00);
+        for (x = 0; x < 300; x++) {
+            for (y = 0; y <= 300; y++) {
+                vga_draw_pixel(x, y);
+            }
+        }
+
+        vga_set_color_argb(0xAA00FFFF);
+        for (x = 200; x < 500; x++) {
+            for (y = 200; y <= 500; y++) {
+                vga_draw_pixel(x, y);
+            }
+        }
+    }
+    vga_screen_on();
+
+//    while (1) {}
 
     /* Run tests */
 

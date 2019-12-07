@@ -30,8 +30,8 @@
 #define NUM_ROWS    (CUR_TERMINAL_HEIGHT / FONT_HEIGHT)
 #define MAX_COLS    (MAX_TERMINAL_WIDTH / FONT_WIDTH)
 #define MAX_ROWS    (MAX_TERMINAL_HEIGHT / FONT_HEIGHT)
-#define BLACK 0x000000
-#define WHITE 0xFFFFFF
+#define BLACK 0xFF000000
+#define WHITE 0xFFFFFFFF
 
 /*
  * macro used to target a specific video plane or planes when writing
@@ -88,10 +88,10 @@ void clear(void) {
 #ifdef MODE_SVGA
 void clear(void) {
     int i, j;
-    vga_setcolor(BLACK);
+    vga_set_color_argb(BLACK);
     for(i = 0; i < CUR_TERMINAL_WIDTH; i++){
         for (j = 0; j < CUR_TERMINAL_HEIGHT; j++){
-            vga_drawpixel(i, j);
+            vga_draw_pixel(i, j);
         }
     }
     // TODO: Preserve the last line
@@ -337,18 +337,19 @@ void putc(uint8_t c) {
 //                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
 //            }
 //        }
-        for (i = 0; i < FONT_WIDTH; i++) {
-            for (j = 0; j < FONT_HEIGHT; j++) {
-                vga_setcolor(font_data[' '][j] & (1 << (7 - i))? WHITE : BLACK);
-                vga_drawpixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
-            }
-        }
+//        for (i = 0; i < FONT_WIDTH; i++) {
+//            for (j = 0; j < FONT_HEIGHT; j++) {
+//                vga_set_color_argb((font_data[' '][j] & (1 << (7 - i)) ? WHITE : BLACK));
+//                vga_draw_pixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
+//            }
+//        }
+        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, ' ', WHITE, BLACK);
         screen_char[screen_y * MAX_COLS + screen_x] = 0;
 
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-        int i, j;
+//        int i, j;
 //        for (i = 0; i < 4; i++) {  // Loop over four planes
 //            SET_WRITE_MASK(1 << (8 + i));
 //            for (j = 0; j < FONT_HEIGHT; j++) {
@@ -356,12 +357,14 @@ void putc(uint8_t c) {
 //                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
 //            }
 //        }
-        for (i = 0; i < FONT_WIDTH; i++) {
-            for (j = 0; j < FONT_HEIGHT; j++) {
-                vga_setcolor(font_data[c][j] & (1 << (7 - i))? WHITE : BLACK);
-                vga_drawpixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
-            }
-        }
+//        for (i = 0; i < FONT_WIDTH; i++) {
+//            for (j = 0; j < FONT_HEIGHT; j++) {
+//                vga_set_color_argb(font_data[c][j] & (1 << (7 - i)) ? WHITE : BLACK);
+//                vga_draw_pixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
+//            }
+//        }
+        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, c, WHITE, BLACK);
+
         screen_char[screen_y * MAX_COLS + screen_x] = c;
         screen_x++;
         if (NUM_COLS == screen_x) {
@@ -421,34 +424,36 @@ void scroll_up() {
 void scroll_up() {
     int x, y;
     int i, j;
-    vga_setcolor(BLACK);
+    vga_set_color_argb(BLACK);
     for (y = 0; y < CUR_TERMINAL_HEIGHT; y++) {
         for (x = 0; x < CUR_TERMINAL_WIDTH; x++) {
-            vga_drawpixel(x, y);
+            vga_draw_pixel(x, y);
         }
     }
-    vga_setcolor(WHITE);
+    vga_set_color_argb(WHITE);
     for (y = 1; y < NUM_ROWS; y++) {
         for (x = 0; x < NUM_COLS; x++) {
-            for (i = 0; i < FONT_WIDTH; i++) {
-                for (j = 0; j < FONT_HEIGHT; j++) {
-                    if (font_data[screen_char[(y - 1) * MAX_COLS + x]][j] & (1 << (7 - i))) {
-                        vga_drawpixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
-                    }
-                }
-            }
+//            for (i = 0; i < FONT_WIDTH; i++) {
+//                for (j = 0; j < FONT_HEIGHT; j++) {
+//                    if (font_data[screen_char[(y - 1) * MAX_COLS + x]][j] & (1 << (7 - i))) {
+//                        vga_draw_pixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
+//                    }
+//                }
+//            }
+            vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, screen_char[(y - 1) * MAX_COLS + x], WHITE, BLACK);
             screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
         }
     }
     // Clean up the last line
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
-        vga_setcolor(BLACK);
-        for (i = 0; i < FONT_WIDTH; i++) {
-            for (j = 0; j < FONT_HEIGHT; j++) {
-                vga_drawpixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
-            }
-        }
+//        vga_set_color_argb(BLACK);
+//        for (i = 0; i < FONT_WIDTH; i++) {
+//            for (j = 0; j < FONT_HEIGHT; j++) {
+//                vga_draw_pixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
+//            }
+//        }
+        vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
         screen_char[y * MAX_COLS + x] = 0x0;
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)

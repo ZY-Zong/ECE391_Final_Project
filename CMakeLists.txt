@@ -6,7 +6,7 @@ include(tools/toolchain_i386_elf_gcc.cmake)
 
 project(AuroraOS C ASM)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fno-builtin -fno-stack-protector -nostdlib -Wno-builtin-declaration-mismatch -Wno-implicit-int")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fno-builtin -fno-stack-protector -nostdlib -Wno-builtin-declaration-mismatch -Wno-implicit-int -O3")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nostdlib -static -Ttext=0x400000")
 
 set(CMAKE_VERBOSE_MAKEFILE OFF)  # Enable this if you want to see verbose log

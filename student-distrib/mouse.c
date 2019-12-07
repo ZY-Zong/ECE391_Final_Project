@@ -16,8 +16,8 @@
 #define RESET 0xFF
 #define SVGA_WIDTH 1024
 #define SVGA_HEIGHT 768
-#define BLACK 0x000000
-#define WHITE 0xFFFFFF
+#define BLACK 0xFF000000
+#define WHITE 0xFFFFFFFF
 /**
  * The first byte of the packet received from mouse is in the following format
  * Y overflow	X overflow	Y sign bit	X sign bit	Always 1	Middle Btn	Right Btn	Left Btn
@@ -145,8 +145,8 @@ void mouse_interrupt_handler() {
         int i, j;
         for (i = 0; i < CURSOR_WIDTH; i++) {
             for (j = 0; j < CURSOR_HEIGHT; j++) {
-                vga_setcolor(origin_pixels[i][j]);
-                vga_drawpixel(mouse_x + i, mouse_y + j);
+                vga_set_color_argb(origin_pixels[i][j] | 0xFF000000);
+                vga_draw_pixel(mouse_x + i, mouse_y + j);
             }
         }
         // Update mouse location
@@ -176,13 +176,14 @@ void mouse_interrupt_handler() {
         // Record the current pixels covered by the cursor
         for (i = 0; i < CURSOR_WIDTH; i++) {
             for (j = 0; j < CURSOR_HEIGHT; j++) {
-                origin_pixels[i][j] = vga_getpixel(mouse_x + i, mouse_y + j);
+                origin_pixels[i][j] = vga_get_pixel(mouse_x + i, mouse_y + j);
             }
         }
-        vga_setcolor(WHITE);
+
+        vga_set_color_argb(WHITE);
         for (i = 0; i < CURSOR_WIDTH; i++) {
             for (j = 0; j < CURSOR_HEIGHT; j++) {
-                vga_drawpixel(mouse_x + i, mouse_y + j);
+                vga_draw_pixel(mouse_x + i, mouse_y + j);
             }
         }
     }
