@@ -12,6 +12,8 @@
 #include "vga_regs.h"
 #include "vga_cirrus.h"
 
+static void __svgalib_delay(void);
+
 #define VGA_CHECK_CURRENT_PAGE    1
 
 vga_info_t vga_info;            /* current video parameters */
@@ -117,6 +119,10 @@ static void set_color_emulation(void) {
 void vga_screen_off() {
     outb(0x01, SEQ_I);
     outb(inb(SEQ_D) | 0x20, SEQ_D);
+
+    inb(__svgalib_IS1_R);
+    __svgalib_delay();
+    outb(0x00, ATT_IW);
 }
 
 /**
@@ -125,6 +131,10 @@ void vga_screen_off() {
 void vga_screen_on() {
     outb(0x01, SEQ_I);
     outb(inb(SEQ_D) & 0xDF, SEQ_D);
+
+    inb(__svgalib_IS1_R);
+    __svgalib_delay();
+    outb(0x20, ATT_IW);
 }
 
 /**
@@ -136,4 +146,9 @@ void vga_init() {
     {
         cirrus_test_and_init();
     }
+}
+
+static void __svgalib_delay() {
+    int i;
+    for (i = 0; i < 10; i++);
 }

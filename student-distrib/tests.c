@@ -556,11 +556,11 @@ void launch_tests() {
 //    TEST_OUTPUT("idt_test", idt_test());
 //    TEST_OUTPUT("paging_test", paging_test());
 //    TEST_OUTPUT("rtc_test", rtc_test());
-    press_enter_to_continue();
-    vga_screen_off();
+//    press_enter_to_continue();
+//    vga_screen_off();
 //    TEST_OUTPUT("terminal_test", terminal_test());
-    press_enter_to_continue();
-    vga_screen_on();
+//    press_enter_to_continue();
+//    vga_screen_on();
 //    TEST_OUTPUT("fs_test", fs_test());
     TEST_OUTPUT("fs_err_test", fs_err_test());
     TEST_OUTPUT("execute_err_test", execute_err_test());
