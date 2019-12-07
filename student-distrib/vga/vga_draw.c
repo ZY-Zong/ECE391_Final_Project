@@ -43,7 +43,39 @@ void vga_set_color_argb(vga_argb color) {
  * @return 0 for success, other values for failure
  */
 void vga_draw_pixel(int x, int y) {
+    int i, j;
+    unsigned long offset;
+    vga_rgb c, t;
 
+    c = curr_color;
+
+    offset = (y + j) * vga_info.xbytes + (x + i) * 3;
+
+    vga_set_page(offset >> 16);
+
+    switch (offset & 0xFFFF) {
+        case 0xFFFE:
+            gr_writeb(channel_blend(gr_readb(0xFFFE), c, alpha(c)), 0xFFFE);
+            gr_writeb(channel_blend(gr_readb(0xFFFF), c >> 8, alpha(c)), 0xFFFF);
+
+            vga_set_page((offset >> 16) + 1);
+            gr_writeb(channel_blend(gr_readb(0), c >> 16, alpha(c)), 0);
+            break;
+        case 0xFFFF:
+            gr_writeb(channel_blend(gr_readb(0xFFFF), c, alpha(c)), 0xFFFF);
+
+            vga_set_page((offset >> 16) + 1);
+            gr_writeb(channel_blend(gr_readb(0), c >> 8, alpha(c)), 0);
+            gr_writeb(channel_blend(gr_readb(1), c >> 16, alpha(c)), 1);
+            break;
+        default:
+            offset &= 0xFFFF;
+            t = gr_readl(offset);
+            t = rgb_blend(t, c, alpha(c));
+            gr_writew(t, offset);
+            gr_writeb(t >> 16, offset + 2);
+            break;
+    }
 
 }
 
@@ -76,7 +108,7 @@ void vga_print_char(int x, int y, char ch, vga_argb fg, vga_argb bg) {
     for (i = 0; i < FONT_WIDTH; i++) {
         for (j = 0; j < FONT_HEIGHT; j++) {
 
-            c =((font_data[ch][j] & (1 << (7 - i)) ? fg : bg));
+            c = ((font_data[ch][j] & (1 << (7 - i)) ? fg : bg));
 
             offset = (y + j) * vga_info.xbytes + (x + i) * 3;
 
@@ -109,42 +141,134 @@ void vga_print_char(int x, int y, char ch, vga_argb fg, vga_argb bg) {
     }
 }
 
-void vga_print_char_array(int start_x, int start_y, char* array, int array_rows, int array_columns, vga_argb fg, vga_argb bg) {
-    int i, j;
-    unsigned long offset;
+void vga_print_char_array(int start_x, int start_y, char *array, int array_rows, int array_columns, vga_argb fg,
+                          vga_argb bg) {
+    int x, y, i, j;
+    char ch;
     vga_rgb c, t;
-    for (i = 0; i < FONT_WIDTH; i++) {
-        for (j = 0; j < FONT_HEIGHT; j++) {
 
-            c =((font_data[ch][j] & (1 << (7 - i)) ? fg : bg));
+    unsigned long offset = start_y * vga_info.xbytes + start_x * 3;
+    int page = offset >> 16;
 
-            offset = (y + j) * vga_info.xbytes + (x + i) * 3;
+    offset &= 0xFFFF;
+    vga_set_page(page);
 
-            vga_set_page(offset >> 16);
+    char* vm = (char*) (GM + offset);
 
-            switch (offset & 0xFFFF) {
-                case 0xFFFE:
-                    gr_writeb(channel_blend(gr_readb(0xFFFE), c, alpha(c)), 0xFFFE);
-                    gr_writeb(channel_blend(gr_readb(0xFFFF), c >> 8, alpha(c)), 0xFFFF);
 
-                    vga_set_page((offset >> 16) + 1);
-                    gr_writeb(channel_blend(gr_readb(0), c >> 16, alpha(c)), 0);
-                    break;
-                case 0xFFFF:
-                    gr_writeb(channel_blend(gr_readb(0xFFFF), c, alpha(c)), 0xFFFF);
+    for (y = 0; y < array_rows; y++) {
+        for (x = 0; x < array_columns; x++) {
 
-                    vga_set_page((offset >> 16) + 1);
-                    gr_writeb(channel_blend(gr_readb(0), c >> 8, alpha(c)), 0);
-                    gr_writeb(channel_blend(gr_readb(1), c >> 16, alpha(c)), 1);
-                    break;
-                default:
-                    offset &= 0xFFFF;
-                    t = gr_readl(offset);
-                    t = rgb_blend(t, c, alpha(c));
-                    gr_writew(t, offset);
-                    gr_writeb(t >> 16, offset + 2);
-                    break;
+            ch = array[y * array_columns + x];
+
+            for (i = 0; i < FONT_WIDTH; i++) {
+                for (j = 0; j < FONT_HEIGHT; j++) {
+
+                    c = ((font_data[ch][j] & (1 << (7 - i)) ? fg : bg));
+
+                    if (offset < 0xFFFD) {
+
+                        // Write 4 bytes, last byte will get overlapped by the next write
+                        *((unsigned int *) vm) = rgb_blend(*((unsigned int *) vm), c, alpha(c));
+
+                        offset += 3;
+                        vm += 3;
+
+                    } else {
+
+                        switch (offset) {
+                            case 0xFFFD:
+
+                                // Still write 4 bytes to last, last byte will overflow
+                                *((unsigned int *) vm) = rgb_blend(*((unsigned int *) vm), c, alpha(c));
+
+                                vga_set_page(++page);
+                                offset = 0;
+                                vm = GM;
+
+                            case 0xFFFE:
+
+                                // Still write 4 bytes to last, last 2 byte will overflow
+                                *((unsigned int *) vm) = rgb_blend(*((unsigned int *) vm), c, alpha(c));
+
+                                vga_set_page(++page);
+                                offset = -2;
+                                vm = GM - 2;
+
+                                // First 2 bytes will underflow, actually write 2 bytes into video memory,
+                                //  last byte will get overlapped by the next write
+                                *((unsigned int *) vm) = rgb_blend(*((unsigned int *) vm), c, alpha(c));
+
+                                gr_writeb(channel_blend(gr_readb(0xFFFE), c, alpha(c)), 0xFFFE);
+                                gr_writeb(channel_blend(gr_readb(0xFFFF), c >> 8, alpha(c)), 0xFFFF);
+//                            gr_writew(c, 0xFFFE);
+
+                                vga_set_page((offset >> 16) + 1);
+                                gr_writeb(channel_blend(gr_readb(0), c >> 16, alpha(c)), 0);
+//                            gr_writeb(c >> 16, 0);
+                                break;
+                            case 0xFFFF:
+                                gr_writeb(channel_blend(gr_readb(0xFFFF), c, alpha(c)), 0xFFFF);
+//                            gr_writeb(c, 0xFFFF);
+
+                                vga_set_page((offset >> 16) + 1);
+                                gr_writeb(channel_blend(gr_readb(0), c >> 8, alpha(c)), 0);
+                                gr_writeb(channel_blend(gr_readb(1), c >> 16, alpha(c)), 1);
+//                            gr_writew(c >> 8, 0);
+                                break;
+                            default:
+
+                                offset & 0xFFFF;
+                                t = gr_readl(offset & 0xFFFF);
+                                t = rgb_blend(t, c, alpha(c));
+                                gr_writew(t, offset & 0xFFFF);
+                                gr_writeb(t >> 16, (offset & 0xFFFF) + 2);
+
+//                            gr_writew(c, (offset & 0xFFFF));
+//                            gr_writeb(c >> 16, (offset & 0xFFFF) + 2);
+                                break;
+                        }
+                    }
+
+                    vga_set_page(offset >> 16);
+
+                    switch (offset & 0xFFFF) {
+                        case 0xFFFE:
+                            gr_writeb(channel_blend(gr_readb(0xFFFE), c, alpha(c)), 0xFFFE);
+                            gr_writeb(channel_blend(gr_readb(0xFFFF), c >> 8, alpha(c)), 0xFFFF);
+//                            gr_writew(c, 0xFFFE);
+
+                            vga_set_page((offset >> 16) + 1);
+                            gr_writeb(channel_blend(gr_readb(0), c >> 16, alpha(c)), 0);
+//                            gr_writeb(c >> 16, 0);
+                            break;
+                        case 0xFFFF:
+                            gr_writeb(channel_blend(gr_readb(0xFFFF), c, alpha(c)), 0xFFFF);
+//                            gr_writeb(c, 0xFFFF);
+
+                            vga_set_page((offset >> 16) + 1);
+                            gr_writeb(channel_blend(gr_readb(0), c >> 8, alpha(c)), 0);
+                            gr_writeb(channel_blend(gr_readb(1), c >> 16, alpha(c)), 1);
+//                            gr_writew(c >> 8, 0);
+                            break;
+                        default:
+
+                            offset & 0xFFFF;
+                            t = gr_readl(offset & 0xFFFF);
+                            t = rgb_blend(t, c, alpha(c));
+                            gr_writew(t, offset & 0xFFFF);
+                            gr_writeb(t >> 16, (offset & 0xFFFF) + 2);
+
+//                            gr_writew(c, (offset & 0xFFFF));
+//                            gr_writeb(c >> 16, (offset & 0xFFFF) + 2);
+                            break;
+                    }
+
+
+
+                }
             }
         }
     }
+
 }

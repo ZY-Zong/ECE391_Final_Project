@@ -49,7 +49,7 @@ do {                                                                    \
 
 int screen_x;
 int screen_y;
-static char* video_mem = (char *)VIDEO;
+static char *video_mem = (char *) VIDEO;
 // Always keep the screen_char buffer its largest size (takes 2.4kB)
 static uint8_t screen_char[MAX_COLS * MAX_ROWS];
 
@@ -86,11 +86,12 @@ void clear(void) {
 #endif
 
 #ifdef MODE_SVGA
+
 void clear(void) {
     int i, j;
     vga_set_color_argb(BLACK);
-    for(i = 0; i < CUR_TERMINAL_WIDTH; i++){
-        for (j = 0; j < CUR_TERMINAL_HEIGHT; j++){
+    for (i = 0; i < CUR_TERMINAL_WIDTH; i++) {
+        for (j = 0; j < CUR_TERMINAL_HEIGHT; j++) {
             vga_draw_pixel(i, j);
         }
     }
@@ -119,16 +120,15 @@ void clear(void) {
 int32_t printf(int8_t *format, ...) {
 
     /* Pointer to the format string */
-    int8_t* buf = format;
+    int8_t *buf = format;
 
     /* Stack pointer for the other parameters */
-    int32_t* esp = (void *)&format;
+    int32_t *esp = (void *) &format;
     esp++;
 
     while (*buf != '\0') {
         switch (*buf) {
-            case '%':
-            {
+            case '%': {
                 int32_t alternate = 0;
                 buf++;
 
@@ -150,18 +150,17 @@ int32_t printf(int8_t *format, ...) {
                         goto format_char_switch;
 
                         /* Print a number in hexadecimal form */
-                    case 'x':
-                    {
+                    case 'x': {
                         int8_t conv_buf[64];
                         if (alternate == 0) {
-                            itoa(*((uint32_t *)esp), conv_buf, 16);
+                            itoa(*((uint32_t *) esp), conv_buf, 16);
                             puts(conv_buf);
                         } else {
                             int32_t starting_index;
                             int32_t i;
-                            itoa(*((uint32_t *)esp), &conv_buf[8], 16);
+                            itoa(*((uint32_t *) esp), &conv_buf[8], 16);
                             i = starting_index = strlen(&conv_buf[8]);
-                            while(i < 8) {
+                            while (i < 8) {
                                 conv_buf[i] = '0';
                                 i++;
                             }
@@ -172,21 +171,19 @@ int32_t printf(int8_t *format, ...) {
                         break;
 
                         /* Print a number in unsigned int form */
-                    case 'u':
-                    {
+                    case 'u': {
                         int8_t conv_buf[36];
-                        itoa(*((uint32_t *)esp), conv_buf, 10);
+                        itoa(*((uint32_t *) esp), conv_buf, 10);
                         puts(conv_buf);
                         esp++;
                     }
                         break;
 
                         /* Print a number in signed int form */
-                    case 'd':
-                    {
+                    case 'd': {
                         int8_t conv_buf[36];
-                        int32_t value = *((int32_t *)esp);
-                        if(value < 0) {
+                        int32_t value = *((int32_t *) esp);
+                        if (value < 0) {
                             conv_buf[0] = '-';
                             itoa(-value, &conv_buf[1], 10);
                         } else {
@@ -199,13 +196,13 @@ int32_t printf(int8_t *format, ...) {
 
                         /* Print a single character */
                     case 'c':
-                        putc((uint8_t) *((int32_t *)esp));
+                        putc((uint8_t) *((int32_t *) esp));
                         esp++;
                         break;
 
                         /* Print a NULL-terminated string */
                     case 's':
-                        puts(*((int8_t **)esp));
+                        puts(*((int8_t **) esp));
                         esp++;
                         break;
 
@@ -229,7 +226,7 @@ int32_t printf(int8_t *format, ...) {
  *   Inputs: int_8* s = pointer to a string of characters
  *   Return Value: Number of bytes written
  *    Function: Output a string to the console */
-int32_t puts(int8_t* s) {
+int32_t puts(int8_t *s) {
     register int32_t index = 0;
     while (s[index] != '\0') {
         putc(s[index]);
@@ -304,8 +301,9 @@ void putc(uint8_t c) {
 #endif
 
 #ifdef MODE_SVGA
+
 void putc(uint8_t c) {
-    if(c == '\n' || c == '\r') {
+    if (c == '\n' || c == '\r') {
         if (screen_x < NUM_COLS - 1) {
             int i;
             for (i = screen_x; i < NUM_COLS; i++) {
@@ -329,40 +327,15 @@ void putc(uint8_t c) {
         } else { // Normal cases for backspace
             screen_x--;
         }
-        int i, j;
-//        for (i = 0; i < 4; i++) {  // Loop over four planes
-//            SET_WRITE_MASK(1 << (8 + i));
-//            for (j = 0; j < FONT_HEIGHT; j++) {
-//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
-//            }
-//        }
-//        for (i = 0; i < FONT_WIDTH; i++) {
-//            for (j = 0; j < FONT_HEIGHT; j++) {
-//                vga_set_color_argb((font_data[' '][j] & (1 << (7 - i)) ? WHITE : BLACK));
-//                vga_draw_pixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
-//            }
-//        }
+
         vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, ' ', WHITE, BLACK);
+
         screen_char[screen_y * MAX_COLS + screen_x] = 0;
 
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
-//        int i, j;
-//        for (i = 0; i < 4; i++) {  // Loop over four planes
-//            SET_WRITE_MASK(1 << (8 + i));
-//            for (j = 0; j < FONT_HEIGHT; j++) {
-//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-//                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
-//            }
-//        }
-//        for (i = 0; i < FONT_WIDTH; i++) {
-//            for (j = 0; j < FONT_HEIGHT; j++) {
-//                vga_set_color_argb(font_data[c][j] & (1 << (7 - i)) ? WHITE : BLACK);
-//                vga_draw_pixel(screen_x * FONT_WIDTH + i, screen_y * FONT_HEIGHT + j);
-//            }
-//        }
+
         vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, c, WHITE, BLACK);
 
         screen_char[screen_y * MAX_COLS + screen_x] = c;
@@ -377,6 +350,7 @@ void putc(uint8_t c) {
         }
     }
 }
+
 #endif
 /**
  * scroll_up
@@ -421,38 +395,20 @@ void scroll_up() {
 #endif
 
 #ifdef MODE_SVGA
+
 void scroll_up() {
     int x, y;
-    int i, j;
-    vga_set_color_argb(BLACK);
-    for (y = 0; y < CUR_TERMINAL_HEIGHT; y++) {
-        for (x = 0; x < CUR_TERMINAL_WIDTH; x++) {
-            vga_draw_pixel(x, y);
-        }
-    }
-    vga_set_color_argb(WHITE);
+
     for (y = 1; y < NUM_ROWS; y++) {
         for (x = 0; x < NUM_COLS; x++) {
-//            for (i = 0; i < FONT_WIDTH; i++) {
-//                for (j = 0; j < FONT_HEIGHT; j++) {
-//                    if (font_data[screen_char[(y - 1) * MAX_COLS + x]][j] & (1 << (7 - i))) {
-//                        vga_draw_pixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
-//                    }
-//                }
-//            }
-            vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, screen_char[(y - 1) * MAX_COLS + x], WHITE, BLACK);
             screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
         }
     }
+    vga_print_char_array(0, 0, (char *) screen_char, NUM_ROWS - 1, NUM_COLS, WHITE, BLACK);
+
     // Clean up the last line
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
-//        vga_set_color_argb(BLACK);
-//        for (i = 0; i < FONT_WIDTH; i++) {
-//            for (j = 0; j < FONT_HEIGHT; j++) {
-//                vga_draw_pixel(x * FONT_WIDTH + i, y * FONT_HEIGHT + j);
-//            }
-//        }
         vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
         screen_char[y * MAX_COLS + x] = 0x0;
     }
@@ -460,6 +416,7 @@ void scroll_up() {
     screen_y = NUM_ROWS - 1;
     screen_x = 0;
 }
+
 #endif
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
@@ -468,7 +425,7 @@ void scroll_up() {
  *          int32_t radix = base system. hex, oct, dec, etc.
  * Return Value: number of bytes written
  * Function: Convert a number to its ASCII representation, with base "radix" */
-int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix) {
+int8_t *itoa(uint32_t value, int8_t *buf, int32_t radix) {
     static int8_t lookup[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     int8_t *newbuf = buf;
     int32_t i;
@@ -504,7 +461,7 @@ int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix) {
  * Inputs: int8_t* s = string to reverse
  * Return Value: reversed string
  * Function: reverses a string s */
-int8_t* strrev(int8_t* s) {
+int8_t *strrev(int8_t *s) {
     register int8_t tmp;
     register int32_t beg = 0;
     register int32_t end = strlen(s) - 1;
@@ -523,7 +480,7 @@ int8_t* strrev(int8_t* s) {
  * Inputs: const int8_t* s = string to take length of
  * Return Value: length of string s
  * Function: return length of string s */
-uint32_t strlen(const int8_t* s) {
+uint32_t strlen(const int8_t *s) {
     register uint32_t len = 0;
     while (s[len] != '\0')
         len++;
@@ -536,7 +493,7 @@ uint32_t strlen(const int8_t* s) {
  *         uint32_t n = number of bytes to set
  * Return Value: new string
  * Function: set n consecutive bytes of pointer s to value c */
-void* memset(void* s, int32_t c, uint32_t n) {
+void *memset(void *s, int32_t c, uint32_t n) {
     c &= 0xFF;
     asm volatile ("                 \n\
             .memset_top:            \n\
@@ -579,7 +536,7 @@ void* memset(void* s, int32_t c, uint32_t n) {
  *         uint32_t n = number of bytes to set
  * Return Value: new string
  * Function: set lower 16 bits of n consecutive memory locations of pointer s to value c */
-void* memset_word(void* s, int32_t c, uint32_t n) {
+void *memset_word(void *s, int32_t c, uint32_t n) {
     asm volatile ("                 \n\
             movw    %%ds, %%dx      \n\
             movw    %%dx, %%es      \n\
@@ -599,7 +556,7 @@ void* memset_word(void* s, int32_t c, uint32_t n) {
  *         uint32_t n = number of bytes to set
  * Return Value: new string
  * Function: set n consecutive memory locations of pointer s to value c */
-void* memset_dword(void* s, int32_t c, uint32_t n) {
+void *memset_dword(void *s, int32_t c, uint32_t n) {
     asm volatile ("                 \n\
             movw    %%ds, %%dx      \n\
             movw    %%dx, %%es      \n\
@@ -619,7 +576,7 @@ void* memset_dword(void* s, int32_t c, uint32_t n) {
  *              uint32_t n = number of byets to copy
  * Return Value: pointer to dest
  * Function: copy n bytes of src to dest */
-void* memcpy(void* dest, const void* src, uint32_t n) {
+void *memcpy(void *dest, const void *src, uint32_t n) {
     asm volatile ("                 \n\
             .memcpy_top:            \n\
             testl   %%ecx, %%ecx    \n\
@@ -665,7 +622,7 @@ void* memcpy(void* dest, const void* src, uint32_t n) {
  *              uint32_t n = number of byets to move
  * Return Value: pointer to dest
  * Function: move n bytes of src to dest */
-void* memmove(void* dest, const void* src, uint32_t n) {
+void *memmove(void *dest, const void *src, uint32_t n) {
     asm volatile ("                             \n\
             movw    %%ds, %%dx                  \n\
             movw    %%dx, %%es                  \n\
@@ -696,7 +653,7 @@ void* memmove(void* dest, const void* src, uint32_t n) {
  *               in str1 than in str2; And a value less than zero
  *               indicates the opposite.
  * Function: compares string 1 and string 2 for equality */
-int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n) {
+int32_t strncmp(const int8_t *s1, const int8_t *s2, uint32_t n) {
     int32_t i;
     for (i = 0; i < n; i++) {
         if ((s1[i] != s2[i]) || (s1[i] == '\0') /* || s2[i] == '\0' */) {
@@ -717,7 +674,7 @@ int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n) {
  *         const int8_t* src = source string of copy
  * Return Value: pointer to dest
  * Function: copy the source string into the destination string */
-int8_t* strcpy(int8_t* dest, const int8_t* src) {
+int8_t *strcpy(int8_t *dest, const int8_t *src) {
     int32_t i = 0;
     while (src[i] != '\0') {
         dest[i] = src[i];
@@ -733,7 +690,7 @@ int8_t* strcpy(int8_t* dest, const int8_t* src) {
  *                uint32_t n = number of bytes to copy
  * Return Value: pointer to dest
  * Function: copy n bytes of the source string into the destination string */
-int8_t* strncpy(int8_t* dest, const int8_t* src, uint32_t n) {
+int8_t *strncpy(int8_t *dest, const int8_t *src, uint32_t n) {
     int32_t i = 0;
     while (src[i] != '\0' && i < n) {
         dest[i] = src[i];
@@ -777,7 +734,7 @@ int32_t halt(uint8_t status) {
  * @return Terminate status of the program (0-255 if program terminate by calling halt(), 256 if exception occurs)
  * @note New program given in command will run immediately, and this function will return after its terminate
  */
-int32_t execute(const uint8_t* command) {
+int32_t execute(const uint8_t *command) {
     long ret;
     asm volatile ("INT $0x80"
     : "=a" (ret)
@@ -793,7 +750,7 @@ int32_t execute(const uint8_t* command) {
  * @param nbytes    Maximal number of bytes to write
  * @return 0 on success, -1 on failure
  */
-int32_t read(int32_t fd, void* buf, int32_t nbytes) {
+int32_t read(int32_t fd, void *buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT $0x80"
     : "=a" (ret)
@@ -809,7 +766,7 @@ int32_t read(int32_t fd, void* buf, int32_t nbytes) {
  * @param nbytes    Number of bytes to write
  * @return 0 on success, -1 on failure
  */
-int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
+int32_t write(int32_t fd, const void *buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT $0x80"
     : "=a" (ret)
@@ -823,7 +780,7 @@ int32_t write(int32_t fd, const void* buf, int32_t nbytes) {
  * @param filename    String of filename to open
  * @return 0 on success, -1 on failure
  */
-int32_t open(const uint8_t* filename) {
+int32_t open(const uint8_t *filename) {
     long ret;
     asm volatile ("INT $0x80"
     : "=a" (ret)
@@ -852,7 +809,7 @@ int32_t close(int32_t fd) {
  * @param nbytes    Maximal number of bytes to write to buf
  * @return 0 on success, -1 on no argument or argument string can't fit in nbytes
  */
-int32_t getargs(uint8_t* buf, int32_t nbytes) {
+int32_t getargs(uint8_t *buf, int32_t nbytes) {
     long ret;
     asm volatile ("INT $0x80"
     : "=a" (ret)

@@ -26,7 +26,7 @@ void vga_init();
 int vga_set_mode(int mode);
 int vga_clear(void);
 
-void inline vga_set_page(int page) {
+static void inline vga_set_page(int page) {
     cirrus_setpage_64k(page);
 }
 

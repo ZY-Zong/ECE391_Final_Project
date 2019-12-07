@@ -47,6 +47,7 @@ uint32_t process_cnt = 0;
     : "r" (new_esp), "r" (new_eip)                                                  \
     : "cc", "memory"                                                                  \
 )
+// FIXME: should be r instead of rm
 
 
 /**
