@@ -17,6 +17,7 @@
 #include "mouse.h"
 #include "vga/vga.h"
 #include "png/png.h"
+#include "gui/gui.h"
 
 #define RUN_TESTS
 
@@ -198,6 +199,8 @@ void entry(unsigned long magic, unsigned long addr) {
 
     vga_init();
     vga_set_mode(G1024x768x16M);
+
+    gui_obj_load();
 
 //    vga_screen_off();
 //    {

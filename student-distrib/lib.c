@@ -4,6 +4,7 @@
 #include "lib.h"
 #include "modex.h"
 #include "vga/vga.h"
+#include "gui/gui.h"
 // Constants for different sizes of screen
 #define MODE_SVGA
 // #define MODE_X
@@ -328,7 +329,8 @@ void putc(uint8_t c) {
             screen_x--;
         }
 
-        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, ' ', WHITE, BLACK);
+//        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, ' ', WHITE, BLACK);
+        gui_print_char(' ', screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT);
 
         screen_char[screen_y * MAX_COLS + screen_x] = 0;
 
@@ -336,7 +338,8 @@ void putc(uint8_t c) {
     } else {
         // Normal cases for a character
 
-        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, c, WHITE, BLACK);
+//        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, c, WHITE, BLACK);
+        gui_print_char(c, screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT);
 
         screen_char[screen_y * MAX_COLS + screen_x] = c;
         screen_x++;
@@ -411,6 +414,7 @@ void scroll_up() {
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
 //        vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
+        gui_print_char(' ', x * FONT_WIDTH, y * FONT_HEIGHT);
         screen_char[y * MAX_COLS + x] = 0x0;
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)

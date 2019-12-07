@@ -157,3 +157,7 @@ static void __svgalib_delay() {
 void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
     cirrus_accel_mmio_screen_copy(x1, y1, x2, y2, width, height);
 }
+
+void vga_buf_copy(int srcaddr, int x2, int y2, int width, int height) {
+    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
+}

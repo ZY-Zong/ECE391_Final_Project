@@ -5,7 +5,7 @@
 #include "vga_draw.h"
 #include "vga.h"
 
-#include "text.h"
+#include "../gui/gui_font_data.h"
 
 #define alpha(color)    (((color) >> 24) & 0xFF)
 
@@ -28,8 +28,6 @@ static vga_argb curr_color = 0;
 void vga_set_color_argb(vga_argb color) {
     curr_color = color;
 }
-
-static char gm_buffer[1024 * 768 * 3];
 
 /**
  * Draw a pixel using color set by vga_set_color_rgb() or vga_set_color_argb()

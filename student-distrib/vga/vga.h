@@ -17,12 +17,16 @@
 #include "vga_cirrus.h"
 #include "vga_draw.h"
 
+#define VGA_WIDTH              1024
+#define VGA_HEIGHT             768
+#define VGA_BYTES_PER_PIXEL    3
+#define VGA_BYTES_PER_LINE     (VGA_WIDTH * VGA_BYTES_PER_PIXEL)
+#define VGA_SCREEN_BYTES       (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_PIXEL)
+
 #define TEXT 	          0
 #define G1024x768x16M     25
 
 #define GM    ((char *) VIDEO)
-//#undef GM
-//#define GM gm_buffer
 #define gr_readb(off)        (((volatile unsigned char *)GM)[(off)])
 #define gr_readw(off)        (*(volatile unsigned short*)((GM)+(off)))
 #define gr_readl(off)        (*(volatile unsigned long*)((GM)+(off)))
@@ -42,6 +46,7 @@ void vga_screen_off();
 void vga_screen_on();
 
 void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height);
+void vga_buf_copy(int srcaddr, int x2, int y2, int width, int height);
 
 /* graphics mode information */
 typedef struct vga_info_t vga_info_t;
