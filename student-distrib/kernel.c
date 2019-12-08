@@ -29,6 +29,8 @@ void __sleep() {
     for (i = 0; i < 100000; i++) {}
 }
 
+static uint8_t png_buffer[500 * 1024];
+
 extern void enable_paging();  // in boot.S
 
 /* Check if MAGIC is valid and print the Multiboot information structure
@@ -243,18 +245,49 @@ void entry(unsigned long magic, unsigned long addr) {
         }
     }
 
-    // try to load png
-    int32_t read_png = read_dentry_by_name("test.png", );
+    /* Try loading png */
+    dentry_t test_png;
+    int32_t readin_size;
+//    uint32_t file_length = 0xffffffff;
 
+    // Open the png file and read it into buffer
+    int32_t read_png = read_dentry_by_name("test.png", &test_png);
     if (0 == read_png) {
-        read_data();
+        readin_size = read_data(test_png.inode_num, 0, png_buffer, sizeof(png_buffer));
+        if (readin_size == sizeof(png_buffer)) {
+            DEBUG_ERR("PNG SIZE NOT ENOUGH!");
+        }
+    }
+
+    upng_t upng;
+    unsigned width;
+    unsigned height;
+    unsigned px_size;
+    const unsigned char *buffer;
+
+    upng = upng_new_from_file(png_buffer, (long) readin_size);
+
+    upng_decode(&upng);
+    if (upng_get_error(&upng) == UPNG_EOK) {
+        width = upng_get_width(&upng);
+        height = upng_get_height(&upng);
+        px_size = upng_get_pixelsize(&upng) / 8;
+        printf("px_size = %u\n", px_size);
+        buffer = upng_get_buffer(&upng);
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+                for (int d = 0; d < px_size; d++) {
+                    //printf("%u ", buffer[(j * width + i) * px_size + d]);
+                    vga_set_color_argb(buffer[(j * width + i) * px_size + d]);
+                    vga_draw_pixel(i, j);
+                }
+                //printf("\n");
+            }
+        }
     }
 
 
-
-
-
-    while(1) {}
+    while (1) {}
 //    vga_screen_on();
 
     vga_screen_copy(0, 0, 600, 600, 100, 100);

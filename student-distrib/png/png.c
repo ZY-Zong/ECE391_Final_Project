@@ -64,44 +64,6 @@ freely, subject to the following restrictions:
 #define upng_chunk_type(chunk) MAKE_DWORD_PTR((chunk) + 4)
 #define upng_chunk_critical(chunk) (((chunk)[4] & 32) == 0)
 
-typedef enum upng_state {
-    UPNG_ERROR		= -1,
-    UPNG_DECODED	= 0,
-    UPNG_HEADER		= 1,
-    UPNG_NEW		= 2
-} upng_state;
-
-typedef enum upng_color {
-    UPNG_LUM		= 0,
-    UPNG_RGB		= 2,
-    UPNG_LUMA		= 4,
-    UPNG_RGBA		= 6
-} upng_color;
-
-typedef struct upng_source {
-    const unsigned char*	buffer;
-    unsigned long			size;
-    char					owning;
-} upng_source;
-
-struct upng_t {
-    unsigned		width;
-    unsigned		height;
-
-    upng_color		color_type;
-    unsigned		color_depth;
-    upng_format		format;
-
-    unsigned char*	buffer;
-    unsigned long	size;
-
-    upng_error		error;
-    unsigned		error_line;
-
-    upng_state		state;
-    upng_source		source;
-};
-
 typedef struct huffman_tree {
     unsigned* tree2d;
     unsigned maxbitlen;	// Maximum number of bits a single code can get
@@ -1163,6 +1125,53 @@ upng_error upng_decode(upng_t* upng)
     upng_free_source(upng);
 
     return upng->error;
+}
+
+
+static upng_t upng_new(void)
+{
+    upng_t upng;
+
+    upng.buffer = NULL;
+    upng.size = 0;
+
+    upng.width = upng.height = 0;
+
+    upng.color_type = UPNG_RGBA;
+    upng.color_depth = 8;
+    upng.format = UPNG_RGBA8;
+
+    upng.state = UPNG_NEW;
+
+    upng.error = UPNG_EOK;
+    upng.error_line = 0;
+
+    upng.source.buffer = NULL;
+    upng.source.size = 0;
+    upng.source.owning = 0;
+
+    return upng;
+}
+
+
+upng_t upng_new_from_file(uint8_t * file_buffer, long file_size)
+{
+    upng_t upng;
+
+    upng = upng_new();
+
+    /* read contents of the file */
+    if (file_buffer == NULL) {
+        SET_ERROR(&upng, UPNG_ENOMEM);
+        return upng;
+    }
+
+    /* set the read buffer as our source buffer, with owning flag set */
+    upng.source.buffer = file_buffer;
+    upng.source.size = file_size;
+    upng.source.owning = 1;
+
+    return upng;
 }
 
 void upng_free(upng_t* upng)
