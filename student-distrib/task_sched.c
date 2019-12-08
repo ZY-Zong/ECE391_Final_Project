@@ -242,6 +242,17 @@ asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
 }
 
 /**
+ * Give up remaining available time of current task and yield CPU to other task
+ * @note Use this function in a lock
+ * @note Only use in process body
+ */
+void sched_yield_unsafe() {
+    sched_refill_time(running_task());
+    sched_move_running_to_last();
+    sched_launch_to_current_head();  // return after this thread get running again
+}
+
+/**
  * Start PIT interrupt
  * @param hz    PIT clock frequency
  * @note Reference: http://www.osdever.net/bkerndev/Docs/pit.htm

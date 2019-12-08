@@ -27,6 +27,7 @@ void sched_refill_time(task_t* task);
 void sched_insert_to_head_unsafe(task_t* task);
 void sched_move_running_to_list_unsafe(task_list_node_t* new_prev, task_list_node_t* new_next);
 void sched_move_running_after_node_unsafe(task_list_node_t* node);
+void sched_yield_unsafe();
 
 void sched_launch_to_current_head();
 

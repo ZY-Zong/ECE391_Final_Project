@@ -16,7 +16,7 @@
 #endif
 
 #define task_slot(idx) ((task_t *) (PKM_STARTING_ADDR - (idx + 1) * PKM_SIZE_IN_BYTES))  // address of idx-th PCB
-uint32_t task_count = 0;  // count of tasks that has started
+volatile uint32_t task_count = 0;  // count of tasks that has started
 
 #define USER_STACK_STARTING_ADDR  (0x8400000 - 1)  // User stack starts at 132MB - 1 (with paging enabled)
 
@@ -494,6 +494,9 @@ int32_t system_halt(int32_t status) {
         while (1) {}
     }
 
+    // Print an empty line at halt
+    putc('\n');
+
     /** --------------- Phase 1. Remove current task from scheduler --------------- */
 
 
@@ -553,7 +556,7 @@ int32_t system_halt(int32_t status) {
 
     /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
 
-    if (parent){
+    if (parent) {
 
         task_paging_deallocate(task->page_id);
         if (parent->page_id != -1) {
@@ -613,15 +616,30 @@ static void init_task_main() {
 
         system_execute((uint8_t *) "shell", 0, 1, NULL);
         system_execute((uint8_t *) "shell", 0, 1, NULL);
-        do {
-            ret = system_execute((uint8_t *) "shell", 1, 1, NULL);
-            terminal_focus_printf("<Last executed shell halted with status %d>\n", ret);
-            if (ret == 0) {
-                terminal_focus_printf("<Restarting...>\n", ret);
+        system_execute((uint8_t *) "shell", 0, 1, NULL);
+
+    }
+    restore_flags(flags);
+
+    while (1) {
+        if (task_count == 2) {
+            terminal_focus_printf("<Last executed shell halted. Restarting...>\n", ret);
+            cli_and_save(flags);
+            {
+                system_execute((uint8_t *) "shell", 0, 1, NULL);
             }
-        } while (ret == 0);
+            restore_flags(flags);
+        } else {
+            cli_and_save(flags);
+            {
+                sched_yield_unsafe();
+            }
+            restore_flags(flags);
+        }
+    }
 
-
+    cli_and_save(flags);
+    {
         system_halt(-1);
         // If the halt doesn't return, it won't cause a problem
     }
