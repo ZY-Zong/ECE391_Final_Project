@@ -250,7 +250,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
 
 
-    while (1) {}
+//    while (1) {}
 
     /* Run tests */
 

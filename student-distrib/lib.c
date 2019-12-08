@@ -395,12 +395,13 @@ void scroll_up() {
 void scroll_up() {
     int x, y;
 
-//    for (y = 1; y < NUM_ROWS; y++) {
-//        for (x = 0; x < NUM_COLS; x++) {
-//            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
-//        }
-//    }
-    vga_screen_copy(0, FONT_HEIGHT, 0, 0, CUR_TERMINAL_WIDTH, CUR_TERMINAL_HEIGHT - FONT_HEIGHT);
+    for (y = 1; y < NUM_ROWS; y++) {
+        for (x = 0; x < NUM_COLS; x++) {
+            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
+            gui_print_char(screen_char[(y - 1) * MAX_COLS + x], x * FONT_WIDTH, (y - 1) * FONT_HEIGHT);
+        }
+    }
+//    vga_screen_copy(0, FONT_HEIGHT, 0, 0, CUR_TERMINAL_WIDTH, CUR_TERMINAL_HEIGHT - FONT_HEIGHT);
 //    vga_print_char_array(0, 0, (char *) screen_char, NUM_ROWS - 1, NUM_COLS, WHITE, BLACK);
 
     // Clean up the last line
