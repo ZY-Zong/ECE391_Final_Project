@@ -250,7 +250,7 @@ asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
  *       still happen in this case (limited lock range, for example)
  */
 void sched_yield_unsafe() {
-    if (running_task()->flags & TASK_IDLE_TASK == NULL) {
+    if ((running_task()->flags & TASK_IDLE_TASK) == NULL) {
         sched_refill_time(running_task());
     }
     sched_move_running_to_last();

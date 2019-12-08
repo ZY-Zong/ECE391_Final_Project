@@ -159,8 +159,8 @@ void entry(unsigned long magic, unsigned long addr) {
     terminal_init();
     enable_irq(KEYBOARD_IRQ_NUM);
     // Disable the cursor
-    outb(0x3D4, 0x0A);
-    outb(0x3D5, 0x20);
+    outb(0x0A, 0x3D4);
+    outb(0x20, 0x3D5);
 
     /* Init the RTC */
     rtc_init();
@@ -168,7 +168,7 @@ void entry(unsigned long magic, unsigned long addr) {
     rtc_restart_interrupt();  // in case that an interrupt happens after rtc_init() and before enable_irq
 
     /* Init the file system */
-    if (mbi->mods_count == 0){
+    if (mbi->mods_count == 0) {
         printf("WARNING: no file system loaded\n");
     } else {
         file_system_init((module_t *) mbi->mods_addr);
