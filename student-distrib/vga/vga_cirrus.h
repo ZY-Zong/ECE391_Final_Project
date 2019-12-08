@@ -8,10 +8,12 @@
 #define _VGA_CIRRUS_H
 
 #include "../lib.h"
+
+#include "vga.h"
 #include "vga_port.h"
 
 int cirrus_test_and_init();
-int cirrus_setmode(int mode);
+int cirrus_setmode(vga_info_t* infotable);
 void cirrus_setdisplaystart(int address);
 void cirrus_setlogicalwidth(int width);
 void cirrus_setlinear(int addr);

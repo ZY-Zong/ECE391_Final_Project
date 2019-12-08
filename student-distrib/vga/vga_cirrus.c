@@ -58,7 +58,7 @@ static int DRAMbandwidth, DRAMbandwidthLimit;
 static void cirrus_initializemode(unsigned char *moderegs,
                                   ModeTiming *modetiming, ModeInfo *modeinfo);
 
-static ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode);
+static void __svgalib_createModeInfoStructureForSvgalibMode(ModeInfo *modeinfo, vga_info_t* infotable);
 
 static int cirrus_saveregs(unsigned char regs[]);
 
@@ -375,7 +375,7 @@ static void writehicolordac(unsigned char c) {
 }
 
 /* Set chipset-specific registers */
-static void cirrus_setregs(const unsigned char regs[], int mode) {
+static void cirrus_setregs(const unsigned char regs[]) {
 
     cirrus_unlock();        /* May be locked again by other programs (eg. X) */
 
@@ -409,12 +409,13 @@ static void cirrus_setregs(const unsigned char regs[], int mode) {
     __svgalib_outSR(0x1F, regs[CIRRUS_MCLKREGISTER]);
 }
 
-int cirrus_setmode(int mode) {
+int cirrus_setmode(vga_info_t* infotable) {
     unsigned char moderegs[CIRRUS_TOTAL_REGS];
     ModeTiming modetiming;
     ModeInfo modeinfo;
 
-    modeinfo = __svgalib_createModeInfoStructureForSvgalibMode(mode);
+    __svgalib_createModeInfoStructureForSvgalibMode(&modeinfo, infotable);
+
 
     if (__svgalib_getmodetiming(&modetiming, &modeinfo, &cardspecs)) {
         DEBUG_ERR("cirrus_setmode(): failed to get timing");
@@ -424,7 +425,7 @@ int cirrus_setmode(int mode) {
     cirrus_initializemode(moderegs, &modetiming, &modeinfo);
 
     __svgalib_setregs(moderegs);       /* Set standard regs. */
-    cirrus_setregs(moderegs, mode);    /* Set extended regs. */
+    cirrus_setregs(moderegs);    /* Set extended regs. */
 
     __svgalib_InitializeAcceleratorInterface(&modeinfo);
 
@@ -582,27 +583,50 @@ static void cirrus_initializemode(unsigned char *moderegs,
  * @param mode
  * @return
  */
-static ModeInfo __svgalib_createModeInfoStructureForSvgalibMode(int mode) {
+static void __svgalib_createModeInfoStructureForSvgalibMode(ModeInfo *modeinfo, vga_info_t* infotable) {
 
-    // TODO: here is highly specific to 1024x768x64K mode
-
-    ModeInfo modeinfo;
-
-    modeinfo.width = 1024;
-    modeinfo.height = 768;
-    modeinfo.bytesPerPixel = 2;
-
-    modeinfo.colorBits = 16;
-    modeinfo.blueOffset = 0;
-    modeinfo.greenOffset = 5;
-    modeinfo.redOffset = 11;
-    modeinfo.blueWeight = 5;
-    modeinfo.greenWeight = 6;
-    modeinfo.redWeight = 5;
-
-    modeinfo.bitsPerPixel = modeinfo.bytesPerPixel * 8;
-    modeinfo.lineWidth = modeinfo.width * modeinfo.bytesPerPixel;
-    return modeinfo;
+    modeinfo->width = infotable->xdim;
+    modeinfo->height = infotable->ydim;
+    modeinfo->bytesPerPixel = infotable->bytesperpixel;
+    switch (infotable->colors) {
+        case 16:
+            modeinfo->colorBits = 4;
+            break;
+        case 256:
+            modeinfo->colorBits = 8;
+            break;
+        case 32768:
+            modeinfo->colorBits = 15;
+            modeinfo->blueOffset = 0;
+            modeinfo->greenOffset = 5;
+            modeinfo->redOffset = 10;
+            modeinfo->blueWeight = 5;
+            modeinfo->greenWeight = 5;
+            modeinfo->redWeight = 5;
+            break;
+        case 65536:
+            modeinfo->colorBits = 16;
+            modeinfo->blueOffset = 0;
+            modeinfo->greenOffset = 5;
+            modeinfo->redOffset = 11;
+            modeinfo->blueWeight = 5;
+            modeinfo->greenWeight = 6;
+            modeinfo->redWeight = 5;
+            break;
+        case 256 * 65536:
+            modeinfo->colorBits = 24;
+            modeinfo->blueOffset = 0;
+            modeinfo->greenOffset = 8;
+            modeinfo->redOffset = 16;
+            modeinfo->blueWeight = 8;
+            modeinfo->greenWeight = 8;
+            modeinfo->redWeight = 8;
+            break;
+    }
+    modeinfo->bitsPerPixel = modeinfo->bytesPerPixel * 8;
+    if (infotable->colors == 16)
+        modeinfo->bitsPerPixel = 4;
+    modeinfo->lineWidth = infotable->xbytes;
 }
 
 

@@ -18,7 +18,7 @@ static void __svgalib_delay(void);
 #define VGA_CHECK_CURRENT_PAGE    1
 
 vga_info_t vga_info;            /* current video parameters */
-static const vga_info_t CI_G1024_768_64K = {1024, 768, 1 << 16, 1024 * 2, 2};
+static const vga_info_t CI_G1024_768_32K = {1024, 768, 1 << 15, 1024 * 2, 2};
 
 static int curr_page = -1;
 
@@ -32,12 +32,10 @@ static void set_color_emulation(void);
  */
 int vga_set_mode(int mode) {
 
-    if (mode != G1024x768x64K) {
+    if (mode != G1024x768x32K) {
         DEBUG_ERR("vag_set_mode(): only support entering G1028x1024x64K mode.");
         return -1;
     }
-
-    mode &= 0xFFF;
 
     unsigned int interrupt_flags;
     cli_and_save(interrupt_flags);
@@ -48,9 +46,9 @@ int vga_set_mode(int mode) {
             /* shift to color emulation */
             set_color_emulation();
 
-            vga_info = CI_G1024_768_64K;
+            vga_info = CI_G1024_768_32K;
 
-            cirrus_setmode(mode);
+            cirrus_setmode(&vga_info);
 
             cirrus_setdisplaystart(0);
             cirrus_setlogicalwidth(VGA_BYTES_PER_LINE);

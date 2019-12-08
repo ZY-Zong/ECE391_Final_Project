@@ -33,7 +33,7 @@ void entry(unsigned long magic, unsigned long addr) {
     multiboot_info_t *mbi;
 
     vga_init();
-    vga_set_mode(G1024x768x64K);
+    vga_set_mode(G1024x768x32K);
     vga_clear();
 
     /* Am I booted by a Multiboot-compliant boot loader? */

@@ -23,7 +23,7 @@
 #define VGA_SCREEN_BYTES       (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_PIXEL)
 
 #define TEXT 	          0
-#define G1024x768x64K     24
+#define G1024x768x32K     23
 
 #define GM    ((char *) VIDEO)
 #define gr_readb(off)        (((volatile unsigned char *)GM)[(off)])
