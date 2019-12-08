@@ -270,7 +270,10 @@ static int cirrus_init() {
 
     DRAMbandwidth = 14318 * (int) programmedMCLK / 16;
 
-    // TODO: simplify the following based on experiment that cirrus_memory = 4096
+    /**
+     * cirrus_memory = 4096
+     */
+
     if (cirrus_memory >= 512) {
         /* At least 16-bit DRAM bus. */
         DRAMbandwidth *= 2;
@@ -357,8 +360,10 @@ static int cirrus_init() {
         MMIO_POINTER = __svgalib_mmio_base;
 
     /**
-     * TODO: {videoMemory = 4096, maxPixelClock4bpp = 0, maxPixelClock8bpp = 135300, maxPixelClock16bpp = 73216, maxPixelClock24bpp = 28666, maxPixelClock32bpp = 36608, flags = 6,
-  nClocks = 21,	clocks = 0x40fa00, maxHorizontalCrtc = 2040, mapClock = 0, matchProgrammableClock = 0, mapHorizontalCrtc = 0}
+     * {videoMemory = 4096, maxPixelClock4bpp = 0, maxPixelClock8bpp = 135300, maxPixelClock16bpp = 73216,
+     *  maxPixelClock24bpp = 28666, maxPixelClock32bpp = 36608, flags = 6,
+     *  nClocks = 21,	clocks = 0x40fa00, maxHorizontalCrtc = 2040, mapClock = 0, matchProgrammableClock = 0,
+     *  mapHorizontalCrtc = 0}
      */
     return 0;
 }
