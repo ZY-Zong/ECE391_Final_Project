@@ -134,9 +134,10 @@ kernel_page_directory:
     .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 4MB place
     .long   0x00800083
     .long   0x00C00083
+    .long   0x01000083
 
     # Index 3-1023: not presented
-    .rept KERNEL_PAGE_DIRECTORY_SIZE - 2  # 1024 - 3
+    .rept KERNEL_PAGE_DIRECTORY_SIZE - 5  # 1024 - 3
     .long 0
     .endr
 

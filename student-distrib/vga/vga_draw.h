@@ -6,8 +6,8 @@
 #define _VGA_DRAW_H
 
 typedef unsigned int vga_rgb;
-typedef unsigned int vga_argb;
-typedef unsigned short vga_color;  // 16-bit RRRRRGGGGGGBBBBB color
+typedef unsigned int vga_argb;     // 32-bit RRRRRRRRGGGGGGGGBBBBBBBB
+typedef unsigned short vga_color;  // 16-bit GGGGBBBB????RRRR
 
 
 #define alpha(argb)    (((argb) >> 24) & 0xFF)
@@ -45,8 +45,10 @@ static inline vga_rgb rgb_blend(vga_rgb colora, vga_rgb colorb, unsigned int alp
  * @param rgb    RGB color to be convert. High 8 bits are safely discarded.
  * @return Result 16-bit VGA color
  */
-static inline vga_color rgb_to_color(vga_rgb rgb) {
-    return (((rgb >> 3) & 0x1F) | ((rgb >> 5) & 0x7E0) | ((rgb >> 8) & 0xF800));
+static inline vga_color color_convert(vga_rgb rgb) {
+    return ((rgb >> 12) & 0xF) << 12 |  // green
+           ((rgb >> 4) & 0xF) << 8 |    // blue
+           ((rgb >> 20) & 0xF);         // red
 }
 
 /**
@@ -54,9 +56,10 @@ static inline vga_color rgb_to_color(vga_rgb rgb) {
  * @param color    16-bit VGA color.
  * @return Result 16-bit VGA color. First 8 bits are 0.
  */
-static inline vga_rgb color_to_rgb (vga_color color) {
-    vga_color c = color;
-    return (((c & 0x1F) << 3) | ((c & 0x7E0) << 5) | ((c & 0xF800) << 8));
+static inline vga_rgb color_revert(vga_color c) {
+    return ((vga_rgb) c & 0xF) << 20 |          // red
+           (((vga_rgb) c >> 12) & 0xF) << 12 |  // green
+           (((vga_rgb) c >> 8) & 0xF) << 4;     // blue
 }
 
 

@@ -472,11 +472,6 @@ static void inflate_huffman(upng_t* upng, unsigned char* out, unsigned long outs
     }
 
     while (done == 0) {
-
-        if (*pos == 351108) {
-            DEBUG_WARN("???");
-        }
-
         unsigned code = huffman_decode_symbol(upng, in, bp, &codetree, inlength);
         if (upng->error != UPNG_EOK) {
             return;
@@ -1088,6 +1083,8 @@ upng_error upng_decode(upng_t* upng)
 //    inflated = (unsigned char*)malloc(inflated_size);
     if (sanity_check_good(inflated_size)) {
         inflated = fake_malloced_space_two;
+    } else {
+        DEBUG_ERR("PNG: inflated_size is not enough.");
     }
 
     if (inflated == NULL) {
