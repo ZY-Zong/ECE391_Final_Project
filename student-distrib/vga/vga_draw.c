@@ -16,6 +16,26 @@ static inline int GRB2RGB(int c) {
     return c;
 }
 
+static vga_color color_convert(vga_rgb rgb) {
+    unsigned int b = rgb & 0xFF;
+    unsigned int g = (rgb >> 8) & 0xFF;
+    unsigned int r = (rgb >> 16) & 0xFF;
+    return ((g >> 4) & 0xF) << 12 |
+           (((b >> 4) & 0xF) << 8) |
+           ((r >> 4) & 0xF);
+}
+
+static vga_rgb color_revert(vga_color c) {
+    unsigned int b = rgb & 0xFF;
+    unsigned int g = (rgb >> 8) & 0xFF;
+    unsigned int r = (rgb >> 16) & 0xFF;
+    return ((g >> 4) & 0xF) << 12 |
+           (((b >> 4) & 0xF) << 8) |
+           ((r >> 4) & 0xF);
+}
+
+
+
 static vga_argb curr_color = 0;
 
 void vga_set_color_argb(vga_argb color) {
@@ -31,7 +51,7 @@ void vga_draw_pixel(int x, int y) {
     unsigned long offset = y * vga_info.xbytes + x * VGA_BYTES_PER_PIXEL;
     vga_set_page(offset >> 16);
     offset &= 0xFFFF;
-//    gr_writew(rgb_to_color(rgb_blend(color_to_rgb(gr_readw(offset)), curr_color, alpha(curr_color))), offset);
+    gr_writew(color_convert(rgb_blend(color_to_rgb(gr_readw(offset)), curr_color, alpha(curr_color))), offset);
 //    gr_writeb(rgb_to_color(curr_color) >> 8, offset);
 //    gr_writeb(rgb_to_color(curr_color) , offset + 1);
 
@@ -40,7 +60,8 @@ void vga_draw_pixel(int x, int y) {
 //
 //            vga_set_page(offset >> 16);
 //
-            gr_writew(0x1F, offset & 0xffff);
+unsigned short c = color_convert(curr_color);
+    gr_writew(c, offset & 0xffff);
 
 }
 

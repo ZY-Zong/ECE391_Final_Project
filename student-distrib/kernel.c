@@ -236,18 +236,19 @@ void entry(unsigned long magic, unsigned long addr) {
             }
         }
 
+
 //        for (i = 0; i < 1000; i++) {
 //            vga_screen_copy(0, 0, 0, VGA_HEIGHT, VGA_WIDTH, VGA_HEIGHT);
 //        }
 
-        vga_set_color_argb(0xFF0000FF);
+        vga_set_color_argb(0xFF00FF00);
         for (x = 200; x < 500; x++) {
             for (y = 200; y <= 500; y++) {
                 vga_draw_pixel(x, y);
             }
         }
 
-        vga_set_color_argb(0xFF00FF00);
+        vga_set_color_argb(0xFF0000FF);
         for (x = 400; x < 700; x++) {
             for (y = 400; y <= 700; y++) {
                 vga_draw_pixel(x, y);
@@ -275,15 +276,15 @@ void entry(unsigned long magic, unsigned long addr) {
             }
         }
 
-        for (x = 0; x < 1024; x++) {
-                vga_set_color_argb(0 * 512 + x);
-                vga_draw_pixel(x, 1);
-//                __sleep();
-        }
+//        for (x = 0; x < 1024; x++) {
+//                vga_set_color_argb(0 * 512 + x);
+//                vga_draw_pixel(x, 1);
+////                __sleep();
+//        }
 
     }
 
-    while(1) {}
+//    while(1) {}
 
     /* Try loading png */
     dentry_t test_png;
@@ -329,7 +330,7 @@ void entry(unsigned long magic, unsigned long addr) {
     }
 
 
-//    while (1) {}
+    while (1) {}
 //    vga_screen_on();
 
     vga_screen_copy(0, 0, 600, 600, 100, 100);
