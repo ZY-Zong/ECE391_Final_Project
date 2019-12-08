@@ -158,6 +158,9 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the terminal and keyboard */
     terminal_init();
     enable_irq(KEYBOARD_IRQ_NUM);
+    // Disable the cursor
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, 0x20);
 
     /* Init the RTC */
     rtc_init();
