@@ -620,7 +620,6 @@ static unsigned char png_test_buf[MAX_PNG_SIZE];
 
 void png_test() {
 
-    /* Try loading png */
     dentry_t test_png;
     int32_t readin_size;
 
@@ -655,7 +654,91 @@ void png_test() {
                 for (int d = 0; d < px_size; d++) {
                     c = (c << 8) | buffer[(j * width + i) * px_size + (px_size - d - 1)];
                 }
-//                printf("%x ", buffer[(j * width + i) * px_size + d]);
+                vga_set_color_argb(c | 0xFF000000);
+                vga_draw_pixel(i, j);
+            }
+        }
+    }
+}
+
+void png_alpha_test() {
+
+    dentry_t test_png;
+    int32_t readin_size;
+
+    // Open the png file and read it into buffer
+    int32_t read_png = read_dentry_by_name("alpha.png", &test_png);
+    if (0 == read_png) {
+        readin_size = read_data(test_png.inode_num, 0, png_file_buf, sizeof(png_file_buf));
+        if (readin_size == sizeof(png_test_buf)) {
+            DEBUG_ERR("PNG SIZE NOT ENOUGH!");
+        }
+    }
+
+    upng_t upng;
+    unsigned width;
+    unsigned height;
+    unsigned px_size;
+    const unsigned char *buffer;
+    vga_argb c;
+
+    upng = upng_new_from_file(png_file_buf, (long) readin_size);
+    upng.buffer = (unsigned char *) &png_test_buf;
+    upng_decode(&upng);
+    if (upng_get_error(&upng) == UPNG_EOK) {
+        width = upng_get_width(&upng);
+        height = upng_get_height(&upng);
+        px_size = upng_get_pixelsize(&upng) / 8;
+        printf("px_size = %u\n", px_size);
+        buffer = upng_get_buffer(&upng);
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+                c = 0;
+                for (int d = 0; d < px_size; d++) {
+                    c = (c << 8) | buffer[(j * width + i) * px_size + (px_size - d - 1)];
+                }
+                vga_set_color_argb(c);
+                vga_draw_pixel(i, j);
+            }
+        }
+    }
+}
+
+void png_full_screen_test() {
+    dentry_t test_png;
+    int32_t readin_size;
+
+    // Open the png file and read it into buffer
+    int32_t read_png = read_dentry_by_name("fullscreen.png", &test_png);
+    if (0 == read_png) {
+        readin_size = read_data(test_png.inode_num, 0, png_file_buf, sizeof(png_file_buf));
+        if (readin_size == sizeof(png_test_buf)) {
+            DEBUG_ERR("PNG SIZE NOT ENOUGH!");
+        }
+    }
+
+    upng_t upng;
+    unsigned width;
+    unsigned height;
+    unsigned px_size;
+    const unsigned char *buffer;
+    vga_argb c;
+
+    upng = upng_new_from_file(png_file_buf, (long) readin_size);
+    upng.buffer = (unsigned char *) &png_test_buf;
+    upng_decode(&upng);
+    if (upng_get_error(&upng) == UPNG_EOK) {
+        width = upng_get_width(&upng);
+        height = upng_get_height(&upng);
+        px_size = upng_get_pixelsize(&upng) / 8;
+        printf("px_size = %u\n", px_size);
+        buffer = upng_get_buffer(&upng);
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+                c = 0;
+                for (int d = 0; d < px_size; d++) {
+                    c = (c << 8) | buffer[(j * width + i) * px_size + (px_size - d - 1)];
+                }
                 vga_set_color_argb(c | 0xFF000000);
                 vga_draw_pixel(i, j);
             }
@@ -681,8 +764,9 @@ void launch_tests() {
 //    TEST_OUTPUT("fs_err_test", fs_err_test());
 //    TEST_OUTPUT("execute_err_test", execute_err_test());
     svga_test();
-    png_test();
-
+//    png_test();
+//    png_alpha_test();
+    png_full_screen_test();
     printf("\nTests complete.\n");
 
     task_run_initial_process();  // run shell
