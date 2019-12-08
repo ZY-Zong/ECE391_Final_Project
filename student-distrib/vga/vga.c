@@ -165,3 +165,7 @@ void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
 void vga_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg) {
     cirrus_accel_mmio_mono_expand(srcaddr, x2, y2, width, height, fg, bg);
 }
+
+void vga_buf_copy(int srcaddr, int x2, int y2, int width, int height) {
+    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
+}

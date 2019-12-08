@@ -231,6 +231,10 @@ void entry(unsigned long magic, unsigned long addr) {
             }
         }
 
+//        for (i = 0; i < 1000; i++) {
+//            vga_screen_copy(0, 0, 0, VGA_HEIGHT, VGA_WIDTH, VGA_HEIGHT);
+//        }
+
         vga_set_color_argb(0xAA00FFFF);
         for (x = 200; x < 500; x++) {
             for (y = 200; y <= 500; y++) {
@@ -243,7 +247,10 @@ void entry(unsigned long magic, unsigned long addr) {
     vga_screen_copy(0, 0, 600, 600, 100, 100);
 //    vga_screen_copy(1, 100, 0, 0, 1024, 600);
 
-//    while (1) {}
+
+
+
+    while (1) {}
 
     /* Run tests */
 

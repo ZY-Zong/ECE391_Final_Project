@@ -89,14 +89,7 @@ void clear(void) {
 #ifdef MODE_SVGA
 
 void clear(void) {
-    int i, j;
-    vga_set_color_argb(BLACK);
-    for (i = 0; i < CUR_TERMINAL_WIDTH; i++) {
-        for (j = 0; j < CUR_TERMINAL_HEIGHT; j++) {
-            vga_draw_pixel(i, j);
-        }
-    }
-    // TODO: Preserve the last line
+    vga_clear();
 }
 
 #endif

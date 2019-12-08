@@ -129,6 +129,7 @@ void cirrus_accel_set_foreground_color(int fg);
 void cirrus_accel_set_background_color(int bg);
 void cirrus_accel_mmio_set_raster_op(int rop);
 void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg);
+void cirrus_accel_mmio_buf_copy(int srcaddr, int x2, int y2, int width, int height);
 
 
 

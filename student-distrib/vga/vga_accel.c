@@ -374,3 +374,16 @@ void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int h
     if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
         MMIOWAITUNTILFINISHED();
 }
+
+void cirrus_accel_mmio_buf_copy(int srcaddr, int x2, int y2, int width, int height) {
+    int destaddr, dir;
+    width *= __svgalib_accel_bytesperpixel;
+    destaddr = BLTBYTEADDRESS(x2, y2);
+    MMIOFINISHBACKGROUNDBLITS();
+    MMIOSETSRCADDR(srcaddr);
+    MMIOSETDESTADDR(destaddr);
+    MMIOSETWIDTH(width);
+    MMIOSETHEIGHT(height);
+    MMIOSETBLTMODE(FORWARDS | SYSTEMSRC);
+    MMIOSTARTBLT();
+}
