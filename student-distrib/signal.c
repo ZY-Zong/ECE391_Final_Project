@@ -20,7 +20,7 @@ int32_t signal_alarm_default_handler();
 
 int32_t signal_user1_default_handler();
 
-static void signal_restore_mask(void);
+void signal_restore_mask(void);
 
 /*************************** System Calls ***************************/
 
@@ -287,7 +287,7 @@ int32_t signal_user1_default_handler() {
  * Restore previous mask 
  * called by system call sigreturn 
  */
-static void signal_restore_mask(void) {
+void signal_restore_mask(void) {
     uint32_t flags;
     cli_and_save(flags);
     {
