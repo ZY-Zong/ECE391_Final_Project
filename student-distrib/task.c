@@ -623,10 +623,10 @@ static void init_task_main() {
 
     while (1) {
         if (task_count == 2) {
-            terminal_focus_printf("<Last executed shell halted. Restarting...>\n", ret);
             cli_and_save(flags);
             {
                 system_execute((uint8_t *) "shell", 0, 1, NULL);
+                terminal_focus_printf("<Last shell has halted. Restarted.>\n", ret);  // put in newly started terminal
             }
             restore_flags(flags);
         } else {
