@@ -237,6 +237,19 @@ void entry(unsigned long magic, unsigned long addr) {
             }
         }
     }
+
+    // try to load png
+    int32_t read_png = read_dentry_by_name("test.png", );
+
+    if (0 == read_png) {
+        read_data();
+    }
+
+
+
+
+
+    while(1) {}
 //    vga_screen_on();
 
     vga_screen_copy(0, 0, 200, 200, 100, 100);
