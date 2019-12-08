@@ -33,6 +33,8 @@
 #define KERNEL_PAGE_TABLE_SIZE    1024
 #define VIDEO_MEMORY_START_PAGE    0xB8
 
+#define KERNEL_ESP_START 0xC00000
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers

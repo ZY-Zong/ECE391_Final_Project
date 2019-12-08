@@ -258,6 +258,9 @@ static unsigned huffman_decode_symbol(upng_t *upng, const unsigned char *in, uns
         bit = read_bit(bp, in);
 
         ct = codetree->tree2d[(treepos << 1) | bit];
+        if (ct == 16843262) {
+            DEBUG_ERR("???");
+        }
         if (ct < codetree->numcodes) {
             return ct;
         }
@@ -469,6 +472,11 @@ static void inflate_huffman(upng_t* upng, unsigned char* out, unsigned long outs
     }
 
     while (done == 0) {
+
+        if (*pos == 351108) {
+            DEBUG_WARN("???");
+        }
+
         unsigned code = huffman_decode_symbol(upng, in, bp, &codetree, inlength);
         if (upng->error != UPNG_EOK) {
             return;
@@ -995,10 +1003,10 @@ upng_error upng_decode(upng_t* upng)
     }
 
     /* release old result, if any */
-    if (upng->buffer != 0) {
+    /*if (upng->buffer != 0) {
         upng->buffer = NULL; // Free it
         upng->size = 0;
-    }
+    }*/
 
     /* first byte of the first chunk after the header */
     chunk = upng->source.buffer + 33;

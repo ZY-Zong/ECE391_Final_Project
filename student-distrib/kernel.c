@@ -19,6 +19,9 @@
 #include "png/png.h"
 #include "gui/gui.h"
 
+
+static unsigned char png_test[MAX_PNG_SIZE];
+
 #define RUN_TESTS
 
 /* Check if the bit BIT in FLAGS is set. */
@@ -26,7 +29,7 @@
 
 void __sleep() {
     int i;
-    for (i = 0; i < 100000; i++) {}
+    for (i = 0; i < 10000; i++) {}
 }
 
 static uint8_t png_buffer[500 * 1024];
@@ -151,7 +154,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
         tss.ldt_segment_selector = KERNEL_LDT;
         tss.ss0 = KERNEL_DS;
-        tss.esp0 = 0x800000;
+        tss.esp0 = KERNEL_ESP_START;
         ltr(KERNEL_TSS);
     }
 
@@ -225,7 +228,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
 //    vga_screen_off();
     {
-        vga_set_color_argb(0xCCFFFF00);
+        vga_set_color_argb(0xFFFF0000);
         for (x = 0; x < 300; x++) {
             for (y = 0; y <= 300; y++) {
                 vga_draw_pixel(x, y);
@@ -237,13 +240,50 @@ void entry(unsigned long magic, unsigned long addr) {
 //            vga_screen_copy(0, 0, 0, VGA_HEIGHT, VGA_WIDTH, VGA_HEIGHT);
 //        }
 
-        vga_set_color_argb(0xAA00FFFF);
+        vga_set_color_argb(0xFF0000FF);
         for (x = 200; x < 500; x++) {
             for (y = 200; y <= 500; y++) {
                 vga_draw_pixel(x, y);
             }
         }
+
+        vga_set_color_argb(0xFF00FF00);
+        for (x = 400; x < 700; x++) {
+            for (y = 400; y <= 700; y++) {
+                vga_draw_pixel(x, y);
+            }
+        }
+
+        vga_set_color_argb(0xFFFFFF00);
+        for (x = 730; x < 760; x++) {
+            for (y = 30; y <= 60; y++) {
+                vga_draw_pixel(x, y);
+            }
+        }
+
+        vga_set_color_argb(0xFF00FFFF);
+        for (x = 730; x < 760; x++) {
+            for (y = 90; y <= 120; y++) {
+                vga_draw_pixel(x, y);
+            }
+        }
+
+        vga_set_color_argb(0xFFFF00FF);
+        for (x = 730; x < 760; x++) {
+            for (y = 150; y <= 180; y++) {
+                vga_draw_pixel(x, y);
+            }
+        }
+
+        for (x = 0; x < 1024; x++) {
+                vga_set_color_argb(0 * 512 + x);
+                vga_draw_pixel(x, 1);
+//                __sleep();
+        }
+
     }
+
+    while(1) {}
 
     /* Try loading png */
     dentry_t test_png;
@@ -264,9 +304,10 @@ void entry(unsigned long magic, unsigned long addr) {
     unsigned height;
     unsigned px_size;
     const unsigned char *buffer;
+    vga_argb c;
 
     upng = upng_new_from_file(png_buffer, (long) readin_size);
-
+    upng.buffer = (unsigned char *) &png_test;
     upng_decode(&upng);
     if (upng_get_error(&upng) == UPNG_EOK) {
         width = upng_get_width(&upng);
@@ -276,18 +317,19 @@ void entry(unsigned long magic, unsigned long addr) {
         buffer = upng_get_buffer(&upng);
         for (int j = 0; j < height; j++) {
             for (int i = 0; i < width; i++) {
+                c = 0;
                 for (int d = 0; d < px_size; d++) {
-                    //printf("%u ", buffer[(j * width + i) * px_size + d]);
-                    vga_set_color_argb(buffer[(j * width + i) * px_size + d]);
-                    vga_draw_pixel(i, j);
+                    c = (c << 8) | buffer[(j * width + i) * px_size + (px_size - d - 1)];
                 }
-                //printf("\n");
+//                printf("%x ", buffer[(j * width + i) * px_size + d]);
+                vga_set_color_argb(c | 0xFF000000);
+                vga_draw_pixel(i, j);
             }
         }
     }
 
 
-    while (1) {}
+//    while (1) {}
 //    vga_screen_on();
 
     vga_screen_copy(0, 0, 600, 600, 100, 100);

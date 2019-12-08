@@ -33,7 +33,7 @@ continue:
 
 keep_going:
     # Set up ESP so we can have an initial stack, 8MB
-    movl    $0x800000, %esp
+    movl    $KERNEL_ESP_START, %esp
 
     # Set up the rest of the segment selector registers
     movw    $KERNEL_DS, %cx

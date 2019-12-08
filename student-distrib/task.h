@@ -33,8 +33,9 @@ union process_kernel_memory_t {
     uint8_t kstack[PKM_SIZE_IN_BYTES];  // stack for kernel status
 };
 
-#define PKM_STARTING_ADDR    0x800000  // PKM starts at 8MB (bottom of kernel image), going to low address
-#define PKM_ALIGN_MASK     0xFFFFE000  // PKM is 8k-aligned, when in kernel_stack, mask ESP with this is current PCB
+// TODO: change comment
+#define PKM_STARTING_ADDR    KERNEL_ESP_START  // PKM starts at 8MB (bottom of kernel image), going to low address
+#define PKM_ALIGN_MASK       0xFFFFE000  // PKM is 8k-aligned, when in kernel_stack, mask ESP with this is current PCB
 
 // Address of idx-th process control block
 #define ptr_process(idx) ((process_t *) (PKM_STARTING_ADDR - (idx + 1) * PKM_SIZE_IN_BYTES))
