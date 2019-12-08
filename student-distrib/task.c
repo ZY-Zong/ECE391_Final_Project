@@ -66,7 +66,7 @@ static int get_another_term_id(int term_id_start);
     popfl           /* restore flags */"                                              \
     : "=m" (kesp_save_to), /* must write to memory, or halt() will not get it */      \
       "=m" (ret)                                                                      \
-    : "rm" (new_esp), "rm" (new_eip)                                                  \
+    : "r" (new_esp), "r" (new_eip) /* must be passed in registers ESP changes     */  \
     : "cc", "memory"                                                                  \
 )
 

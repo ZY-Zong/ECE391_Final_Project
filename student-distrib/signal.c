@@ -20,6 +20,8 @@ int32_t signal_alarm_default_handler();
 
 int32_t signal_user1_default_handler();
 
+static void signal_restore_mask(void);
+
 /*************************** System Calls ***************************/
 
 /**
@@ -197,9 +199,11 @@ asmlinkage void signal_check(hw_context_t context) {
         // Set up the stack frame if needed 
         if (running_task()->signals.current_handlers[cur_signal_num] == default_handlers[cur_signal_num]) {
             default_handlers[cur_signal_num]();
+            signal_restore_mask();
         } else {
             signal_set_up_stack_helper(running_task()->signals.current_handlers[cur_signal_num],
                                        cur_signal_num, &context);
+            // signal_restore_mask() will be called in sigreturn system call
         }
 
     }
@@ -283,7 +287,7 @@ int32_t signal_user1_default_handler() {
  * Restore previous mask 
  * called by system call sigreturn 
  */
-void signal_restore_mask(void) {
+static void signal_restore_mask(void) {
     uint32_t flags;
     cli_and_save(flags);
     {
