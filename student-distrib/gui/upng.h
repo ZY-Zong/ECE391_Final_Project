@@ -30,8 +30,8 @@ freely, subject to the following restrictions:
 		distribution.
 */
 
-#ifndef _PNG_H
-#define _PNG_H
+#ifndef _UPNG_H
+#define _UPNG_H
 
 #include "../lib.h"
 
@@ -130,4 +130,4 @@ unsigned				upng_get_size		(const upng_t* upng);
 
 unsigned    sanity_check_good   (unsigned long size);
 
-#endif //_PNG_H
+#endif //_UPNG_H

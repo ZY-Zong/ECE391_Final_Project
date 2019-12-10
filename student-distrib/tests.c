@@ -5,7 +5,7 @@
 #include "task.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
-#include "png/png.h"
+#include "gui/upng.h"
 
 #define FD_STDIN     0
 #define FD_STDOUT    1

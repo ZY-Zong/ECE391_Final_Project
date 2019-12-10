@@ -22,7 +22,7 @@
 static unsigned char png_file_buf[MAX_PNG_SIZE];
 static unsigned char png_test_buf[MAX_PNG_SIZE];
 
-void draw_png(const uint8_t *fname, int x_offset, int y_offset) {
+int draw_png(const uint8_t *fname, unsigned char *canvas, int x_offset, int y_offset) {
     dentry_t test_png;
     int32_t readin_size;
 
@@ -64,23 +64,23 @@ void draw_png(const uint8_t *fname, int x_offset, int y_offset) {
 }
 
 void full_screen_png() {
-    draw_png("background_a.png", 0, 0);
+    draw_png("background_a.png", NULL, 0, 0);
 }
 
 void draw_terminal_status_bar() {
-    draw_png("up_window.png",    TERMINAL_X - 6,  TERMINAL_Y - 21 );
-    draw_png("left_window.png",  TERMINAL_X - 6,  TERMINAL_Y      );
-    draw_png("down_window.png",  TERMINAL_X - 6,  TERMINAL_Y + 480);
-    draw_png("right_window.png", TERMINAL_X +640, TERMINAL_Y      );
-    draw_png("red_b.png",        TERMINAL_X + 4,  TERMINAL_Y - 17 );
-    draw_png("yellow_b.png",     TERMINAL_X + 22, TERMINAL_Y - 17 );
-    draw_png("green_b.png",      TERMINAL_X + 41, TERMINAL_Y - 17 );
+    draw_png("up_window.png", NULL, TERMINAL_X - 6, TERMINAL_Y - 21);
+    draw_png("left_window.png", NULL, TERMINAL_X - 6, TERMINAL_Y);
+    draw_png("down_window.png", NULL, TERMINAL_X - 6, TERMINAL_Y + 480);
+    draw_png("right_window.png", NULL, TERMINAL_X + 640, TERMINAL_Y);
+    draw_png("red_b.png", NULL, TERMINAL_X + 4, TERMINAL_Y - 17);
+    draw_png("yellow_b.png", NULL, TERMINAL_X + 22, TERMINAL_Y - 17);
+    draw_png("green_b.png", NULL, TERMINAL_X + 41, TERMINAL_Y - 17);
 }
 
 void draw_pressed_yellow_button() {
-    draw_png("yellow_b_c.png",   TERMINAL_X + 22, TERMINAL_Y - 17 );
+    draw_png("yellow_b_c.png", NULL, TERMINAL_X + 22, TERMINAL_Y - 17);
 }
 
 void draw_pressed_green_button() {
-    draw_png("green_b_c.png",    TERMINAL_X + 22, TERMINAL_Y - 17 );
+    draw_png("green_b_c.png", NULL, TERMINAL_X + 22, TERMINAL_Y - 17);
 }

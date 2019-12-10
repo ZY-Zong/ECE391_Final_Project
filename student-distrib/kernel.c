@@ -16,7 +16,7 @@
 #include "modex.h"
 #include "mouse.h"
 #include "vga/vga.h"
-#include "png/png.h"
+#include "gui/upng.h"
 #include "png/window.h"
 #include "gui/gui.h"
 
