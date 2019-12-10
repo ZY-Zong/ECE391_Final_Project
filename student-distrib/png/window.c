@@ -19,9 +19,6 @@
  *      green_b_c    11 *  12    (x+41, y-17)
  */
 
-#define TERMINAL_X 50
-#define TERMINAL_Y 60
-
 static unsigned char png_file_buf[MAX_PNG_SIZE];
 static unsigned char png_test_buf[MAX_PNG_SIZE];
 
@@ -44,6 +41,7 @@ void draw_png(const uint8_t *fname, int x_offset, int y_offset) {
     unsigned px_size;
     const unsigned char *buffer;
     vga_argb c;
+    unsigned idx;
 
     upng = upng_new_from_file(png_file_buf, (long) readin_size);
     upng.buffer = (unsigned char *) &png_test_buf;
@@ -56,10 +54,8 @@ void draw_png(const uint8_t *fname, int x_offset, int y_offset) {
         buffer = upng_get_buffer(&upng);
         for (int j = 0; j < height; j++) {
             for (int i = 0; i < width; i++) {
-                c = 0;
-                for (int d = 0; d < px_size; d++) {
-                    c = (c << 8) | buffer[(j * width + i) * px_size + (px_size - d - 1)];
-                }
+                idx = (j * width + i) * px_size;
+                c = buffer[idx + 3] << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
                 vga_set_color_argb(c);
                 vga_draw_pixel(i + x_offset, j + y_offset);
             }
@@ -68,10 +64,10 @@ void draw_png(const uint8_t *fname, int x_offset, int y_offset) {
 }
 
 void full_screen_png() {
-    draw_png("fullscreen.png", 0, 0);
+    draw_png("background.png", 0, 0);
 }
 
-void terminal_status_bar(int x, int y) {
+void draw_terminal_status_bar() {
     draw_png("up_window.png",    TERMINAL_X - 6,  TERMINAL_Y - 21 );
     draw_png("left_window.png",  TERMINAL_X - 6,  TERMINAL_Y      );
     draw_png("down_window.png",  TERMINAL_X - 6,  TERMINAL_Y + 480);

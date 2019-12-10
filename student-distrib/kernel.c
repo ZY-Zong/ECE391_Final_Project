@@ -17,7 +17,9 @@
 #include "mouse.h"
 #include "vga/vga.h"
 #include "png/png.h"
+#include "png/window.h"
 #include "gui/gui.h"
+
 
 #define RUN_TESTS
 
@@ -195,6 +197,8 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Run tests */
 
 //    launch_tests();
+    full_screen_png();
+    draw_terminal_status_bar();
 
 
     /* Execute the first program ("shell") ... */
