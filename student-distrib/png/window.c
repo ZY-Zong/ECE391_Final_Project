@@ -64,7 +64,7 @@ void draw_png(const uint8_t *fname, int x_offset, int y_offset) {
 }
 
 void full_screen_png() {
-    draw_png("background.png", 0, 0);
+    draw_png("background_a.png", 0, 0);
 }
 
 void draw_terminal_status_bar() {
