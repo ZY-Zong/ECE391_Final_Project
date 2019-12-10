@@ -768,6 +768,4 @@ void launch_tests() {
 //    png_alpha_test();
     png_full_screen_test();
     printf("\nTests complete.\n");
-
-    task_run_initial_process();  // run shell
 }

@@ -194,9 +194,11 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Run tests */
 
-    launch_tests();
-    /* Execute the first program ("shell") ... */
+//    launch_tests();
 
+
+    /* Execute the first program ("shell") ... */
+    task_run_initial_process();  // run shell
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
 }
