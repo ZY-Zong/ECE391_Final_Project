@@ -376,7 +376,7 @@ void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int h
 }
 
 // FIXME: comment or select a better one
-#define BUF_COPY_MID_ADDR ((unsigned int*) 0x000BF000)
+#define BUF_COPY_MID_ADDR ((unsigned int*) 0x000AF000)
 
 void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
     int destaddr;
@@ -388,7 +388,7 @@ void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width
     MMIOSETDESTADDR(destaddr);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
-    MMIOSETBLTMODE(SYSTEMSRC);
+    MMIOSETBLTMODE(SYSTEMSRC | PIXELWIDTH16);
     asm volatile ("              \
         movw $0x3CE, %%dx      \n\
         movb $0x31, %%al       \n\
@@ -398,7 +398,7 @@ void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width
         orb $0x02, %%al        \n\
         outb %%al, %%dx        \n\
     1:  movl (%%ebx), %%eax    \n\
-        movl %%eax, 0xBF000    \n\
+        movl %%eax, 0xAF000    \n\
         addl $4, %%ebx         \n\
         dec %%ecx              \n\
         jg 1b"                    \

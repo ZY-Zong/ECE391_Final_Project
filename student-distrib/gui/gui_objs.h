@@ -19,8 +19,6 @@ struct gui_object_t {
 #define GUI_FONT_FORECOLOR_ARGB    0xFFFFFFFF
 #define GUI_FONT_BACKCOLOR_ARGB    0xFF000000
 
-#define GUI_DESKTOP_FILENAME    "background_a.png"
-
 void gui_obj_load();
 
 gui_object_t gui_get_obj_font(char ch);

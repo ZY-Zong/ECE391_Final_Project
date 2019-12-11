@@ -147,7 +147,7 @@ gui_object_t gui_get_obj_font(char ch) {
 
 static void init_desktop_obj() {
     ca_clear(desktop_canvas, sizeof(desktop_canvas));
-    load_png(GUI_DESKTOP_FILENAME, desktop_canvas, 0, 0, &gui_obj_desktop, VGA_WIDTH, VGA_HEIGHT);
+    load_png("background_a.png", NULL, 0, 2048 - VGA_HEIGHT, &gui_obj_desktop, VGA_WIDTH, VGA_HEIGHT);
 }
 
 #define WIN_UP_X       (0)
@@ -197,7 +197,7 @@ static void init_window_obj() {
 }
 
 void gui_obj_load() {
-    init_font_obj(GUI_FONT_FORECOLOR_ARGB, GUI_FONT_BACKCOLOR_ARGB);
     init_desktop_obj();
+    init_font_obj(GUI_FONT_FORECOLOR_ARGB, GUI_FONT_BACKCOLOR_ARGB);
     init_window_obj();
 }

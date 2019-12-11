@@ -54,8 +54,8 @@ static void draw_terminal_content(const char *buf, int rows, int columns, int te
     int x, y;
     for (y = 0; y < rows; y++) {
         for (x = 0; x < columns; x++) {
-            print_char(buf[(y - 1) * columns + x],
-                           x * FONT_WIDTH + terminal_x, (y - 1) * FONT_HEIGHT + terminal_y);
+            print_char(buf[y * columns + x],
+                           x * FONT_WIDTH + terminal_x, y * FONT_HEIGHT + terminal_y);
         }
     }
 }
@@ -64,13 +64,13 @@ void gui_render() {
     uint32_t flags;
     cli_and_save(flags);
     {
-//        curr_y = VGA_HEIGHT - curr_y;  // switch place to draw (double buffering)
+        curr_y = VGA_HEIGHT - curr_y;  // switch place to draw (double buffering)
 
         draw_desktop();
         draw_window_border(40, 50, 0, 0, 0);
         draw_terminal_content((const char *) screen_char, MAX_ROWS, MAX_COLS, 40, 50);
 
-//        vga_set_start_addr(curr_y * VGA_BYTES_PER_LINE);
+        vga_set_start_addr(curr_y * VGA_BYTES_PER_LINE);
     }
     restore_flags(flags);
 }
