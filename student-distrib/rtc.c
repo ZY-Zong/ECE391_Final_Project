@@ -103,6 +103,9 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
 
     }
     restore_flags(flags);
+
+    // for test 
+    update_system_time();
 }
 
 /**
@@ -250,16 +253,20 @@ unsigned char get_RTC_register(int reg) {
 void update_system_time() {
 
       unsigned char registerB; 
+      int32_t flag;
  
       while (get_update_in_progress_flag());                // Make sure an update isn't in progress
-      second = get_RTC_register(0x00);
-      minute = get_RTC_register(0x02);
-      hour = get_RTC_register(0x04);
-      day = get_RTC_register(0x07);
-      month = get_RTC_register(0x08);
-    
- 
-      registerB = get_RTC_register(0x0B);
+      
+      cli_and_save(flag); {
+        second = get_RTC_register(0x00);
+        minute = get_RTC_register(0x02);
+        hour = get_RTC_register(0x04);
+        day = get_RTC_register(0x07);
+        month = get_RTC_register(0x08);
+        registerB = get_RTC_register(0x0B);
+      }
+      restore_flags(flag);
+      
  
       // Convert BCD to binary values if necessary
  
