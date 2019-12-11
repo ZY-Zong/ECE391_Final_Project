@@ -94,6 +94,9 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
             }
         }
 
+        // for test 
+        update_system_time();
+
         rtc_restart_interrupt();  // to get another interrupt
         idt_send_eoi(hw_context.irq_exp_num);
 
@@ -101,9 +104,6 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
             sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.
         }
 
-    // for test 
-    update_system_time();
-    
     }
     restore_flags(flags);
 
