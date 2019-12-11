@@ -23,7 +23,14 @@ struct gui_object_t {
 
 void gui_obj_load();
 
-gui_object_t gui_obj_font(char ch);
-gui_object_t gui_obj_desktop();
+gui_object_t gui_get_obj_font(char ch);
+extern gui_object_t gui_obj_desktop;
+extern gui_object_t gui_obj_win_up;
+extern gui_object_t gui_obj_win_down;
+extern gui_object_t gui_obj_win_left;
+extern gui_object_t gui_obj_win_right;
+extern gui_object_t gui_obj_red[2];
+extern gui_object_t gui_obj_yellow[2];
+extern gui_object_t gui_obj_green[2];
 
 #endif //_GUI_OBJS_H

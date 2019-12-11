@@ -38,13 +38,13 @@ int vga_set_mode(int mode);
 int vga_clear(void);
 
 void vga_set_page(int page);
+void vga_set_start_addr(int address);
 
 void vga_screen_off();
 void vga_screen_on();
 
 void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height);
-void vga_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg);
-void vga_buf_copy(int srcaddr, int x2, int y2, int width, int height);
+void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height);
 
 /* graphics mode information */
 typedef struct vga_info_t vga_info_t;

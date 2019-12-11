@@ -375,15 +375,36 @@ void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int h
         MMIOWAITUNTILFINISHED();
 }
 
-void cirrus_accel_mmio_buf_copy(int srcaddr, int x2, int y2, int width, int height) {
-    int destaddr, dir;
+// FIXME: comment or select a better one
+#define BUF_COPY_MID_ADDR ((unsigned int*) 0x000BF000)
+
+void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
+    int destaddr;
     width *= __svgalib_accel_bytesperpixel;
     destaddr = BLTBYTEADDRESS(x2, y2);
     MMIOFINISHBACKGROUNDBLITS();
-    MMIOSETSRCADDR(srcaddr);
+    cirrus_accel_mmio_set_raster_op(ROP_COPY);
+    MMIOSETSRCADDR((unsigned int) BUF_COPY_MID_ADDR);
     MMIOSETDESTADDR(destaddr);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
-    MMIOSETBLTMODE(FORWARDS | SYSTEMSRC);
-    MMIOSTARTBLT();
+    MMIOSETBLTMODE(SYSTEMSRC);
+    asm volatile ("              \
+        movw $0x3CE, %%dx      \n\
+        movb $0x31, %%al       \n\
+        outb %%al, %%dx        \n\
+        movw $0x3CF, %%dx      \n\
+        inb %%dx, %%al         \n\
+        orb $0x02, %%al        \n\
+        outb %%al, %%dx        \n\
+    1:  movl (%%ebx), %%eax    \n\
+        movl %%eax, 0xBF000    \n\
+        addl $4, %%ebx         \n\
+        dec %%ecx              \n\
+        jg 1b"                    \
+        :                         \
+        : "b" (srcaddr), "c" (width * height * __svgalib_accel_bytesperpixel / sizeof(unsigned int))
+        : "memory", "cc");
+    if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
+        MMIOWAITUNTILFINISHED();
 }

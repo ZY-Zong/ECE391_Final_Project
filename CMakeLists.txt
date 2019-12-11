@@ -16,7 +16,7 @@ file(GLOB_RECURSE OS_S_SRC  student-distrib/*.S)
 list(REMOVE_ITEM  OS_S_SRC  student-distrib/boot.S)  # boot.S must be compiled and linked first
 file(GLOB_RECURSE OS_HEADER student-distrib/*.h)
 
-add_executable(AuroraOS student-distrib/boot.S ${OS_S_SRC} ${OS_C_SRC} ${OS_HEADER} student-distrib/gui/upng.c student-distrib/gui/upng.h student-distrib/png/window.c student-distrib/png/window.h)
+add_executable(AuroraOS student-distrib/boot.S ${OS_S_SRC} ${OS_C_SRC} ${OS_HEADER})
 
 set(ELF_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/student-distrib)
 set(ELF_OUTPUT_NAME bootimg)

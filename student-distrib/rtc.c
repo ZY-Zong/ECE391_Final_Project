@@ -4,6 +4,7 @@
 #include "rtc.h"
 #include "lib.h"
 #include "i8259.h"
+#include "gui/gui.h"
 
 unsigned int TEST_RTC_ECHO_COUNTER;
 
@@ -51,6 +52,8 @@ void rtc_init() {
 void rtc_interrupt_handler() {
 
     rtc_interrupt_occured = 1;  // interrupt happens, set flag to 1
+
+    gui_render();
 
     rtc_restart_interrupt();  // get another interrupt
 }

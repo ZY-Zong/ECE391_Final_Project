@@ -16,8 +16,6 @@
 #include "modex.h"
 #include "mouse.h"
 #include "vga/vga.h"
-#include "gui/upng.h"
-#include "png/window.h"
 #include "gui/gui.h"
 
 
@@ -197,8 +195,8 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Run tests */
 
 //    launch_tests();
-    full_screen_png();
-    draw_terminal_status_bar();
+//    full_screen_png();
+//    draw_terminal_status_bar();
 
 
     /* Execute the first program ("shell") ... */

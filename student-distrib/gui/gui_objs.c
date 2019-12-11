@@ -14,6 +14,15 @@ static unsigned char png_buf[MAX_PNG_SIZE];
 
 static unsigned char desktop_canvas[VGA_SCREEN_BYTES];
 
+gui_object_t gui_obj_desktop;
+gui_object_t gui_obj_win_up;
+gui_object_t gui_obj_win_down;
+gui_object_t gui_obj_win_left;
+gui_object_t gui_obj_win_right;
+gui_object_t gui_obj_red[2];
+gui_object_t gui_obj_yellow[2];
+gui_object_t gui_obj_green[2];
+
 void ca_clear(unsigned char *canvas, unsigned int size) {
     memset(canvas, 0, size);
 }
@@ -36,12 +45,13 @@ void ca_draw_pixel(unsigned char *canvas, int x, int y, vga_argb argb) {
  * @param y_offset    Starting Y if the image
  * @return 0 for success, -1 for failure
  */
-int load_png(const char *fname, unsigned char *canvas, int x_offset, int y_offset) {
+int load_png(const char *fname, unsigned char *canvas, int x_offset, int y_offset,
+             gui_object_t *gui_object, int expected_width, int expected_height) {
     dentry_t test_png;
     int32_t readin_size;
 
     // Open the png file and read it into buffer
-    int32_t read_png = read_dentry_by_name(fname, &test_png);
+    int32_t read_png = read_dentry_by_name((const uint8_t *) fname, &test_png);
     if (0 == read_png) {
         readin_size = read_data(test_png.inode_num, 0, png_file_buf, sizeof(png_file_buf));
         if (readin_size == sizeof(png_file_buf)) {
@@ -66,13 +76,26 @@ int load_png(const char *fname, unsigned char *canvas, int x_offset, int y_offse
     upng_decode(&upng);
     if (upng_get_error(&upng) == UPNG_EOK) {
         width = upng_get_width(&upng);
+        if (width != expected_width) {
+            DEBUG_WARN("draw_png(): %s does not meet expected width", fname);
+        }
         height = upng_get_height(&upng);
+        if (height != expected_height) {
+            DEBUG_WARN("draw_png(): %s does not meet expected height", fname);
+        }
         px_size = upng_get_pixelsize(&upng) / 8;
         buffer = upng_get_buffer(&upng);
         for (int j = 0; j < height; j++) {
             for (int i = 0; i < width; i++) {
                 idx = (j * width + i) * px_size;
-                c = buffer[idx + 3] << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
+                if (px_size == 3) {
+                    c = 0xFF << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
+                } else if (px_size == 4) {
+                    c = buffer[idx + 3] << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
+                } else {
+                    DEBUG_ERR("draw_png(): invalid pixel size %d", px_size);
+                    return -1;
+                }
                 if (canvas == NULL) {
                     // Draw to video memory
                     vga_set_color_argb(c);
@@ -83,6 +106,12 @@ int load_png(const char *fname, unsigned char *canvas, int x_offset, int y_offse
                 }
             }
         }
+
+        gui_object->canvas = canvas;
+        gui_object->x = x_offset;
+        gui_object->y = y_offset;
+        gui_object->width = width;
+        gui_object->height = height;
     } else {
         DEBUG_ERR("draw_png: fail to decode png %s", fname);
         return -1;
@@ -110,20 +139,15 @@ static void init_font_obj(vga_rgb fg, vga_rgb bg) {
     }
 }
 
-gui_object_t gui_obj_font(char ch) {
-    gui_object_t ret = {NULL,
-                        (ch & 0x7F) * FONT_WIDTH, VGA_HEIGHT * 2 + (ch / 128) * FONT_HEIGHT,
-                        FONT_WIDTH, FONT_HEIGHT};
-    return ret;
+gui_object_t gui_get_obj_font(char ch) {
+    return (gui_object_t) {NULL,
+                           (ch & 0x7F) * FONT_WIDTH, VGA_HEIGHT * 2 + (ch / 128) * FONT_HEIGHT,
+                           FONT_WIDTH, FONT_HEIGHT};
 }
 
 static void init_desktop_obj() {
     ca_clear(desktop_canvas, sizeof(desktop_canvas));
-    load_png(GUI_DESKTOP_FILENAME, desktop_canvas, 0, 0);
-}
-
-gui_object_t gui_obj_desktop() {
-    return (gui_object_t) {desktop_canvas, 0, 0, VGA_WIDTH, VGA_HEIGHT};
+    load_png(GUI_DESKTOP_FILENAME, desktop_canvas, 0, 0, &gui_obj_desktop, VGA_WIDTH, VGA_HEIGHT);
 }
 
 #define WIN_UP_X       (0)
@@ -135,65 +159,41 @@ gui_object_t gui_obj_desktop() {
 #define WIN_RIGHT_X    (VGA_WIDTH - 8)
 #define WIN_RIGHT_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
 
-#define WIN_RED_B_X    (16 * 41)
-#define WIN_RED_B_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_YELLOW_B_X    (16 * 41 + 16)
-#define WIN_YELLOW_B_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_GREEN_B_X    (16 * 41 + 16 + 16)
-#define WIN_GREEN_B_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_RED_B_X         (16 * 41)
+#define WIN_RED_B_Y         (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_YELLOW_B_X      (16 * 41 + 16)
+#define WIN_YELLOW_B_Y      (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_GREEN_B_X       (16 * 41 + 16 + 16)
+#define WIN_GREEN_B_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
 #define WIN_YELLOW_B_C_X    (16 * 41 + 16)
 #define WIN_YELLOW_B_C_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
-#define WIN_GREEN_B_C_X    (16 * 41 + 16 + 16)
-#define WIN_GREEN_B_C_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
+#define WIN_GREEN_B_C_X     (16 * 41 + 16 + 16)
+#define WIN_GREEN_B_C_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
 
 static void init_window_obj() {
-    load_png("up_window.png", NULL, WIN_UP_X, WIN_UP_Y);
-    load_png("down_window.png", NULL, WIN_DOWN_X, WIN_DOWN_Y);
-    load_png("left_window.png", NULL, WIN_LEFT_X, WIN_LEFT_Y);
-    load_png("right_window.png", NULL, WIN_RIGHT_X, WIN_RIGHT_Y);
+    load_png("up_window.png", NULL, WIN_UP_X, WIN_UP_Y,
+             &gui_obj_win_up, 652, 21);
+    load_png("down_window.png", NULL, WIN_DOWN_X, WIN_DOWN_Y,
+             &gui_obj_win_down, 652, 4);
+    load_png("left_window.png", NULL, WIN_LEFT_X, WIN_LEFT_Y,
+             &gui_obj_win_left, 6, 480);
+    load_png("right_window.png", NULL, WIN_RIGHT_X, WIN_RIGHT_Y,
+             &gui_obj_win_right, 6, 480);
 
-    load_png("red_b.png", NULL, WIN_RED_B_X, WIN_RED_B_Y);
-    load_png("yellow_b.png", NULL, WIN_YELLOW_B_X, WIN_YELLOW_B_Y);
-    load_png("green_b.png", NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y);
+    load_png("red_b.png", NULL, WIN_RED_B_X, WIN_RED_B_Y,
+             &gui_obj_red[0], 11, 12);
+    load_png("yellow_b.png", NULL, WIN_YELLOW_B_X, WIN_YELLOW_B_Y,
+             &gui_obj_yellow[0], 12, 12);
+    load_png("green_b.png", NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y,
+             &gui_obj_green[0], 11, 12);
 
-    load_png("yellow_b_c.png", NULL, WIN_YELLOW_B_C_X, WIN_YELLOW_B_C_Y);
-    load_png("green_b_c.png", NULL, WIN_GREEN_B_C_X, WIN_GREEN_B_C_Y);
-}
-
-gui_object_t gui_obj_win_up() {
-    return (gui_object_t) {NULL, WIN_UP_X, WIN_UP_X, 652, 21};
-}
-
-gui_object_t gui_obj_win_down() {
-    return (gui_object_t) {NULL, WIN_DOWN_X, WIN_DOWN_Y, 652, 4};
-}
-
-gui_object_t gui_obj_win_left() {
-    return (gui_object_t) {NULL, WIN_LEFT_X, WIN_LEFT_Y, 6, 480};
-}
-
-gui_object_t gui_obj_win_right() {
-    return (gui_object_t) {NULL, WIN_RIGHT_X, WIN_RIGHT_Y, 6, 480};
-}
-
-gui_object_t gui_obj_red(unsigned int pressed) {
-    return (gui_object_t) {NULL, WIN_RED_B_X, WIN_RED_B_Y, 11, 12};
-}
-
-gui_object_t gui_obj_yellow(unsigned int pressed) {
-    if (pressed) {
-        return (gui_object_t) {NULL, WIN_YELLOW_B_C_X, WIN_YELLOW_B_C_Y, 12, 12};
-    } else {
-        return (gui_object_t) {NULL, WIN_YELLOW_B_X, WIN_YELLOW_B_Y, 12, 12};
-    }
-}
-
-gui_object_t gui_obj_green(unsigned int pressed) {
-    if (pressed) {
-        return (gui_object_t) {NULL, WIN_GREEN_B_C_X, WIN_GREEN_B_C_Y, 11, 12};
-    } else {
-        return (gui_object_t) {NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y, 11, 12};
-    }
+    // FIXME: normal red button?
+    load_png("red_b.png", NULL, WIN_RED_B_X, WIN_RED_B_Y,
+             &gui_obj_red[1], 11, 12);
+    load_png("yellow_b_c.png", NULL, WIN_YELLOW_B_C_X, WIN_YELLOW_B_C_Y,
+             &gui_obj_yellow[1], 12, 12);
+    load_png("green_b_c.png", NULL, WIN_GREEN_B_C_X, WIN_GREEN_B_C_Y,
+             &gui_obj_green[1], 11, 12);
 }
 
 void gui_obj_load() {

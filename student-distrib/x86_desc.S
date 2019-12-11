@@ -135,9 +135,11 @@ kernel_page_directory:
     .long   0x00800083
     .long   0x00C00083
     .long   0x01000083
+    .long   0x01400083
+    .long   0x01800083
 
     # Index 3-1023: not presented
-    .rept KERNEL_PAGE_DIRECTORY_SIZE - 5  # 1024 - 3
+    .rept KERNEL_PAGE_DIRECTORY_SIZE - 7  # 1024 - 3
     .long 0
     .endr
 

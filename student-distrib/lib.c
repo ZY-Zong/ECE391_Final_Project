@@ -5,36 +5,11 @@
 #include "modex.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
-#include "png/window.h"
 
 // Constants for different sizes of screen
 #define MODE_SVGA
 // #define MODE_X
 
-#ifdef MODE_SVGA
-#define CUR_TERMINAL_WIDTH 640
-#define CUR_TERMINAL_HEIGHT 480
-#endif
-
-#ifdef MODE_X
-#define CUR_TERMINAL_WIDTH 640
-#define CUR_TERMINAL_HEIGHT 480
-#endif
-
-
-#define MAX_TERMINAL_WIDTH 640
-#define MAX_TERMINAL_HEIGHT 480
-#define SVGA_WIDTH 1024
-#define SVGA_HEIGHT 768
-#define ATTRIB      0x7
-#define FONT_WIDTH  8
-#define FONT_HEIGHT 16
-#define NUM_COLS    (CUR_TERMINAL_WIDTH / FONT_WIDTH)
-#define NUM_ROWS    (CUR_TERMINAL_HEIGHT / FONT_HEIGHT)
-#define MAX_COLS    (MAX_TERMINAL_WIDTH / FONT_WIDTH)
-#define MAX_ROWS    (MAX_TERMINAL_HEIGHT / FONT_HEIGHT)
-#define BLACK 0xFF000000
-#define WHITE 0xFFFFFFFF
 
 /*
  * macro used to target a specific video plane or planes when writing
@@ -54,7 +29,7 @@ int screen_x;
 int screen_y;
 static char *video_mem = (char *) VIDEO;
 // Always keep the screen_char buffer its largest size (takes 2.4kB)
-static uint8_t screen_char[MAX_COLS * MAX_ROWS];
+uint8_t screen_char[MAX_COLS * MAX_ROWS];
 
 /**
  * Reset input point to the upper left corner of the screen
@@ -325,7 +300,7 @@ void putc(uint8_t c) {
         }
 
 //        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, ' ', WHITE, BLACK);
-        gui_print_char(' ', screen_x * FONT_WIDTH + TERMINAL_X, screen_y * FONT_HEIGHT + TERMINAL_Y);
+//        gui_print_char(' ', screen_x * FONT_WIDTH + TERMINAL_X, screen_y * FONT_HEIGHT + TERMINAL_Y);
 
         screen_char[screen_y * MAX_COLS + screen_x] = 0;
 
@@ -334,7 +309,7 @@ void putc(uint8_t c) {
         // Normal cases for a character
 
 //        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, c, WHITE, BLACK);
-        gui_print_char(c, screen_x * FONT_WIDTH + TERMINAL_X, screen_y * FONT_HEIGHT + TERMINAL_Y);
+//        gui_print_char(c, screen_x * FONT_WIDTH + TERMINAL_X, screen_y * FONT_HEIGHT + TERMINAL_Y);
 
         screen_char[screen_y * MAX_COLS + screen_x] = c;
         screen_x++;
@@ -400,7 +375,7 @@ void scroll_up() {
     for (y = 1; y < NUM_ROWS; y++) {
         for (x = 0; x < NUM_COLS; x++) {
             screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
-            gui_print_char(screen_char[(y - 1) * MAX_COLS + x], x * FONT_WIDTH + TERMINAL_X, (y - 1) * FONT_HEIGHT + TERMINAL_Y);
+//            gui_print_char(screen_char[(y - 1) * MAX_COLS + x], x * FONT_WIDTH + TERMINAL_X, (y - 1) * FONT_HEIGHT + TERMINAL_Y);
         }
     }
 //    vga_screen_copy(0, FONT_HEIGHT, 0, 0, CUR_TERMINAL_WIDTH, CUR_TERMINAL_HEIGHT - FONT_HEIGHT);
@@ -410,7 +385,7 @@ void scroll_up() {
     y = NUM_ROWS - 1;
     for (x = 0; x < NUM_COLS; x++) {
 //        vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
-        gui_print_char(' ', x * FONT_WIDTH + TERMINAL_X, y * FONT_HEIGHT + TERMINAL_Y);
+//        gui_print_char(' ', x * FONT_WIDTH + TERMINAL_X, y * FONT_HEIGHT + TERMINAL_Y);
         screen_char[y * MAX_COLS + x] = 0x0;
     }
     // Reset the cursor to the column 0, row (NUM_ROWS - 1)

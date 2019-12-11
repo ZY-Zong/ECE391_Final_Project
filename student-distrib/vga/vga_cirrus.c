@@ -122,10 +122,10 @@ static void cirrus_unlock(void) {
 
 /* Relock chipset-specific registers */
 /* (currently not used) */
-static void cirrus_lock(void) {
+/*static void cirrus_lock(void) {
     outb(0x06, SEQ_I);
-    outb(0x0F, SEQ_D);        /* relock cirrus special */
-}
+    outb(0x0F, SEQ_D);        *//* relock cirrus special *//*
+}*/
 
 static int cirrus_init();
 
@@ -225,11 +225,11 @@ static int cirrus_init() {
     unsigned char v;
     cirrus_unlock();
 
-    unsigned char partstatus;
+//    unsigned char partstatus;
     outb(0x27, __svgalib_CRT_I);
     cirrus_chiptype = inb(__svgalib_CRT_D) >> 2;
     cirrus_chiprev = 0;
-    partstatus = __svgalib_inCR(0x25);
+//    partstatus = __svgalib_inCR(0x25);
 
     /* Treat 5446 as 5436. */
     cirrus_chiptype = CLGD5436;
@@ -357,7 +357,7 @@ static int cirrus_init() {
     __svgalib_mmio_size = 32768;
     __svgalib_mmio_base = 0xb8000;
     if (__svgalib_mmio_size)
-        MMIO_POINTER = __svgalib_mmio_base;
+        MMIO_POINTER = (unsigned char *) __svgalib_mmio_base;
 
     /**
      * {videoMemory = 4096, maxPixelClock4bpp = 0, maxPixelClock8bpp = 135300, maxPixelClock16bpp = 73216,

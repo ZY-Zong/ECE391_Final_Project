@@ -67,6 +67,23 @@ int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n);
 int8_t* strcpy(int8_t* dest, const int8_t*src);
 int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 
+#define CUR_TERMINAL_WIDTH 640
+#define CUR_TERMINAL_HEIGHT 480
+#define MAX_TERMINAL_WIDTH 640
+#define MAX_TERMINAL_HEIGHT 480
+#define SVGA_WIDTH 1024
+#define SVGA_HEIGHT 768
+#define ATTRIB      0x7
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 16
+#define NUM_COLS    (CUR_TERMINAL_WIDTH / FONT_WIDTH)
+#define NUM_ROWS    (CUR_TERMINAL_HEIGHT / FONT_HEIGHT)
+#define MAX_COLS    (MAX_TERMINAL_WIDTH / FONT_WIDTH)
+#define MAX_ROWS    (MAX_TERMINAL_HEIGHT / FONT_HEIGHT)
+#define BLACK 0xFF000000
+#define WHITE 0xFFFFFFFF
+extern uint8_t screen_char[MAX_COLS * MAX_ROWS];
+
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);
 int32_t safe_strncpy(int8_t* dest, const int8_t* src, int32_t n);

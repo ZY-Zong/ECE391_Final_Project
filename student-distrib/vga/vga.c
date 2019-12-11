@@ -88,6 +88,8 @@ int vga_clear(void) {
 }
 
 void vga_set_page(int page) {
+    if (page == curr_page) return;
+    curr_page = page;
     cirrus_setpage_64k(page);
 }
 
@@ -160,10 +162,10 @@ void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
     cirrus_accel_mmio_screen_copy(x1, y1, x2, y2, width, height);
 }
 
-void vga_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg) {
-    cirrus_accel_mmio_mono_expand(srcaddr, x2, y2, width, height, fg, bg);
+void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
+    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
 }
 
-void vga_buf_copy(int srcaddr, int x2, int y2, int width, int height) {
-    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
+void vga_set_start_addr(int address) {
+    cirrus_setdisplaystart(address);
 }

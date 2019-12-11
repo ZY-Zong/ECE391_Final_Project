@@ -9,6 +9,6 @@
 
 #include "gui_objs.h"
 
-void gui_print_char(char ch, int x, int y);
+void gui_render();
 
 #endif //_GUI_H

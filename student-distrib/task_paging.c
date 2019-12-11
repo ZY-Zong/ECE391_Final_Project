@@ -173,7 +173,7 @@ int task_turn_on_paging(const int id) {
 
     // Calculate the physical memory address, set at bit 22
     // TODO: note down
-    pde |= (((uint32_t) id + 6) << 22U);  // +2 for 8MB
+    pde |= (((uint32_t) id + 8) << 22U);  // +2 for 8MB
 
     // Set the flags of PDE 
     pde |= TASK_PAGE_FLAG;
