@@ -274,14 +274,14 @@ void update_system_time() {
       // Note: This uses the "read registers until you get the same values twice in a row" technique
       //       to avoid getting dodgy/inconsistent values due to RTC updates
  
-      while (get_update_in_progress_flag());                // Make sure an update isn't in progress
+      if (get_update_in_progress_flag()) return;                // Make sure an update isn't in progress
       second = get_RTC_register(0x00);
       minute = get_RTC_register(0x02);
       hour = get_RTC_register(0x04);
       day = get_RTC_register(0x07);
       month = get_RTC_register(0x08);
  
-      do {
+      /*do {
             last_second = second;
             last_minute = minute;
             last_hour = hour;
@@ -296,7 +296,7 @@ void update_system_time() {
             month = get_RTC_register(0x08);
             
       } while( (last_second != second) || (last_minute != minute) || (last_hour != hour) ||
-               (last_day != day) || (last_month != month) );
+               (last_day != day) || (last_month != month) );*/
  
       registerB = get_RTC_register(0x0B);
       
