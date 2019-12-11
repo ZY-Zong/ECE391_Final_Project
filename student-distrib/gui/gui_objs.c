@@ -173,6 +173,7 @@ vga_argb gui_win_right[WIN_RIGHT_WIDTH * WIN_RIGHT_HEIGHT];
 vga_argb gui_win_red[2][WIN_RED_B_WIDTH * WIN_RED_B_HEIGHT];
 vga_argb gui_win_yellow[2][WIN_YELLOW_B_WIDTH * WIN_YELLOW_B_HEIGHT];
 vga_argb gui_win_green[2][WIN_GREEN_B_WIDTH * WIN_GREEN_B_HEIGHT];
+vga_argb gui_win_grey[WIN_GREY_B_WIDTH * WIN_GREY_B_HEIGHT];
 
 
 static void init_window_obj() {
@@ -189,6 +190,8 @@ static void init_window_obj() {
     load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, gui_win_red[1]);
     load_png("yellow_b_c.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, gui_win_yellow[1]);
     load_png("green_b_c.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, gui_win_green[1]);
+
+    load_png("grey_b.png", WIN_GREY_B_WIDTH, WIN_GREY_B_HEIGHT, gui_win_grey);
 }
 
 #else
@@ -200,6 +203,7 @@ gui_object_t gui_obj_win_right;
 gui_object_t gui_obj_red[2];
 gui_object_t gui_obj_yellow[2];
 gui_object_t gui_obj_green[2];
+gui_object_t gui_obj_grey;
 
 #define WIN_UP_X       (0)
 #define WIN_UP_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
