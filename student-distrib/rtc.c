@@ -264,20 +264,41 @@ unsigned char get_RTC_register(int reg) {
  
 void update_system_time() {
 
-      unsigned char registerB; 
-      int32_t flag;
+      unsigned char last_second;
+      unsigned char last_minute;
+      unsigned char last_hour;
+      unsigned char last_day;
+      unsigned char last_month;
+      unsigned char registerB;
+ 
+      // Note: This uses the "read registers until you get the same values twice in a row" technique
+      //       to avoid getting dodgy/inconsistent values due to RTC updates
  
       while (get_update_in_progress_flag());                // Make sure an update isn't in progress
-      
-      cli_and_save(flag); {
-        second = get_RTC_register(0x00);
-        minute = get_RTC_register(0x02);
-        hour = get_RTC_register(0x04);
-        day = get_RTC_register(0x07);
-        month = get_RTC_register(0x08);
-        registerB = get_RTC_register(0x0B);
-      }
-      restore_flags(flag);
+      second = get_RTC_register(0x00);
+      minute = get_RTC_register(0x02);
+      hour = get_RTC_register(0x04);
+      day = get_RTC_register(0x07);
+      month = get_RTC_register(0x08);
+ 
+      do {
+            last_second = second;
+            last_minute = minute;
+            last_hour = hour;
+            last_day = day;
+            last_month = month;
+ 
+            while (get_update_in_progress_flag());           // Make sure an update isn't in progress
+            second = get_RTC_register(0x00);
+            minute = get_RTC_register(0x02);
+            hour = get_RTC_register(0x04);
+            day = get_RTC_register(0x07);
+            month = get_RTC_register(0x08);
+            
+      } while( (last_second != second) || (last_minute != minute) || (last_hour != hour) ||
+               (last_day != day) || (last_month != month) );
+ 
+      registerB = get_RTC_register(0x0B);
       
  
       // Convert BCD to binary values if necessary
