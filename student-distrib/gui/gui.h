@@ -6,6 +6,7 @@
 #define _GUI_H
 
 #include "gui_render.h"
+#include "gui_window.h"
 
 extern int gui_inited;
 

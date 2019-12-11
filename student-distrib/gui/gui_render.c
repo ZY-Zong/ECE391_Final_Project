@@ -4,9 +4,11 @@
 
 #include "gui_render.h"
 
+#include "../vga/vga.h"
+
 #include "gui.h"
 #include "gui_font_data.h"
-#include "../vga/vga.h"
+#include "gui_window.h"
 
 static int curr_y = 0;
 
@@ -60,7 +62,7 @@ static void draw_desktop() {
 #define WIN_LEFT_BORDER_LEFT_MARGIN     6
 #define WIN_DOWN_BORDER_LEFT_MARGIN     6
 #define WIN_DOWN_BORDER_UP_MARGIN       TERMINAL_HEIGHT
-#define WIN_RIGHT_BORDER_UP_MARGIN      TERMINAL_WIDTH
+#define WIN_RIGHT_BORDER_LEFT_MARGIN      TERMINAL_WIDTH
 #define WIN_RED_B_LEFT_MARGIN           4
 #define WIN_RED_B_UP_MARGIN             17
 #define WIN_YELLOW_B_LEFT_MARGIN        22
@@ -70,18 +72,25 @@ static void draw_desktop() {
 
 static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int g) {
 #if GUI_WINDOW_PNG_RENDER
-    vga_draw_img(gui_win_up, WIN_UP_WIDTH, WIN_UP_HEIGHT, terminal_x - WIN_UP_BORDER_LEFT_MARGIN, terminal_y - WIN_UP_BORDER_UP_MARGIN + curr_y);
-    vga_draw_img(gui_win_left, WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, terminal_x - WIN_LEFT_BORDER_LEFT_MARGIN, terminal_y + curr_y);
-    vga_draw_img(gui_win_down, WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, terminal_x - WIN_DOWN_BORDER_LEFT_MARGIN, terminal_y + WIN_DOWN_BORDER_UP_MARGIN + curr_y);
-    vga_draw_img(gui_win_right, WIN_RIGHT_WIDTH, WIN_RIGHT_HEIGHT, terminal_x + WIN_RIGHT_BORDER_UP_MARGIN, terminal_y + curr_y);
-    vga_draw_img(gui_win_red[r], WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, terminal_x + WIN_RED_B_LEFT_MARGIN, terminal_y - WIN_RED_B_UP_MARGIN + curr_y);
-    vga_draw_img(gui_win_yellow[y], WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, terminal_x + WIN_YELLOW_B_LEFT_MARGIN, terminal_y - WIN_YELLOW_B_UP_MARGIN + curr_y);
-    vga_draw_img(gui_win_green[g], WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, terminal_x + WIN_GREEN_B_LEFT_MARGIN, terminal_y - WIN_GREEN_B_UP_MARGIN + curr_y);
+    vga_draw_img(gui_win_up, WIN_UP_WIDTH, WIN_UP_HEIGHT, terminal_x - WIN_UP_BORDER_LEFT_MARGIN,
+                 terminal_y - WIN_UP_BORDER_UP_MARGIN + curr_y);
+    vga_draw_img(gui_win_left, WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, terminal_x - WIN_LEFT_BORDER_LEFT_MARGIN,
+                 terminal_y + curr_y);
+    vga_draw_img(gui_win_down, WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, terminal_x - WIN_DOWN_BORDER_LEFT_MARGIN,
+                 terminal_y + WIN_DOWN_BORDER_UP_MARGIN + curr_y);
+    vga_draw_img(gui_win_right, WIN_RIGHT_WIDTH, WIN_RIGHT_HEIGHT, terminal_x + WIN_RIGHT_BORDER_LEFT_MARGIN,
+                 terminal_y + curr_y);
+    vga_draw_img(gui_win_red[r], WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, terminal_x + WIN_RED_B_LEFT_MARGIN,
+                 terminal_y - WIN_RED_B_UP_MARGIN + curr_y);
+    vga_draw_img(gui_win_yellow[y], WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, terminal_x + WIN_YELLOW_B_LEFT_MARGIN,
+                 terminal_y - WIN_YELLOW_B_UP_MARGIN + curr_y);
+    vga_draw_img(gui_win_green[g], WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, terminal_x + WIN_GREEN_B_LEFT_MARGIN,
+                 terminal_y - WIN_GREEN_B_UP_MARGIN + curr_y);
 #else
     draw_object(&gui_obj_win_up, terminal_x - WIN_UP_BORDER_LEFT_MARGIN, terminal_y - WIN_UP_BORDER_UP_MARGIN);
     draw_object(&gui_obj_win_left, terminal_x - WIN_LEFT_BORDER_LEFT_MARGIN, terminal_y);
     draw_object(&gui_obj_win_down, terminal_x - WIN_DOWN_BORDER_LEFT_MARGIN, terminal_y + WIN_DOWN_BORDER_UP_MARGIN);
-    draw_object(&gui_obj_win_right, terminal_x + WIN_RIGHT_BORDER_UP_MARGIN, terminal_y);
+    draw_object(&gui_obj_win_right, terminal_x + WIN_RIGHT_BORDER_LEFT_MARGIN, terminal_y);
     draw_object(&gui_obj_red[r], terminal_x + WIN_RED_B_LEFT_MARGIN, terminal_y - WIN_RED_B_UP_MARGIN);
     draw_object(&gui_obj_yellow[y], terminal_x + WIN_YELLOW_B_LEFT_MARGIN, terminal_y - WIN_YELLOW_B_UP_MARGIN);
     draw_object(&gui_obj_green[g], terminal_x + WIN_GREEN_B_LEFT_MARGIN, terminal_y - WIN_GREEN_B_UP_MARGIN);
@@ -102,22 +111,20 @@ void gui_render() {
 
     if (!gui_inited) return;
 
-    static int terminal_x = 30;
-    static int terminal_y = 30;
-
     uint32_t flags;
     cli_and_save(flags);
     {
-        terminal_x += 1;
-        if (terminal_x > VGA_WIDTH - 30 - CUR_TERMINAL_WIDTH) terminal_x = 30;
-        terminal_y += 1;
-        if (terminal_y > VGA_HEIGHT - 30 - CUR_TERMINAL_HEIGHT) terminal_y = 30;
-
         curr_y = VGA_HEIGHT - curr_y;  // switch place to draw (double buffering)
 
         draw_desktop();
-        draw_window_border(terminal_x, terminal_y, 0, 0, 0);
-        draw_terminal_content((const char *) screen_char, MAX_ROWS, MAX_COLS, terminal_x, terminal_y);
+
+        for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+            if (window_stack[i] != NULL) {
+                draw_window_border(window_stack[i]->term_x, window_stack[i]->term_y, 0, 0, 0);
+                draw_terminal_content((const char *) window_stack[i]->screen_char, MAX_ROWS, MAX_COLS,
+                                      window_stack[i]->term_x, window_stack[i]->term_y);
+            }
+        }
 
         vga_set_start_addr(curr_y * VGA_BYTES_PER_LINE);
     }

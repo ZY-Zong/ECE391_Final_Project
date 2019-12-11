@@ -67,6 +67,7 @@ int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n);
 int8_t* strcpy(int8_t* dest, const int8_t*src);
 int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 
+// TODO: unify these constants
 #define CUR_TERMINAL_WIDTH 640
 #define CUR_TERMINAL_HEIGHT 480
 #define MAX_TERMINAL_WIDTH 640
