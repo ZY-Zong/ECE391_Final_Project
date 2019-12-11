@@ -5,6 +5,7 @@
 #include "gui.h"
 #include "gui_font_data.h"
 
+static int gui_inited = 0;
 static int curr_y = 0;
 
 static void inline draw_object(gui_object_t *obj, int x, int y) {
@@ -22,7 +23,12 @@ static void inline print_char(char ch, int x, int y) {
 }
 
 static void draw_desktop() {
-    draw_object(&gui_obj_desktop, 0, 0);
+//    draw_object(&gui_obj_desktop, 0, 0);
+    int page;
+    for (page = 0; page < VGA_SCREEN_BYTES / VGA_PAGE_SIZE; page++) {
+        vga_set_page(page + curr_y / 32);
+        memcpy(VIDEO, gui_obj_desktop.canvas + page * VGA_PAGE_SIZE, VGA_PAGE_SIZE);
+    }
 }
 
 /*
@@ -61,6 +67,9 @@ static void draw_terminal_content(const char *buf, int rows, int columns, int te
 }
 
 void gui_render() {
+
+    if (!gui_inited) return;
+
     uint32_t flags;
     cli_and_save(flags);
     {
@@ -73,4 +82,9 @@ void gui_render() {
         vga_set_start_addr(curr_y * VGA_BYTES_PER_LINE);
     }
     restore_flags(flags);
+}
+
+void gui_init() {
+    gui_obj_load();
+    gui_inited = 1;
 }

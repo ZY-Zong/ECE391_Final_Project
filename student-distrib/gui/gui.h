@@ -9,6 +9,7 @@
 
 #include "gui_objs.h"
 
+void gui_init();
 void gui_render();
 
 #endif //_GUI_H

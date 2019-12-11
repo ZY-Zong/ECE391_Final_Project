@@ -376,7 +376,7 @@ void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int h
 }
 
 // FIXME: comment or select a better one
-#define BUF_COPY_MID_ADDR ((unsigned int*) 0x000AF000)
+#define BUF_COPY_MID_ADDR ((unsigned int*) 0x000BC000)
 
 void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
     int destaddr;
@@ -398,7 +398,7 @@ void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width
         orb $0x02, %%al        \n\
         outb %%al, %%dx        \n\
     1:  movl (%%ebx), %%eax    \n\
-        movl %%eax, 0xAF000    \n\
+        movl %%eax, 0xBC000    \n\
         addl $4, %%ebx         \n\
         dec %%ecx              \n\
         jg 1b"                    \

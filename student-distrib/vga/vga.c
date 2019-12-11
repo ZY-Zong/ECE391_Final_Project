@@ -163,8 +163,7 @@ void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
 }
 
 void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
-//    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
-
+    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
 }
 
 void vga_set_start_addr(int address) {

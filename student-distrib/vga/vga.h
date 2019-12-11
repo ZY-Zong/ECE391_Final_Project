@@ -22,6 +22,8 @@
 #define VGA_BYTES_PER_LINE     (VGA_WIDTH * VGA_BYTES_PER_PIXEL)
 #define VGA_SCREEN_BYTES       (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_PIXEL)
 
+#define VGA_PAGE_SIZE    (0x10000)
+
 #define TEXT 	          0
 #define G1024x768x32K     23
 

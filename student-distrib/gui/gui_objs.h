@@ -12,8 +12,8 @@ struct gui_object_t {
     unsigned char* canvas;  // if NULL, object is on the video memory
     int x;
     int y;
-    int width;
-    int height;
+    unsigned int width;
+    unsigned int height;
 };
 
 #define GUI_FONT_FORECOLOR_ARGB    0xFFFFFFFF

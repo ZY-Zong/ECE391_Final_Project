@@ -9,8 +9,8 @@
 #include "../file_system.h"
 #include "upng.h"
 
-static unsigned char png_file_buf[MAX_PNG_SIZE];
-static unsigned char png_buf[MAX_PNG_SIZE];
+static unsigned char _png_file_buf[MAX_PNG_SIZE];
+static unsigned char _png_buf[MAX_PNG_SIZE];
 
 static unsigned char desktop_canvas[VGA_SCREEN_BYTES];
 
@@ -29,32 +29,21 @@ void ca_clear(unsigned char *canvas, unsigned int size) {
 
 void ca_draw_pixel(unsigned char *canvas, int x, int y, vga_argb argb) {
     unsigned long offset = y * vga_info.xbytes + x * VGA_BYTES_PER_PIXEL;
-    offset &= 0xFFFF;
     *(unsigned short *) (canvas + offset) =
             color_convert(rgb_blend(color_revert(*(unsigned short *) (canvas + offset)),
                                     argb,
-                                    ((argb >> 24) & 0xFF)));
+                                    alpha(argb)));
 }
 
-/**
- * Load an png from file and draw it to video memory or canvas buffer
- * @param fname       PNG filename
- * @param canvas      If NULL, png will be drawn to video memory at x_offset and y_offset.
- *                    If not NULL, png will be drawn to this canvas
- * @param x_offset    Starting X if the image
- * @param y_offset    Starting Y if the image
- * @return 0 for success, -1 for failure
- */
-int load_png(const char *fname, unsigned char *canvas, int x_offset, int y_offset,
-             gui_object_t *gui_object, int expected_width, int expected_height) {
+int load_png(const char *fname, int expected_width, int expected_height, vga_argb *png_data) {
     dentry_t test_png;
     int32_t readin_size;
 
     // Open the png file and read it into buffer
     int32_t read_png = read_dentry_by_name((const uint8_t *) fname, &test_png);
     if (0 == read_png) {
-        readin_size = read_data(test_png.inode_num, 0, png_file_buf, sizeof(png_file_buf));
-        if (readin_size == sizeof(png_file_buf)) {
+        readin_size = read_data(test_png.inode_num, 0, _png_file_buf, sizeof(_png_file_buf));
+        if (readin_size == sizeof(_png_file_buf)) {
             DEBUG_ERR("draw_png(): PNG BUFFER NOT ENOUGH!");
             return -1;
         }
@@ -68,54 +57,66 @@ int load_png(const char *fname, unsigned char *canvas, int x_offset, int y_offse
     unsigned height;
     unsigned px_size;
     const unsigned char *buffer;
-    vga_argb c;
     unsigned int idx;
 
-    upng = upng_new_from_file(png_file_buf, (long) readin_size);
-    upng.buffer = (unsigned char *) &png_buf;
+    upng = upng_new_from_file(_png_file_buf, (long) readin_size);
+    upng.buffer = (unsigned char *) &_png_buf;
     upng_decode(&upng);
-    if (upng_get_error(&upng) == UPNG_EOK) {
-        width = upng_get_width(&upng);
-        if (width != expected_width) {
-            DEBUG_WARN("draw_png(): %s does not meet expected width", fname);
-        }
-        height = upng_get_height(&upng);
-        if (height != expected_height) {
-            DEBUG_WARN("draw_png(): %s does not meet expected height", fname);
-        }
-        px_size = upng_get_pixelsize(&upng) / 8;
-        buffer = upng_get_buffer(&upng);
-        for (int j = 0; j < height; j++) {
-            for (int i = 0; i < width; i++) {
-                idx = (j * width + i) * px_size;
-                if (px_size == 3) {
-                    c = 0xFF << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
-                } else if (px_size == 4) {
-                    c = buffer[idx + 3] << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
-                } else {
-                    DEBUG_ERR("draw_png(): invalid pixel size %d", px_size);
-                    return -1;
-                }
-                if (canvas == NULL) {
-                    // Draw to video memory
-                    vga_set_color_argb(c);
-                    vga_draw_pixel(i + x_offset, j + y_offset);
-                } else {
-                    // Draw to canvas
-                    ca_draw_pixel(canvas, i + x_offset, j + y_offset, c);
-                }
-            }
-        }
-
-        gui_object->canvas = canvas;
-        gui_object->x = x_offset;
-        gui_object->y = y_offset;
-        gui_object->width = width;
-        gui_object->height = height;
-    } else {
+    if (upng_get_error(&upng) != UPNG_EOK) {
         DEBUG_ERR("draw_png: fail to decode png %s", fname);
         return -1;
     }
+
+    width = upng_get_width(&upng);
+    if (width != expected_width) {
+        DEBUG_WARN("draw_png(): %s does not meet expected width", fname);
+    }
+    height = upng_get_height(&upng);
+    if (height != expected_height) {
+        DEBUG_WARN("draw_png(): %s does not meet expected height", fname);
+    }
+
+    px_size = upng_get_pixelsize(&upng) / 8;
+    buffer = upng_get_buffer(&upng);
+
+    for (int j = 0; j < height; j++) {
+        for (int i = 0; i < width; i++) {
+            idx = (j * width + i) * px_size;
+            if (px_size == 3) {
+                png_data[j * width + i] = 0xFF000000 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
+            } else if (px_size == 4) {
+                png_data[j * width + i] =
+                        buffer[idx + 3] << 24 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
+            } else {
+                DEBUG_ERR("draw_png(): invalid pixel size %d", px_size);
+                return -1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int draw_png(vga_argb *png_data, unsigned width, unsigned height,
+             unsigned char *canvas, int x_offset, int y_offset, gui_object_t *gui_object) {
+    for (int j = 0; j < height; j++) {
+        for (int i = 0; i < width; i++) {
+            if (canvas == NULL) {
+                // Draw to video memory
+                vga_set_color_argb(png_data[j * width + i]);
+                vga_draw_pixel(i + x_offset, j + y_offset);
+            } else {
+                // Draw to canvas
+                ca_draw_pixel(canvas, i + x_offset, j + y_offset, png_data[j * width + i]);
+            }
+        }
+    }
+
+    gui_object->canvas = canvas;
+    gui_object->x = x_offset;
+    gui_object->y = y_offset;
+    gui_object->width = width;
+    gui_object->height = height;
 
     return 0;
 }
@@ -147,7 +148,7 @@ gui_object_t gui_get_obj_font(char ch) {
 
 static void init_desktop_obj() {
     ca_clear(desktop_canvas, sizeof(desktop_canvas));
-    load_png("background_a.png", NULL, 0, 2048 - VGA_HEIGHT, &gui_obj_desktop, VGA_WIDTH, VGA_HEIGHT);
+    load_png("background_a.png", desktop_canvas, 0, 0, &gui_obj_desktop, VGA_WIDTH, VGA_HEIGHT);
 }
 
 #define WIN_UP_X       (0)
