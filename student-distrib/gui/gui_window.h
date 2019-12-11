@@ -16,9 +16,6 @@ struct gui_window_t {
 
 #define GUI_MAX_WINDOW_NUM    3
 
-#define TERMINAL_WIDTH_PIXEL     640
-#define TERMINAL_HEIGHT_PIXEL    480
-
 #define GUI_WIN_INITIAL_TERM_X  50
 #define GUI_WIN_INITIAL_TERM_Y  50
 #define GUI_WIN_LEFT_RIGHT_MARGIN    6

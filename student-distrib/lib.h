@@ -6,6 +6,7 @@
 #define _LIB_H
 
 #include "types.h"
+
 // External variables that will be changed when switching terminals
 extern int screen_x;
 extern int screen_y;
@@ -67,23 +68,22 @@ int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n);
 int8_t* strcpy(int8_t* dest, const int8_t*src);
 int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 
-// TODO: unify these constants
-#define CUR_TERMINAL_WIDTH 640
-#define CUR_TERMINAL_HEIGHT 480
-#define MAX_TERMINAL_WIDTH 640
-#define MAX_TERMINAL_HEIGHT 480
-#define SVGA_WIDTH 1024
-#define SVGA_HEIGHT 768
+
+#define TERMINAL_WIDTH_PIXEL     640
+#define TERMINAL_HEIGHT_PIXEL    480
+
 #define ATTRIB      0x7
 #define FONT_WIDTH  8
 #define FONT_HEIGHT 16
-#define NUM_COLS    (CUR_TERMINAL_WIDTH / FONT_WIDTH)
-#define NUM_ROWS    (CUR_TERMINAL_HEIGHT / FONT_HEIGHT)
-#define MAX_COLS    (MAX_TERMINAL_WIDTH / FONT_WIDTH)
-#define MAX_ROWS    (MAX_TERMINAL_HEIGHT / FONT_HEIGHT)
+
+#define TERMINAL_TEXT_COLS    (TERMINAL_WIDTH_PIXEL / FONT_WIDTH)
+#define TERMINAL_TEXT_ROWS    (TERMINAL_HEIGHT_PIXEL / FONT_HEIGHT)
+
+// TODO: unify these two constants
 #define BLACK 0xFF000000
 #define WHITE 0xFFFFFFFF
-extern uint8_t screen_char[MAX_COLS * MAX_ROWS];
+
+extern uint8_t screen_char[TERMINAL_TEXT_COLS * TERMINAL_TEXT_ROWS];
 
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);

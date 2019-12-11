@@ -7,7 +7,6 @@
  */
 #include "mouse.h"
 #include "lib.h"
-#include "modex.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
 
@@ -16,8 +15,8 @@
 #define PORT_64 0x64
 #define ACK 0xFA
 #define RESET 0xFF
-#define SVGA_WIDTH 1024
-#define SVGA_HEIGHT 768
+#define VGA_WIDTH 1024
+#define VGA_HEIGHT 768
 #define BLACK 0xFF000000
 #define WHITE 0xFFFFFFFF
 /**
@@ -176,16 +175,16 @@ void mouse_interrupt_handler() {
 
         if (mouse_x + x_movement < 0) {
             mouse_x = 0;
-        } else if (mouse_x + x_movement > SVGA_WIDTH - 1 - CURSOR_WIDTH) {
-            mouse_x = SVGA_WIDTH - 1- CURSOR_WIDTH;
+        } else if (mouse_x + x_movement > VGA_WIDTH - 1 - CURSOR_WIDTH) {
+            mouse_x = VGA_WIDTH - 1- CURSOR_WIDTH;
         } else {
             mouse_x += x_movement;
         }
 
         if (mouse_y + y_movement < 0) {
             mouse_y = 0;
-        } else if (mouse_y + y_movement > SVGA_HEIGHT - 1 - CURSOR_HEIGHT) {
-            mouse_y = SVGA_HEIGHT - 1 - CURSOR_HEIGHT;
+        } else if (mouse_y + y_movement > VGA_HEIGHT - 1 - CURSOR_HEIGHT) {
+            mouse_y = VGA_HEIGHT - 1 - CURSOR_HEIGHT;
         } else {
             mouse_y += y_movement;
         }

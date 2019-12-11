@@ -118,10 +118,11 @@ void gui_render() {
 
         draw_desktop();
 
-        for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+        // Draw the buttom first
+        for (int i = GUI_MAX_WINDOW_NUM - 1; i >= 0; i--) {
             if (window_stack[i] != NULL) {
                 draw_window_border(window_stack[i]->term_x, window_stack[i]->term_y, 0, 0, 0);
-                draw_terminal_content((const char *) window_stack[i]->screen_char, MAX_ROWS, MAX_COLS,
+                draw_terminal_content((const char *) window_stack[i]->screen_char, TERMINAL_TEXT_ROWS, TERMINAL_TEXT_COLS,
                                       window_stack[i]->term_x, window_stack[i]->term_y);
             }
         }

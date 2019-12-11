@@ -2,6 +2,8 @@
 // Created by liuzikai on 12/10/19.
 //
 
+// TODO: apply locks carefully
+
 #include "gui_window.h"
 
 #include "../lib.h"
@@ -32,6 +34,7 @@ static int find_window_idx(const gui_window_t *win) {
 }
 
 int gui_new_window(gui_window_t *win, char *screen_buf) {
+
     if (find_window_idx(win) != -1) {
         DEBUG_ERR("gui_new_window(): window already exists");
         return -1;
@@ -65,7 +68,7 @@ int gui_activate_window(gui_window_t *win) {
 #endif
 
     // Put the window to the top of the stack
-    for (int i = 1; i <= idx; i++) {
+    for (int i = idx; i >= 1; i--) {
         window_stack[i] = window_stack[i - 1];
     }
     window_stack[0] = win;

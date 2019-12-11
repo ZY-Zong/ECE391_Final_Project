@@ -2,14 +2,6 @@
  * vim:ts=4 noexpandtab */
 
 #include "lib.h"
-#include "modex.h"
-#include "vga/vga.h"
-#include "gui/gui.h"
-
-// Constants for different sizes of screen
-#define MODE_SVGA
-// #define MODE_X
-
 
 /*
  * macro used to target a specific video plane or planes when writing
@@ -28,8 +20,9 @@ do {                                                                    \
 int screen_x;
 int screen_y;
 static char *video_mem = (char *) VIDEO;
+
 // Always keep the screen_char buffer its largest size (takes 2.4kB)
-uint8_t screen_char[MAX_COLS * MAX_ROWS];
+uint8_t screen_char[TERMINAL_TEXT_COLS * TERMINAL_TEXT_ROWS];
 
 /**
  * Reset input point to the upper left corner of the screen
@@ -46,30 +39,15 @@ void reset_cursor() {
  * Inputs: void
  * Return Value: none
  * Function: Clears video memory */
-#ifdef MODE_X
+
 void clear(void) {
-    int i, j;
-    for (i = 0; i < 4; i++) {  // Loop over four planes
-        SET_WRITE_MASK(1 << (8 + i));
-        for (j = 0; j < IMAGE_X_WIDTH * IMAGE_Y_DIM; j++) {
-            *(uint8_t *)(video_mem + j) = OFF_PIXEL;
-        }
-    }
-    for (i = 0; i < MAX_COLS; i++) {
-        for (j = 0; j < MAX_ROWS; j++) {
-            screen_char[j * MAX_COLS + i] = 0;
+    int x, y;
+    for (y = 0; y < TERMINAL_TEXT_ROWS; y++) {
+        for (x = 0; x < TERMINAL_TEXT_COLS; x++) {
+            screen_char[y * TERMINAL_TEXT_COLS + x] = ' ';
         }
     }
 }
-#endif
-
-#ifdef MODE_SVGA
-
-void clear(void) {
-    vga_clear();
-}
-
-#endif
 
 /* Standard printf().
  * Only supports the following format strings:
@@ -210,190 +188,75 @@ int32_t puts(int8_t *s) {
  * Inputs: uint_8* c = character to print
  * Return Value: void
  *  Function: Output a character to the console */
-#ifdef MODE_X
-void putc(uint8_t c) {
-    if(c == '\n' || c == '\r') {
-        if (screen_x < NUM_COLS - 1) {
-            int i;
-            for (i = screen_x; i < NUM_COLS; i++) {
-                screen_char[screen_y * MAX_COLS + i] = 0;
-            }
-        }
-        screen_x = 0;
-        screen_y++;
-        if (NUM_ROWS == screen_y) {
-            scroll_up();
-        }
-    } else if ('\b' == c) {
-        // If user types backspace
-        if (0 == screen_x) {
-            if (0 == screen_y) { // At the top left corner of the screen
-                return;
-            } else { // Originally at the start of a new line, now at the end of last line
-                screen_x = NUM_COLS - 1;
-                screen_y--;
-            }
-        } else { // Normal cases for backspace
-            screen_x--;
-        }
-        int i, j;
-        for (i = 0; i < 4; i++) {  // Loop over four planes
-            SET_WRITE_MASK(1 << (8 + i));
-            for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
-            }
-        }
-        screen_char[screen_y * MAX_COLS + screen_x] = 0;
-
-        // Don't increase screen_x since next time we need to start from the same location for a new character
-    } else {
-        // Normal cases for a character
-        int i, j;
-        for (i = 0; i < 4; i++) {  // Loop over four planes
-            SET_WRITE_MASK(1 << (8 + i));
-            for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2))) = font_data[c][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (screen_y * FONT_HEIGHT + j) + screen_x * 2 + 1))) = font_data[c][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
-            }
-        }
-        screen_char[screen_y * MAX_COLS + screen_x] = c;
-        screen_x++;
-        if (NUM_COLS == screen_x) {
-            // We need a new line
-            screen_x %= NUM_COLS;
-            screen_y++;
-            if (NUM_ROWS == screen_y) {
-                scroll_up();
-            }
-        }
-    }
-}
-#endif
-
-#ifdef MODE_SVGA
-
 void putc(uint8_t c) {
     if (c == '\n' || c == '\r') {
-        if (screen_x < NUM_COLS - 1) {
+        if (screen_x < TERMINAL_TEXT_COLS - 1) {
             int i;
-            for (i = screen_x; i < NUM_COLS; i++) {
-                screen_char[screen_y * MAX_COLS + i] = 0;
+            for (i = screen_x; i < TERMINAL_TEXT_COLS; i++) {
+                screen_char[screen_y * TERMINAL_TEXT_COLS + i] = 0;
             }
         }
         screen_x = 0;
         screen_y++;
-        if (NUM_ROWS == screen_y) {
+        if (TERMINAL_TEXT_ROWS == screen_y) {
             scroll_up();
         }
     } else if ('\b' == c) {
         // If user types backspace
         if (0 == screen_x) {
-            if (0 == screen_y) { // At the top left corner of the screen
+            if (0 == screen_y) {  // at the top left corner of the screen
                 return;
-            } else { // Originally at the start of a new line, now at the end of last line
-                screen_x = NUM_COLS - 1;
+            } else {  // originally at the start of a new line, now at the end of last line
+                screen_x = TERMINAL_TEXT_COLS - 1;
                 screen_y--;
             }
         } else { // Normal cases for backspace
             screen_x--;
         }
 
-//        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, ' ', WHITE, BLACK);
-//        gui_print_char(' ', screen_x * FONT_WIDTH + TERMINAL_X, screen_y * FONT_HEIGHT + TERMINAL_Y);
 
-        screen_char[screen_y * MAX_COLS + screen_x] = 0;
+        screen_char[screen_y * TERMINAL_TEXT_COLS + screen_x] = 0;
 
         // Don't increase screen_x since next time we need to start from the same location for a new character
     } else {
         // Normal cases for a character
 
-//        vga_print_char(screen_x * FONT_WIDTH, screen_y * FONT_HEIGHT, c, WHITE, BLACK);
-//        gui_print_char(c, screen_x * FONT_WIDTH + TERMINAL_X, screen_y * FONT_HEIGHT + TERMINAL_Y);
-
-        screen_char[screen_y * MAX_COLS + screen_x] = c;
+        screen_char[screen_y * TERMINAL_TEXT_COLS + screen_x] = c;
         screen_x++;
-        if (NUM_COLS == screen_x) {
+        if (TERMINAL_TEXT_COLS == screen_x) {
             // We need a new line
-            screen_x %= NUM_COLS;
+            screen_x %= TERMINAL_TEXT_COLS;
             screen_y++;
-            if (NUM_ROWS == screen_y) {
+            if (TERMINAL_TEXT_ROWS == screen_y) {
                 scroll_up();
             }
         }
     }
 }
 
-#endif
 /**
  * scroll_up
- * This function is called whenever the cursor moves to NUM_ROWS row (which should not happen).
+ * This function is called whenever the cursor moves to TERMINAL_TEXT_ROWS row (which should not happen).
  * Then we move the screen one line up so that we can continuously type words.
  * Side Effect: Discard the top most line of the screen.
  */
-#ifdef MODE_X
-void scroll_up() {
-    int x,y;
-    int i, j;
-    screen_x = 0;
-    screen_y = 0;
-    for (y = 1; y < NUM_ROWS; y++) {
-        for (x = 0; x < NUM_COLS; x++) {
-            for (i = 0; i < 4; i++) {  // Loop over four planes
-                SET_WRITE_MASK(1 << (8 + i));
-                for (j = 0; j < FONT_HEIGHT; j++) {
-                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2))) = font_data[screen_char[y * MAX_COLS + x]][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                    *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * ((y - 1) * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[screen_char[y * MAX_COLS + x]][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
-                }
-            }
-            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
-        }
-    }
-    // Clean up the last line
-    y = NUM_ROWS - 1;
-    for (x = 0; x < NUM_COLS; x++) {
-        for (i = 0; i < 4; i++) {  // Loop over four planes
-            SET_WRITE_MASK(1 << (8 + i));
-            for (j = 0; j < FONT_HEIGHT; j++) {
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * FONT_HEIGHT + j) + x * 2))) = font_data[' '][j] & (1 << (7 - i))? ON_PIXEL : OFF_PIXEL;
-                *(uint8_t *)(video_mem + ((IMAGE_X_WIDTH * (y * FONT_HEIGHT + j) + x * 2 + 1))) = font_data[' '][j] & (1 << (3 - i))? ON_PIXEL : OFF_PIXEL;
-            }
-        }
-
-    }
-    // Reset the cursor to the column 0, row (NUM_ROWS - 1)
-    screen_y = NUM_ROWS - 1;
-    screen_x = 0;
-}
-#endif
-
-#ifdef MODE_SVGA
-
 void scroll_up() {
     int x, y;
-
-    for (y = 1; y < NUM_ROWS; y++) {
-        for (x = 0; x < NUM_COLS; x++) {
-            screen_char[(y - 1) * MAX_COLS + x] = screen_char[y * MAX_COLS + x];
-//            gui_print_char(screen_char[(y - 1) * MAX_COLS + x], x * FONT_WIDTH + TERMINAL_X, (y - 1) * FONT_HEIGHT + TERMINAL_Y);
+    for (y = 1; y < TERMINAL_TEXT_ROWS; y++) {
+        for (x = 0; x < TERMINAL_TEXT_COLS; x++) {
+            screen_char[(y - 1) * TERMINAL_TEXT_COLS + x] = screen_char[y * TERMINAL_TEXT_COLS + x];
         }
     }
-//    vga_screen_copy(0, FONT_HEIGHT, 0, 0, CUR_TERMINAL_WIDTH, CUR_TERMINAL_HEIGHT - FONT_HEIGHT);
-//    vga_print_char_array(0, 0, (char *) screen_char, NUM_ROWS - 1, NUM_COLS, WHITE, BLACK);
 
     // Clean up the last line
-    y = NUM_ROWS - 1;
-    for (x = 0; x < NUM_COLS; x++) {
-//        vga_print_char(x * FONT_WIDTH, y * FONT_HEIGHT, ' ', WHITE, BLACK);
-//        gui_print_char(' ', x * FONT_WIDTH + TERMINAL_X, y * FONT_HEIGHT + TERMINAL_Y);
-        screen_char[y * MAX_COLS + x] = 0x0;
+    y = TERMINAL_TEXT_ROWS - 1;
+    for (x = 0; x < TERMINAL_TEXT_COLS; x++) {
+        screen_char[y * TERMINAL_TEXT_COLS + x] = 0x0;
     }
-    // Reset the cursor to the column 0, row (NUM_ROWS - 1)
-    screen_y = NUM_ROWS - 1;
+    // Reset the cursor to the column 0, row (TERMINAL_TEXT_ROWS - 1)
+    screen_y = TERMINAL_TEXT_ROWS - 1;
     screen_x = 0;
 }
-
-#endif
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
  * Inputs: uint32_t value = number to convert
@@ -685,7 +548,7 @@ int8_t *strncpy(int8_t *dest, const int8_t *src, uint32_t n) {
  * Function: increments video memory. To be used to test rtc */
 void test_interrupts(void) {
     int32_t i;
-    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
+    for (i = 0; i < TERMINAL_TEXT_ROWS * TERMINAL_TEXT_COLS; i++) {
         video_mem[i << 1]++;
     }
 }

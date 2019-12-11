@@ -13,7 +13,6 @@
 #include "rtc.h"
 #include "terminal.h"
 #include "task.h"
-#include "modex.h"
 #include "mouse.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
