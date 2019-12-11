@@ -41,11 +41,11 @@ unsigned char minute;
 unsigned char hour;
 unsigned char day;
 unsigned char month;
-unsigned int year;
+// unsigned int year;
 
 
 // Should be use as a seperate thread! There is infinit loop in it!
-void system_time_thread();
+void update_system_time();
 
 
 #endif // _RTC_H
