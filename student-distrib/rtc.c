@@ -65,8 +65,6 @@ void rtc_init() {
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
         outb((prev & 0xF0) | RTC_MIN_RATE, RTC_RW_DATA_PORT);   // write rate 1024 Hz to A
     
-        // for test 
-        update_system_time();
     }
     restore_flags(flags);
 }
@@ -85,6 +83,10 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
 
     cli_and_save(flags);
     {
+        
+        // for test 
+        update_system_time();
+        
         task_list_for_each_safe(node, &rtc_wait_list, temp) {
             task = task_from_node(node);
             task->rtc.counter--;
