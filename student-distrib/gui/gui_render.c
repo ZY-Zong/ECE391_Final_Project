@@ -9,8 +9,15 @@
 #include "gui.h"
 #include "gui_font_data.h"
 #include "gui_window.h"
+#include "qsort.h"
 
-static int curr_y = 0;
+static int curr_y = 0;  // double buffering y coordinate
+
+// Drawing optimization related
+int grid_count;
+int grid_x[GUI_MAX_WINDOW_NUM * 2 + 2];
+int grid_y[GUI_MAX_WINDOW_NUM * 2 + 2];
+gui_window_t *grid[GUI_MAX_WINDOW_NUM * 2 + 1][GUI_MAX_WINDOW_NUM * 2 + 1];  // [x index][y index]
 
 static void inline draw_object(gui_object_t *obj, int x, int y) {
     y += curr_y;  // double buffering
@@ -97,15 +104,32 @@ static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int
 #endif
 }
 
-static void draw_terminal_content(const char *buf, int rows, int columns, int terminal_x, int terminal_y) {
-    int x, y;
-    for (y = 0; y < rows; y++) {
-        for (x = 0; x < columns; x++) {
-            print_char(buf[y * columns + x],
-                       x * FONT_WIDTH + terminal_x, y * FONT_HEIGHT + terminal_y);
+static void draw_terminal_content(const char *buf, int buf_start_x, int buf_start_y, int buf_cols, int buf_rows,
+                                  int term_x, int term_y) {
+    for (int y = 0; y < buf_rows; y++) {
+        for (int x = 0; x < buf_cols; x++) {
+            print_char(buf[(y + buf_start_y) * TERMINAL_TEXT_COLS + (x + buf_start_x)],
+                       x * FONT_WIDTH + term_x, y * FONT_HEIGHT + term_y);
         }
     }
 }
+
+/**
+ * Find the window that has (part of) its body (terminal) visible on the given point
+ * @param x
+ * @param y
+ * @return
+ */
+static inline gui_window_t *find_visible_win_on(int x, int y) {
+    // From top to bottom
+    for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+        if (check_inside_window(x, y, window_stack[i]) == IN_BODY) return window_stack[i];
+    }
+    return NULL;
+}
+
+#define ceil_div(x, y)     (((x) + (y) - 1) / (y))
+#define floor_div(x, y)    ((x) / (y))
 
 void gui_render() {
 
@@ -114,19 +138,64 @@ void gui_render() {
     uint32_t flags;
     cli_and_save(flags);
     {
-        curr_y = VGA_HEIGHT - curr_y;  // switch place to draw (double buffering)
+        // Switch place to draw (double buffering)
+        curr_y = VGA_HEIGHT - curr_y;
 
+        /// Render desktop and status bar
         draw_desktop();
 
-        // Draw the buttom first
-        for (int i = GUI_MAX_WINDOW_NUM - 1; i >= 0; i--) {
-            if (window_stack[i] != NULL) {
-                draw_window_border(window_stack[i]->term_x, window_stack[i]->term_y, 0, 0, 0);
-                draw_terminal_content((const char *) window_stack[i]->screen_char, TERMINAL_TEXT_ROWS, TERMINAL_TEXT_COLS,
-                                      window_stack[i]->term_x, window_stack[i]->term_y);
+
+        /// Render Window
+
+        gui_window_t *win;
+
+        // Generate grids
+        grid_count = 1;
+        grid_x[0] = 0;
+        grid_y[0] = 0;
+        grid_x[1] = VGA_WIDTH;
+        grid_y[1] = VGA_HEIGHT;
+        for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+            win = window_stack[i];
+            if (win != NULL) {
+                grid_x[grid_count + 1] = win->term_x;
+                grid_y[grid_count + 1] = win->term_y;
+                grid_x[grid_count + 2] = win->term_x + TERMINAL_WIDTH_PIXEL;
+                grid_y[grid_count + 2] = win->term_y + TERMINAL_HEIGHT_PIXEL;
+                grid_count += 2;
+            }
+        }
+        quick_sort(grid_x, 0, grid_count);
+        quick_sort(grid_y, 0, grid_count);
+
+        // Fill grids
+        for (int idx = 0; idx < grid_count; idx++) {
+            for (int idy = 0; idy < grid_count; idy++) {
+                win = find_visible_win_on(grid_x[idx], grid_y[idy]);
+                grid[idx][idy] = win;
+                if (win != NULL) {
+                    int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
+                    int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);
+                    int buf_start_y = (grid_y[idy] - win->term_y) / FONT_HEIGHT;
+                    int buf_rows = ceil_div(grid_y[idy + 1] - grid_y[idy], FONT_HEIGHT);
+                    draw_terminal_content((const char *) win->screen_char, buf_start_x, buf_start_y,
+                                          buf_cols, buf_rows,
+                                          win->term_x + buf_start_x * FONT_WIDTH,
+                                          win->term_y + buf_start_y * FONT_HEIGHT);
+                }
             }
         }
 
+
+
+        /// Draw the buttom first
+        for (int i = GUI_MAX_WINDOW_NUM - 1; i >= 0; i--) {
+            if (window_stack[i] != NULL) {
+                draw_window_border(window_stack[i]->term_x, window_stack[i]->term_y, 0, 0, 0);
+            }
+        }
+
+        // Switch view
         vga_set_start_addr(curr_y * VGA_BYTES_PER_LINE);
     }
     restore_flags(flags);

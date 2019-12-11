@@ -35,4 +35,14 @@ void gui_handle_mouse_press(int x, int y);
 int gui_handle_mouse_move(int delta_x, int delta_y);
 void gui_handle_mouse_release(int x, int y);
 
+typedef enum cursor_position_t cursor_position_t;
+enum cursor_position_t {
+    NOT_IN_WINDOW,
+    IN_BODY,
+    IN_TITLE_BAR,
+    ON_BORDER
+};
+
+int check_inside_window(int x, int y, const gui_window_t *win);
+
 #endif //_GUI_WINDOW_H

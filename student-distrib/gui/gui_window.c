@@ -92,13 +92,6 @@ int gui_destroy_window(gui_window_t *win) {
     return 0;
 }
 
-typedef enum cursor_position_t cursor_position_t;
-enum cursor_position_t {
-    NOT_IN_WINDOW,
-    IN_BODY,
-    IN_TITLE_BAR
-};
-
 /**
  * Check whether the cursor is inside a window
  * @param x
@@ -117,7 +110,11 @@ int check_inside_window(int x, int y, const gui_window_t *win) {
     if (y < term_y) {
         return IN_TITLE_BAR;
     }
-    return IN_BODY;
+    if (x >= term_x && x < term_x + TERMINAL_WIDTH_PIXEL &&
+        y >= term_y && y < term_y + TERMINAL_HEIGHT_PIXEL) {
+        return IN_BODY;
+    }
+    return ON_BORDER;
 }
 
 void gui_handle_mouse_press(int x, int y) {
@@ -169,7 +166,7 @@ int is_valid_position(int term_x, int term_y) {
 int gui_handle_mouse_move(int delta_x, int delta_y) {
     if (!mouse_pressed_on_title) return 0;
 
-    gui_window_t* win = window_stack[0];
+    gui_window_t *win = window_stack[0];
 
     if (win == NULL) {
         DEBUG_ERR("gui_handle_mouse_move(): invalid top window!");
