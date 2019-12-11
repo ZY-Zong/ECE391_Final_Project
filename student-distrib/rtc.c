@@ -80,6 +80,9 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
     task_list_node_t* temp;
     task_t* task;
 
+    // for test 
+    update_system_time();
+
     cli_and_save(flags);
     {
         task_list_for_each_safe(node, &rtc_wait_list, temp) {
@@ -93,9 +96,6 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
                 wake_count++;
             }
         }
-
-        // for test 
-        update_system_time();
 
         rtc_restart_interrupt();  // to get another interrupt
         idt_send_eoi(hw_context.irq_exp_num);
