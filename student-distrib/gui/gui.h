@@ -5,11 +5,10 @@
 #ifndef _GUI_H
 #define _GUI_H
 
-#include "../vga/vga.h"
+#include "gui_render.h"
 
-#include "gui_objs.h"
+extern int gui_inited;
 
 void gui_init();
-void gui_render();
 
 #endif //_GUI_H

@@ -92,7 +92,7 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
 int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
                       unsigned char *canvas, int x_offset, int y_offset, gui_object_t *gui_object) {
 
-    gui_object->require_transparent = 0;
+    gui_object->transparent_color = 0;
 
     vga_argb color;
     for (int j = 0; j < height; j++) {
@@ -113,7 +113,7 @@ int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
                 // Draw to canvas
                 if (alpha(color) == 0) {
                     ca_draw_pixel(canvas, i + x_offset, j + y_offset, GUI_TRANSPARENT_COLOR);
-                    gui_object->require_transparent = 1;
+                    gui_object->transparent_color = GUI_TRANSPARENT_COLOR;
                 } else {
                     if (alpha(color) != 0xFF) {
                         DEBUG_WARN("render_png_to_obj(): obj has half-transparent pixel.");
@@ -155,7 +155,7 @@ static void init_font_obj(vga_rgb fg, vga_rgb bg) {
 gui_object_t gui_get_obj_font(char ch) {
     return (gui_object_t) {NULL,
                            (ch & 0x7F) * FONT_WIDTH, VGA_HEIGHT * 2 + (ch / 128) * FONT_HEIGHT,
-                           FONT_WIDTH, FONT_HEIGHT};
+                           FONT_WIDTH, FONT_HEIGHT, GUI_FONT_BACKCOLOR_ARGB};
 }
 
 static void init_desktop_obj() {

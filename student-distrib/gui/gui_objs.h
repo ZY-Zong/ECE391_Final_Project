@@ -7,7 +7,7 @@
 
 #include "../vga/vga.h"
 
-#define GUI_WINDOW_PNG_RENDER    0
+#define GUI_WINDOW_PNG_RENDER    1
 
 typedef struct gui_object_t gui_object_t;
 struct gui_object_t {
@@ -16,7 +16,7 @@ struct gui_object_t {
     int y;
     unsigned int width;
     unsigned int height;
-    int require_transparent;
+    vga_argb transparent_color;
 };
 
 #define GUI_FONT_FORECOLOR_ARGB    0xFFFFFFFF
