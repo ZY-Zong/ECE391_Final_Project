@@ -101,11 +101,12 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
             sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.
         }
 
+    // for test 
+    update_system_time();
+    
     }
     restore_flags(flags);
 
-    // for test 
-    update_system_time();
 }
 
 /**
