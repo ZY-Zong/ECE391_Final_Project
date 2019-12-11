@@ -235,13 +235,11 @@ int32_t system_rtc_close(int32_t fd) {
 
 #define CURRENT_YEAR        2019                            // Change this each year!
  
-int century_register = 0x00;                                // Set by ACPI table parsing code if possible
- 
-unsigned char second;
-unsigned char minute;
-unsigned char hour;
-unsigned char day;
-unsigned char month;
+static unsigned char second = 0;
+static unsigned char minute = 0;
+static unsigned char hour = 0;
+static unsigned char day = 0;
+static unsigned char month = 0;
 // unsigned int year;
 
 enum {
