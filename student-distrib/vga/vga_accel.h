@@ -130,8 +130,8 @@ void cirrus_accel_set_background_color(int bg);
 void cirrus_accel_mmio_set_raster_op(int rop);
 void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg);
 void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height);
-
-
-
+void cirrus_accel_set_transparency(int mode, int color);
+void cirrus_accel_mmio_sync();
+void cirrus_accel_set_mode(int m);
 
 #endif //_VGA_ACCEL_H

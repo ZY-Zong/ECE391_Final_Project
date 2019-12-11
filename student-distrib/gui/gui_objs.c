@@ -92,15 +92,34 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
 int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
                       unsigned char *canvas, int x_offset, int y_offset, gui_object_t *gui_object) {
 
+    gui_object->require_transparent = 0;
+
+    vga_argb color;
     for (int j = 0; j < height; j++) {
         for (int i = 0; i < width; i++) {
+            color = png_data[j * width + i];
             if (canvas == NULL) {
                 // Draw to video memory
-                vga_set_color_argb(png_data[j * width + i]);
+                if (alpha(color) == 0) {
+                    vga_set_color_argb(GUI_TRANSPARENT_COLOR);
+                } else {
+                    if (alpha(color) != 0xFF) {
+                        DEBUG_WARN("render_png_to_obj(): obj has half-transparent pixel.");
+                    }
+                    vga_set_color_argb(color);
+                }
                 vga_draw_pixel(i + x_offset, j + y_offset);
             } else {
                 // Draw to canvas
-                ca_draw_pixel(canvas, i + x_offset, j + y_offset, png_data[j * width + i]);
+                if (alpha(color) == 0) {
+                    ca_draw_pixel(canvas, i + x_offset, j + y_offset, GUI_TRANSPARENT_COLOR);
+                    gui_object->require_transparent = 1;
+                } else {
+                    if (alpha(color) != 0xFF) {
+                        DEBUG_WARN("render_png_to_obj(): obj has half-transparent pixel.");
+                    }
+                    ca_draw_pixel(canvas, i + x_offset, j + y_offset, png_data[j * width + i]);
+                }
             }
         }
     }
@@ -145,6 +164,8 @@ static void init_desktop_obj() {
     render_png_to_obj(_png_data, VGA_WIDTH, VGA_HEIGHT, desktop_canvas, 0, 0, &gui_obj_desktop);
 }
 
+#if GUI_WINDOW_PNG_RENDER
+
 vga_argb gui_win_up[WIN_UP_WIDTH * WIN_UP_HEIGHT];
 vga_argb gui_win_down[WIN_DOWN_WIDTH * WIN_DOWN_HEIGHT];
 vga_argb gui_win_left[WIN_LEFT_WIDTH * WIN_LEFT_HEIGHT];
@@ -154,7 +175,7 @@ vga_argb gui_win_yellow[2][WIN_YELLOW_B_WIDTH * WIN_YELLOW_B_HEIGHT];
 vga_argb gui_win_green[2][WIN_GREEN_B_WIDTH * WIN_GREEN_B_HEIGHT];
 
 
-static void init_window_png() {
+static void init_window_obj() {
     load_png("up_window.png", WIN_UP_WIDTH, WIN_UP_HEIGHT, gui_win_up);
     load_png("down_window.png", WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, gui_win_down);
     load_png("left_window.png", WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, gui_win_left);
@@ -170,8 +191,85 @@ static void init_window_png() {
     load_png("green_b_c.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, gui_win_green[1]);
 }
 
+#else
+
+gui_object_t gui_obj_win_up;
+gui_object_t gui_obj_win_down;
+gui_object_t gui_obj_win_left;
+gui_object_t gui_obj_win_right;
+gui_object_t gui_obj_red[2];
+gui_object_t gui_obj_yellow[2];
+gui_object_t gui_obj_green[2];
+
+#define WIN_UP_X       (0)
+#define WIN_UP_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_DOWN_X     (0)
+#define WIN_DOWN_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 25)
+#define WIN_LEFT_X     (VGA_WIDTH - 16)
+#define WIN_LEFT_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_RIGHT_X    (VGA_WIDTH - 8)
+#define WIN_RIGHT_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+
+#define WIN_RED_B_X         (16 * 41)
+#define WIN_RED_B_Y         (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_YELLOW_B_X      (16 * 41 + 16)
+#define WIN_YELLOW_B_Y      (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_GREEN_B_X       (16 * 41 + 16 + 16)
+#define WIN_GREEN_B_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_YELLOW_B_C_X    (16 * 41 + 16)
+#define WIN_YELLOW_B_C_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
+#define WIN_GREEN_B_C_X     (16 * 41 + 16 + 16)
+#define WIN_GREEN_B_C_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
+
+static void init_window_obj() {
+
+    load_png("up_window.png", WIN_UP_WIDTH, WIN_UP_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_UP_WIDTH, WIN_UP_HEIGHT, NULL, WIN_UP_X, WIN_UP_Y,
+                      &gui_obj_win_up);
+
+
+    load_png("down_window.png", WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, NULL, WIN_DOWN_X, WIN_DOWN_Y,
+                      &gui_obj_win_down);
+
+    load_png("left_window.png", WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, NULL, WIN_LEFT_X, WIN_LEFT_Y,
+                      &gui_obj_win_left);
+
+    load_png("right_window.png", WIN_RIGHT_WIDTH, WIN_RIGHT_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_RIGHT_WIDTH, WIN_RIGHT_HEIGHT, NULL, WIN_RIGHT_X, WIN_RIGHT_Y,
+                      &gui_obj_win_right);
+
+    load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, NULL, WIN_RED_B_X, WIN_RED_B_Y,
+                      &gui_obj_red[0]);
+
+    load_png("yellow_b.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, NULL, WIN_YELLOW_B_X, WIN_YELLOW_B_Y,
+                      &gui_obj_yellow[0]);
+
+    load_png("green_b.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y,
+                      &gui_obj_green[0]);
+
+    // FIXME: normal red button?
+    load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, NULL, WIN_RED_B_X, WIN_RED_B_Y,
+                      &gui_obj_red[1]);
+
+    load_png("yellow_b_c.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, NULL, WIN_YELLOW_B_C_X, WIN_YELLOW_B_C_Y,
+                      &gui_obj_yellow[1]);
+
+    load_png("green_b_c.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, NULL, WIN_GREEN_B_C_X, WIN_GREEN_B_C_Y,
+                      &gui_obj_green[1]);
+}
+
+#endif
+
 void gui_obj_load() {
     init_desktop_obj();
     init_font_obj(GUI_FONT_FORECOLOR_ARGB, GUI_FONT_BACKCOLOR_ARGB);
-    init_window_png();
+    init_window_obj();
 }

@@ -226,10 +226,6 @@ int __svgalib_accel_screenpitchinbytes;
 int __svgalib_accel_mode;
 int __svgalib_accel_bitmaptransparency;
 
-/* Flags for SetMode (accelerator interface). */
-#define BLITS_SYNC            0
-#define BLITS_IN_BACKGROUND        0x1
-
 unsigned char *MMIO_POINTER;
 unsigned long int __svgalib_mmio_base, __svgalib_mmio_size = 0;
 
@@ -284,13 +280,19 @@ void cirrus_accel_screen_copy(int x1, int y1, int x2, int y2, int width, int hei
     SETDESTADDR(destaddr);
     SETWIDTH(width);
     SETHEIGHT(height);
-    SETBLTMODE(dir);
+    if (__svgalib_accel_bitmaptransparency) {
+        SETBLTMODE(dir | TRANSPARENCYCOMPARE);
+    } else {
+        SETBLTMODE(dir);
+    }
     STARTBLT();
     if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
         WAITUNTILFINISHED();
 }
 
 void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
+    cirrus_accel_mmio_set_raster_op(ROP_COPY);
+
     int srcaddr, destaddr, dir;
     width *= __svgalib_accel_bytesperpixel;
     srcaddr = BLTBYTEADDRESS(x1, y1);
@@ -307,14 +309,17 @@ void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, in
     MMIOSETDESTADDR(destaddr);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
-    MMIOSETBLTMODE(dir);
+    if (__svgalib_accel_bitmaptransparency) {
+        MMIOSETBLTMODE(dir | TRANSPARENCYCOMPARE);
+    } else {
+        MMIOSETBLTMODE(dir);
+    }
     MMIOSTARTBLT();
     if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
         MMIOWAITUNTILFINISHED();
 }
 
-void cirrus_accel_set_foreground_color(int fg)
-{
+void cirrus_accel_set_foreground_color(int fg) {
     MMIOFINISHBACKGROUNDBLITS();
     if (__svgalib_accel_bytesperpixel == 1) {
         MMIOSETFOREGROUNDCOLOR(fg);
@@ -327,8 +332,7 @@ void cirrus_accel_set_foreground_color(int fg)
     MMIOSETFOREGROUNDCOLOR32(fg);
 }
 
-void cirrus_accel_set_background_color(int bg)
-{
+void cirrus_accel_set_background_color(int bg) {
     MMIOFINISHBACKGROUNDBLITS();
     if (__svgalib_accel_bytesperpixel == 1) {
         MMIOSETBACKGROUNDCOLOR(bg);
@@ -343,19 +347,19 @@ void cirrus_accel_set_background_color(int bg)
 
 static unsigned char cirrus_rop_map[] =
         {
-                0x0D,			/* ROP_COPY */
-                0x6D,			/* ROP_OR */
-                0x05,			/* ROP_AND */
-                0x59,			/* ROP_XOR */
-                0x0B			/* ROP_INVERT */
+                0x0D,            /* ROP_COPY */
+                0x6D,            /* ROP_OR */
+                0x05,            /* ROP_AND */
+                0x59,            /* ROP_XOR */
+                0x0B            /* ROP_INVERT */
         };
 
-void cirrus_accel_mmio_set_raster_op(int rop)
-{
+void cirrus_accel_mmio_set_raster_op(int rop) {
     MMIOFINISHBACKGROUNDBLITS();
     MMIOSETROP(cirrus_rop_map[rop]);
 }
 
+// FIXME: This function is still broken
 void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int height, int fg, int bg) {
 
     cirrus_accel_set_foreground_color(fg);
@@ -375,10 +379,10 @@ void cirrus_accel_mmio_mono_expand(int srcaddr, int x2, int y2, int width, int h
         MMIOWAITUNTILFINISHED();
 }
 
-// FIXME: comment or select a better one
+// FIXME: This function is still broken
 #define BUF_COPY_MID_ADDR ((unsigned int*) 0x000BC000)
 
-void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
+void cirrus_accel_mmio_buf_copy(unsigned int *srcaddr, int x2, int y2, int width, int height) {
     int destaddr;
     width *= __svgalib_accel_bytesperpixel;
     destaddr = BLTBYTEADDRESS(x2, y2);
@@ -404,7 +408,37 @@ void cirrus_accel_mmio_buf_copy(unsigned int* srcaddr, int x2, int y2, int width
         jg 1b"                    \
         :                         \
         : "b" (srcaddr), "c" (width * height * __svgalib_accel_bytesperpixel / sizeof(unsigned int))
-        : "memory", "cc");
+    : "memory", "cc");
     if (!(__svgalib_accel_mode & BLITS_IN_BACKGROUND))
         MMIOWAITUNTILFINISHED();
+}
+
+void cirrus_accel_set_transparency(int mode, int color) {
+    FINISHBACKGROUNDBLITS();
+    if (mode == DISABLE_TRANSPARENCY_COLOR) {
+        /* Disable. */
+        SETTRANSPARENCYCOLORMASK16(0xFFFF);
+        return;
+    }
+    if (mode == ENABLE_TRANSPARENCY_COLOR) {
+        if (__svgalib_accel_bytesperpixel == 1)
+            color += color << 8;
+        SETTRANSPARENCYCOLORMASK16(0x0000);
+        SETTRANSPARENCYCOLOR16(color);
+        return;
+    }
+    if (mode == DISABLE_BITMAP_TRANSPARENCY) {
+        __svgalib_accel_bitmaptransparency = 0;
+        return;
+    }
+    /* mode == ENABLE_BITMAP_TRANSPARENCY */
+    __svgalib_accel_bitmaptransparency = 1;
+}
+
+void cirrus_accel_mmio_sync() {
+    MMIOWAITUNTILFINISHED();
+}
+
+void cirrus_accel_set_mode(int m) {
+    __svgalib_accel_mode = m;
 }

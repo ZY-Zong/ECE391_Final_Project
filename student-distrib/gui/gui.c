@@ -11,9 +11,15 @@ static int curr_y = 0;
 static void inline draw_object(gui_object_t *obj, int x, int y) {
     y += curr_y;  // double buffering
     if (obj->canvas == NULL) {
+        if (obj->require_transparent) {
+            vga_set_transparent(ENABLE_TRANSPARENCY_COLOR, color_convert(GUI_TRANSPARENT_COLOR));
+        } else {
+            vga_set_transparent(DISABLE_TRANSPARENCY_COLOR, 0);
+        }
         vga_screen_copy(obj->x, obj->y, x, y, obj->width, obj->height);
     } else {
-        vga_buf_copy((unsigned int *) obj->canvas, x, y, obj->width, obj->height);
+        DEBUG_ERR("draw_object(): system-to-screen bitblt is still broken.");
+//        vga_buf_copy((unsigned int *) obj->canvas, x, y, obj->width, obj->height);
     }
 }
 
@@ -47,6 +53,7 @@ static void draw_desktop() {
  */
 
 static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int g) {
+#if GUI_WINDOW_PNG_RENDER
     vga_draw_img(gui_win_up, WIN_UP_WIDTH, WIN_UP_HEIGHT, terminal_x - 6, terminal_y - 21 + curr_y);
     vga_draw_img(gui_win_left, WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, terminal_x - 6, terminal_y + curr_y);
     vga_draw_img(gui_win_down, WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, terminal_x - 6, terminal_y + 480 + curr_y);
@@ -54,6 +61,15 @@ static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int
     vga_draw_img(gui_win_red[r], WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, terminal_x + 4, terminal_y - 17 + curr_y);
     vga_draw_img(gui_win_yellow[y], WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, terminal_x + 22, terminal_y - 17 + curr_y);
     vga_draw_img(gui_win_green[g], WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, terminal_x + 41, terminal_y - 17 + curr_y);
+#else
+    draw_object(&gui_obj_win_up, terminal_x - 6, terminal_y - 21);
+    draw_object(&gui_obj_win_left, terminal_x - 6, terminal_y);
+    draw_object(&gui_obj_win_down, terminal_x - 6, terminal_y + 480);
+    draw_object(&gui_obj_win_right, terminal_x + 640, terminal_y);
+    draw_object(&gui_obj_red[r], terminal_x + 4, terminal_y - 17);
+    draw_object(&gui_obj_yellow[y], terminal_x + 22, terminal_y - 17);
+    draw_object(&gui_obj_green[g], terminal_x + 41, terminal_y - 17);
+#endif
 }
 
 static void draw_terminal_content(const char *buf, int rows, int columns, int terminal_x, int terminal_y) {
