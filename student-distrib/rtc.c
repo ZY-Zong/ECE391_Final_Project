@@ -317,6 +317,9 @@ void update_system_time() {
       if (!(registerB & 0x02) && (hour & 0x80)) {
             hour = ((hour & 0x7F) + 12) % 24;
       }
+
+    terminal_focus_printf("second:%d, minute:%d, hour:%d\n", second, minute, hour);
+
 }
 
 // source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
