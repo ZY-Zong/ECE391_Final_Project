@@ -9,19 +9,11 @@
 #include "../file_system.h"
 #include "upng.h"
 
-static unsigned char _png_file_buf[MAX_PNG_SIZE];
-static unsigned char _png_buf[MAX_PNG_SIZE];
+static unsigned char _png_buf[MAX_PNG_SIZE];  // use as png channel buffer
+static vga_argb _png_data[VGA_WIDTH * VGA_HEIGHT];  // use as png file buffer and final png buffer
 
 static unsigned char desktop_canvas[VGA_SCREEN_BYTES];
-
 gui_object_t gui_obj_desktop;
-gui_object_t gui_obj_win_up;
-gui_object_t gui_obj_win_down;
-gui_object_t gui_obj_win_left;
-gui_object_t gui_obj_win_right;
-gui_object_t gui_obj_red[2];
-gui_object_t gui_obj_yellow[2];
-gui_object_t gui_obj_green[2];
 
 void ca_clear(unsigned char *canvas, unsigned int size) {
     memset(canvas, 0, size);
@@ -42,8 +34,8 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
     // Open the png file and read it into buffer
     int32_t read_png = read_dentry_by_name((const uint8_t *) fname, &test_png);
     if (0 == read_png) {
-        readin_size = read_data(test_png.inode_num, 0, _png_file_buf, sizeof(_png_file_buf));
-        if (readin_size == sizeof(_png_file_buf)) {
+        readin_size = read_data(test_png.inode_num, 0, (unsigned char *) _png_data, sizeof(_png_data));
+        if (readin_size == sizeof(_png_data)) {
             DEBUG_ERR("draw_png(): PNG BUFFER NOT ENOUGH!");
             return -1;
         }
@@ -59,7 +51,7 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
     const unsigned char *buffer;
     unsigned int idx;
 
-    upng = upng_new_from_file(_png_file_buf, (long) readin_size);
+    upng = upng_new_from_file((unsigned char *) _png_data, (long) readin_size);
     upng.buffer = (unsigned char *) &_png_buf;
     upng_decode(&upng);
     if (upng_get_error(&upng) != UPNG_EOK) {
@@ -97,8 +89,9 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
     return 0;
 }
 
-int draw_png(vga_argb *png_data, unsigned width, unsigned height,
-             unsigned char *canvas, int x_offset, int y_offset, gui_object_t *gui_object) {
+int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
+                      unsigned char *canvas, int x_offset, int y_offset, gui_object_t *gui_object) {
+
     for (int j = 0; j < height; j++) {
         for (int i = 0; i < width; i++) {
             if (canvas == NULL) {
@@ -148,57 +141,37 @@ gui_object_t gui_get_obj_font(char ch) {
 
 static void init_desktop_obj() {
     ca_clear(desktop_canvas, sizeof(desktop_canvas));
-    load_png("background_a.png", desktop_canvas, 0, 0, &gui_obj_desktop, VGA_WIDTH, VGA_HEIGHT);
+    load_png("background_a.png", VGA_WIDTH, VGA_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, VGA_WIDTH, VGA_HEIGHT, desktop_canvas, 0, 0, &gui_obj_desktop);
 }
 
-#define WIN_UP_X       (0)
-#define WIN_UP_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_DOWN_X     (0)
-#define WIN_DOWN_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 25)
-#define WIN_LEFT_X     (VGA_WIDTH - 16)
-#define WIN_LEFT_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_RIGHT_X    (VGA_WIDTH - 8)
-#define WIN_RIGHT_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+vga_argb gui_win_up[WIN_UP_WIDTH * WIN_UP_HEIGHT];
+vga_argb gui_win_down[WIN_DOWN_WIDTH * WIN_DOWN_HEIGHT];
+vga_argb gui_win_left[WIN_LEFT_WIDTH * WIN_LEFT_HEIGHT];
+vga_argb gui_win_right[WIN_RIGHT_WIDTH * WIN_RIGHT_HEIGHT];
+vga_argb gui_win_red[2][WIN_RED_B_WIDTH * WIN_RED_B_HEIGHT];
+vga_argb gui_win_yellow[2][WIN_YELLOW_B_WIDTH * WIN_YELLOW_B_HEIGHT];
+vga_argb gui_win_green[2][WIN_GREEN_B_WIDTH * WIN_GREEN_B_HEIGHT];
 
-#define WIN_RED_B_X         (16 * 41)
-#define WIN_RED_B_Y         (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_YELLOW_B_X      (16 * 41 + 16)
-#define WIN_YELLOW_B_Y      (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_GREEN_B_X       (16 * 41 + 16 + 16)
-#define WIN_GREEN_B_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
-#define WIN_YELLOW_B_C_X    (16 * 41 + 16)
-#define WIN_YELLOW_B_C_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
-#define WIN_GREEN_B_C_X     (16 * 41 + 16 + 16)
-#define WIN_GREEN_B_C_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
 
-static void init_window_obj() {
-    load_png("up_window.png", NULL, WIN_UP_X, WIN_UP_Y,
-             &gui_obj_win_up, 652, 21);
-    load_png("down_window.png", NULL, WIN_DOWN_X, WIN_DOWN_Y,
-             &gui_obj_win_down, 652, 4);
-    load_png("left_window.png", NULL, WIN_LEFT_X, WIN_LEFT_Y,
-             &gui_obj_win_left, 6, 480);
-    load_png("right_window.png", NULL, WIN_RIGHT_X, WIN_RIGHT_Y,
-             &gui_obj_win_right, 6, 480);
+static void init_window_png() {
+    load_png("up_window.png", WIN_UP_WIDTH, WIN_UP_HEIGHT, gui_win_up);
+    load_png("down_window.png", WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, gui_win_down);
+    load_png("left_window.png", WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, gui_win_left);
+    load_png("right_window.png", WIN_LEFT_WIDTH, WIN_LEFT_HEIGHT, gui_win_right);
 
-    load_png("red_b.png", NULL, WIN_RED_B_X, WIN_RED_B_Y,
-             &gui_obj_red[0], 11, 12);
-    load_png("yellow_b.png", NULL, WIN_YELLOW_B_X, WIN_YELLOW_B_Y,
-             &gui_obj_yellow[0], 12, 12);
-    load_png("green_b.png", NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y,
-             &gui_obj_green[0], 11, 12);
+    load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, gui_win_red[0]);
+    load_png("yellow_b.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, gui_win_yellow[0]);
+    load_png("green_b.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, gui_win_green[0]);
 
     // FIXME: normal red button?
-    load_png("red_b.png", NULL, WIN_RED_B_X, WIN_RED_B_Y,
-             &gui_obj_red[1], 11, 12);
-    load_png("yellow_b_c.png", NULL, WIN_YELLOW_B_C_X, WIN_YELLOW_B_C_Y,
-             &gui_obj_yellow[1], 12, 12);
-    load_png("green_b_c.png", NULL, WIN_GREEN_B_C_X, WIN_GREEN_B_C_Y,
-             &gui_obj_green[1], 11, 12);
+    load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, gui_win_red[1]);
+    load_png("yellow_b_c.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, gui_win_yellow[1]);
+    load_png("green_b_c.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, gui_win_green[1]);
 }
 
 void gui_obj_load() {
     init_desktop_obj();
     init_font_obj(GUI_FONT_FORECOLOR_ARGB, GUI_FONT_BACKCOLOR_ARGB);
-    init_window_obj();
+    init_window_png();
 }

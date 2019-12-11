@@ -22,13 +22,35 @@ struct gui_object_t {
 void gui_obj_load();
 
 gui_object_t gui_get_obj_font(char ch);
+
 extern gui_object_t gui_obj_desktop;
-extern gui_object_t gui_obj_win_up;
-extern gui_object_t gui_obj_win_down;
-extern gui_object_t gui_obj_win_left;
-extern gui_object_t gui_obj_win_right;
-extern gui_object_t gui_obj_red[2];
-extern gui_object_t gui_obj_yellow[2];
-extern gui_object_t gui_obj_green[2];
+
+#define WIN_UP_WIDTH    652
+#define WIN_UP_HEIGHT   21
+extern vga_argb gui_win_up[WIN_UP_WIDTH * WIN_UP_HEIGHT];
+
+#define WIN_DOWN_WIDTH 652
+#define WIN_DOWN_HEIGHT 4
+extern vga_argb gui_win_down[WIN_DOWN_WIDTH * WIN_DOWN_HEIGHT];
+
+#define WIN_LEFT_WIDTH 6
+#define WIN_LEFT_HEIGHT 480
+extern vga_argb gui_win_left[WIN_LEFT_WIDTH * WIN_LEFT_HEIGHT];
+
+#define WIN_RIGHT_WIDTH 6
+#define WIN_RIGHT_HEIGHT 480
+extern vga_argb gui_win_right[WIN_RIGHT_WIDTH * WIN_RIGHT_HEIGHT];
+
+#define WIN_RED_B_WIDTH 11
+#define WIN_RED_B_HEIGHT 12
+extern vga_argb gui_win_red[2][WIN_RED_B_WIDTH * WIN_RED_B_HEIGHT];
+
+#define WIN_YELLOW_B_WIDTH 12
+#define WIN_YELLOW_B_HEIGHT 12
+extern vga_argb gui_win_yellow[2][WIN_YELLOW_B_WIDTH * WIN_YELLOW_B_HEIGHT];
+
+#define WIN_GREEN_B_WIDTH 11
+#define WIN_GREEN_B_HEIGHT 12
+extern vga_argb gui_win_green[2][WIN_GREEN_B_WIDTH * WIN_GREEN_B_HEIGHT];
 
 #endif //_GUI_OBJS_H
