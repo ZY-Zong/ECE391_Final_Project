@@ -31,21 +31,9 @@ int32_t system_rtc_close(int32_t fd);
 
 // The followings are for system time 
 // Tingkai Liu 2019.12.10
-// source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
-#define CURRENT_YEAR        2019                            // Change this each year!
- 
-int century_register = 0x00;                                // Set by ACPI table parsing code if possible
- 
-unsigned char second;
-unsigned char minute;
-unsigned char hour;
-unsigned char day;
-unsigned char month;
-// unsigned int year;
 
-
-// Should be use as a seperate thread! There is infinit loop in it!
 void update_system_time();
+int32_t get_system_time(uint8_t* second_p, uint8_t* minute_p, uint8_t* hour_p, uint8_t* day_p, uint8_t* month_p);
 
 
 #endif // _RTC_H

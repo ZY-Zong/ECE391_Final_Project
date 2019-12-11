@@ -235,6 +235,17 @@ int32_t system_rtc_close(int32_t fd) {
 // source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
 /* down from here */
 
+#define CURRENT_YEAR        2019                            // Change this each year!
+ 
+int century_register = 0x00;                                // Set by ACPI table parsing code if possible
+ 
+unsigned char second;
+unsigned char minute;
+unsigned char hour;
+unsigned char day;
+unsigned char month;
+// unsigned int year;
+
 enum {
       cmos_address = 0x70,
       cmos_data    = 0x71
@@ -289,5 +300,19 @@ void update_system_time() {
 // source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
 /* up from here */
 
+/**
+ * Get the current system time by filling the pointers
+ * Should update before call 
+ */
+int32_t get_system_time(uint8_t* second_p, uint8_t* minute_p, uint8_t* hour_p, uint8_t* day_p, uint8_t* month_p){
+    if (second_p == NULL || minute_p == NULL || hour_p == NULL || day_p == NULL || month_p == NULL) return -1;
 
+    *second_p = second;
+    *minute_p = minute;
+    *hour_p = hour;
+    *day_p = day;
+    *month_p = month;
+    
+    return 0;
+}
 
