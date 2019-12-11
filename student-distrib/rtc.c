@@ -64,6 +64,9 @@ void rtc_init() {
         prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
         outb((prev & 0xF0) | RTC_MIN_RATE, RTC_RW_DATA_PORT);   // write rate 1024 Hz to A
+    
+        // for test 
+        update_system_time();
     }
     restore_flags(flags);
 }

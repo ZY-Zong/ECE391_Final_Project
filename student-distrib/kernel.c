@@ -192,8 +192,6 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Enabling Interrupts\n");
     sti();
 
-    // for test 
-    update_system_time();
 
 #ifdef RUN_TESTS
     /* Run tests */
