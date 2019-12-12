@@ -43,6 +43,7 @@ void beep(uint32_t frequency, uint32_t time_in_ms){
 
     // TODO: keep the beep for time_in_ms by sleeping 
     // for test: just use current rtc frequency
+    system_rtc_open(0);
     system_rtc_read(0,0,0);
 
     nosound();
