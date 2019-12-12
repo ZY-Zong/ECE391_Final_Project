@@ -22,4 +22,9 @@ void gui_render();
 #define WIN_GREEN_B_LEFT_MARGIN         41
 #define WIN_GREEN_B_UP_MARGIN           17
 
+#define CLOCK_START_X    (VGA_WIDTH - FONT_WIDTH * 8 - 5)
+#define CLOCK_START_Y    (3)
+
+#define STATUS_BAR_HEIGHT    23
+
 #endif //_GUI_RENDER_H

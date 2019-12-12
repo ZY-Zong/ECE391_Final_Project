@@ -220,9 +220,6 @@ static void render_windows() {
     }
 }
 
-#define CLOCK_START_X    (VGA_WIDTH - FONT_WIDTH * 8 - 5)
-#define CLOCK_START_Y    (3)
-
 static void render_clock() {
     print_char('0' + (rtc_hour / 10), CLOCK_START_X, CLOCK_START_Y);
     print_char('0' + (rtc_hour % 10), CLOCK_START_X + FONT_WIDTH, CLOCK_START_Y);

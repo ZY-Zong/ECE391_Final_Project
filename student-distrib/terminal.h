@@ -36,7 +36,7 @@ struct terminal_t {
     gui_window_t win;
 };
 
-#define TERMINAL_MAX_COUNT    3
+#define TERMINAL_MAX_COUNT    5
 
 #define NULL_TERMINAL_ID    0xECE666  // used for ter_id indicating no opened terminal
 

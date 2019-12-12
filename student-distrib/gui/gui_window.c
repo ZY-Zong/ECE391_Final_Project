@@ -170,6 +170,11 @@ void gui_handle_mouse_release(int x, int y) {
         DEBUG_PRINT("GUI window close");
 #endif
         task_halt_terminal(window_stack[0]->terminal_id);
+        return;
+    }
+    if (y < STATUS_BAR_HEIGHT && x >= CLOCK_START_X - 25 && x < CLOCK_START_X) {
+        system_execute((uint8_t *) "shell", 0, 1, NULL);
+        return;
     }
 }
 

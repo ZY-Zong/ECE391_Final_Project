@@ -15,7 +15,7 @@ struct gui_window_t {
     int terminal_id;
 };
 
-#define GUI_MAX_WINDOW_NUM    3
+#define GUI_MAX_WINDOW_NUM    5
 
 #define GUI_WIN_INITIAL_TERM_X  50
 #define GUI_WIN_INITIAL_TERM_Y  50

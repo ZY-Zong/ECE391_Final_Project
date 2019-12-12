@@ -141,17 +141,11 @@ int draw_png_to_screen(vga_argb *png_data, unsigned width, unsigned height, int 
         for (i = 0; i < width; i++) {
             color = png_data[j * width + i];
             // Draw to video memory
-            if (alpha(color) == 0) {
-                vga_set_color_argb(GUI_TRANSPARENT_COLOR);
-            } else {
-                if (alpha(color) != 0xFF) {
-                    DEBUG_WARN("render_png_to_obj(): obj has half-transparent pixel.");
-                }
-                vga_set_color_argb(color);
-            }
+            vga_set_color_argb(color);
             vga_draw_pixel(i + x_offset, j + y_offset);
         }
     }
+    return 0;
 }
 
 static void init_font_obj(vga_rgb fg, vga_rgb bg) {
@@ -327,16 +321,16 @@ static void init_window_obj() {
 
 void draw_start_ui() {
     load_png("goose.png", START_GOOSE_WIDTH, START_GOOSE_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GOOSE_X, START_GOOSE_Y, START_GOOSE_X, START_GOOSE_Y);
+    draw_png_to_screen(_png_data,  START_GOOSE_WIDTH, START_GOOSE_HEIGHT, START_GOOSE_X, START_GOOSE_Y);
 
     load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GOOSE_X, START_GOOSE_Y, START_GA_X_ONE, START_GA_Y_ONE);
+    draw_png_to_screen(_png_data,  START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_ONE, START_GA_Y_ONE);
 
     load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GOOSE_X, START_GOOSE_Y, START_GA_X_TWO, START_GA_Y_TWO);
+    draw_png_to_screen(_png_data,  START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_TWO, START_GA_Y_TWO);
 
     load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GOOSE_X, START_GOOSE_Y, START_GA_X_THREE, START_GA_Y_THREE);
+    draw_png_to_screen(_png_data,  START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_THREE, START_GA_Y_THREE);
 }
 
 

@@ -9,7 +9,7 @@ typedef unsigned int vga_rgb;
 typedef unsigned int vga_argb;     // 32-bit RRRRRRRRGGGGGGGGBBBBBBBB
 typedef unsigned short vga_color;  // 15-bit RRRRRGGGGGBBBBB
 
-#define VGA_DRAW_ALPHA_BLEND    0
+#define VGA_DRAW_ALPHA_BLEND    1
 
 #define alpha(argb)    (((argb) >> 24) & 0xFF)
 
