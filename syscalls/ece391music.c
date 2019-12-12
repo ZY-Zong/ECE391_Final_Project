@@ -177,7 +177,7 @@ void beep(uint32_t frequency, uint32_t time_in_ms){
     // Open a rtc and set frequency
     int i; // loop counter
     uint8_t buf[]="rtc";
-    uint32_t t = 2048;
+    uint32_t t = 512;
     int rtc_fd=ece391_open(buf); // default frequency 2Hz
     ece391_write(rtc_fd, &t, 4);
     
@@ -196,7 +196,7 @@ void beep(uint32_t frequency, uint32_t time_in_ms){
 void play_music_with_pu(song_interval_t* pu, int32_t length){
     int i=0; // loop counter 
     for (i=0; i<length; i++){
-        beep(pu[i].frequency, pu[i].time_in_half_sec);
+        beep(pu[i].frequency, pu[i].time_in_half_sec / 2);
     }
 }
 
