@@ -3,6 +3,44 @@
 #include "ece391support.h"
 #include "ece391syscall.h"
 
+typedef enum {
+        Do1L = 262,     // 261.63Hz 
+        Re2L = 294,     // 293.66Hz 
+        Mi3L = 330,     // 329.63Hz 
+        Fa4L = 349,     // 349.23Hz 
+        So5L = 392,     // 392.00Hz 
+        La6L = 440,     // 440.00Hz 
+        Si7L = 494,     // 493.88Hz 
+
+        Do1M = 523,     // 523.25Hz 
+        Re2M = 587,     // 587.33Hz 
+        Mi3M = 659,     // 659.26Hz 
+        Fa4M = 698,     // 698.46Hz 
+        So5M = 784,     // 784.00Hz 
+        La6M = 880,     // 880.00Hz 
+        Si7M = 988,     // 987.77Hz 
+
+        Do1H = 1047,     // 1046.50Hz
+        Re2H = 1175,     // 1174.66Hz
+        Mi3H = 1319,     // 1318.51Hz
+        Fa4H = 1397,     // 1396.91Hz
+        So5H = 1568,     // 1567.98Hz
+        La6H = 1760,     // 1760.00Hz
+        Si7H = 1976,     // 1975.53Hz
+
+        Silent = 0,
+        Finish = -1,
+        InfLoop = -2
+
+    } tone_t;
+
+typedef struct song_interval_t {
+    int32_t frequency;
+    int32_t time_in_half_sec;
+} song_interval_t;
+
+
+
 /**
  * Beep
  * @param   frequency: the frequency of beep 
@@ -11,7 +49,7 @@
  */
 void beep(uint32_t frequency, uint32_t time_in_half_sec){
     
-    if (frequency == 0 || time_in_half_sec == 0) return;
+    if (time_in_half_sec == 0) return;
     
     // Open a rtc and set frequency
     int i; // loop counter
@@ -28,6 +66,41 @@ void beep(uint32_t frequency, uint32_t time_in_half_sec){
     ece391_nosound(); // turn off the sound 
 
     ece391_close(rtc_fd);
+}
+
+void play_music(music_num){
+    switch (music_num){
+        case 0: 
+            beep(Do1H, 1);
+            beep(Re2H, 1);
+            beep(Mi3H, 1);
+            beep(Fa4H, 1);
+            beep(So5H, 1);
+            beep(Fa4H, 1);
+            beep(Mi3H, 1);
+            beep(Re2H, 1);
+            beep(Do1H, 1);
+            break;
+        case 1: 
+            beep(Do1H, 1);
+            beep(Do1H, 1);
+            beep(So5H, 1);
+            beep(So5H, 1);
+            beep(La6H, 1);
+            beep(La6H, 1);
+            beep(So5H, 1);
+            beep(0,1);
+            beep(Fa4H, 1);
+            beep(Fa4H, 1);
+            beep(Mi3H, 1);
+            beep(Mi3H, 1);
+            beep(Re2H, 1);
+            beep(Re2H, 1);
+            beep(Do1H, 1);
+            break;
+        default: 
+            break;
+    }
 }
 
 /**
@@ -55,8 +128,7 @@ int32_t atoi(uint8_t* buf, int32_t length){
 
 }
 
-
-int main(){
+int32_t main(){
     uint8_t buf[1024]; // big enough buffer 
     int i; // loop counter 
 
@@ -80,34 +152,13 @@ int main(){
             break;
         }
     }
-    uint32_t frequency = atoi(first_arg, first_arg_length);
-    if (frequency == -1 || first_arg_length == 0){
-        ece391_fdputs (1, (uint8_t*)"input format: <frequency> <time_in_half_sec>\n");
+    uint32_t music_num = atoi(first_arg, first_arg_length);
+    if (music_num == -1 || first_arg_length == 0){
+        ece391_fdputs (1, (uint8_t*)"input format: <music_num>\n");
         return -1;
     }
 
-    // Get rid of the spaces 
-    for (; i < 1024; i++){
-        if (buf[i]!=' ') break;
-    }
-
-    // Get the second argument 
-    uint8_t second_arg[128];
-    int32_t second_arg_length=0;
-    for (; i < 128; i++){
-        if ( buf[i] != ' ' && buf[i] != '\0' ){
-            second_arg[second_arg_length++]=buf[i];
-        } else {
-            break;
-        }
-    }
-    uint32_t time_in_half_sec = atoi(second_arg, second_arg_length);
-    if (time_in_half_sec == -1 || second_arg_length == 0){
-        ece391_fdputs (1, (uint8_t*)"input format: <frequency> <time_in_half_sec>\n");
-        return -1;
-    }
-
-    beep(frequency, time_in_half_sec);
+    play_music(music_num);
 
     return 0;
 }
