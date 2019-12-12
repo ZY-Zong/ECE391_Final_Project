@@ -5,7 +5,7 @@
 #ifndef _GUI_WINDOW_H
 #define _GUI_WINDOW_H
 
-#define GUI_WIN_ENABLE_LOG    1
+#define GUI_WIN_ENABLE_LOG    0
 
 typedef struct gui_window_t gui_window_t;
 struct gui_window_t {

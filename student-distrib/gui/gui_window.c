@@ -150,7 +150,7 @@ void gui_handle_mouse_press(int x, int y) {
     }
 
     if (i == GUI_MAX_WINDOW_NUM) {  // not in any window
-        if (y < STATUS_BAR_HEIGHT && x >= TERM_BUTTON_X && x < TERM_BUTTON_X + WIN_TERMINAL_B_WIDTH) {
+        if (y < STATUS_BAR_HEIGHT && x >= TERMINAL_B_X && x < TERMINAL_B_X + WIN_TERMINAL_B_WIDTH) {
             gui_term_button_pressed = 1;
         }
         return;
@@ -184,7 +184,7 @@ void gui_handle_mouse_release(int x, int y) {
     }
 
     gui_term_button_pressed = 0;  // always
-    if (y < STATUS_BAR_HEIGHT && x >= TERM_BUTTON_X && x < TERM_BUTTON_X + WIN_TERMINAL_B_WIDTH) {
+    if (y < STATUS_BAR_HEIGHT && x >= TERMINAL_B_X && x < TERMINAL_B_X + WIN_TERMINAL_B_WIDTH) {
         system_execute((uint8_t *) "shell", 0, 1, NULL);
         return;
     }

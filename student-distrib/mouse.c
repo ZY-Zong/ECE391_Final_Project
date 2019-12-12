@@ -41,9 +41,8 @@
 uint8_t read_from_60();
 void write_byte_to_port(uint8_t byte, uint8_t port);
 void send_command_to_60(uint8_t command);
-static int16_t mouse_x = 0;
-static int16_t mouse_y = 0;
-static unsigned int origin_pixels[CURSOR_WIDTH][CURSOR_HEIGHT];
+static int16_t mouse_x = 945;
+static int16_t mouse_y = 30;
 
 static uint8_t last_flags = 0;
 
@@ -101,13 +100,8 @@ void mouse_init() {
 //    }
     // Enable Packet Streaming
     send_command_to_60(0xF4);
-    // Initialize the buffer
-    int i, j;
-    for (i = 0; i < CURSOR_WIDTH; i++) {
-        for (j = 0; j < CURSOR_HEIGHT; j++) {
-            origin_pixels[i][j] = BLACK;
-        }
-    }
+
+    Cursor_Set_XY(mouse_x, mouse_y);
 }
 asmlinkage void mouse_interrupt_handler(hw_context_t hw_context) {
 
@@ -131,27 +125,27 @@ asmlinkage void mouse_interrupt_handler(hw_context_t hw_context) {
         int32_t x_movement = read_from_60();
         int32_t y_movement = read_from_60();
         if (!(flags & VERIFY_ONE)) {
-            printf("mouse packet not aligned!\n");
+//            printf("mouse packet not aligned!\n");
             return;
         }
         if ((flags & X_OVERFLOW) || (flags & Y_OVERFLOW)) {
-            printf("mouse overflow occurred!\n");
+//            printf("mouse overflow occurred!\n");
             return;
         }
         // Button press
         if (!(last_flags & LEFT_BUTTON) && (flags & LEFT_BUTTON)) {
-            printf("left button pressed\n");
+//            printf("left button pressed\n");
             gui_handle_mouse_press(mouse_x, mouse_y);
         }
         if ((last_flags & LEFT_BUTTON) && !(flags & LEFT_BUTTON)) {
-            printf("left button released\n");
+//            printf("left button released\n");
             gui_handle_mouse_release(mouse_x, mouse_y);
         }
         if (flags & MID_BUTTON) {
-            printf("middle button pressed\n");
+//            printf("middle button pressed\n");
         }
         if (flags & RIGHT_BUTTON) {
-            printf("right button pressed\n");
+//            printf("right button pressed\n");
         }
         // Preserve the original color of pixels at old position of cursor
 //        int i, j;

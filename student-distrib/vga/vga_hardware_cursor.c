@@ -288,7 +288,6 @@ void hardware_cursor_init()
 //    Cursor_Set_Color( 0x0000003fUL, 0x003f0000UL );
 // INITIALIZE AND DISPLAY 32 X 32 HARDWARE CURSOR
     _32x32_Patterns_Load( _32x32_planes_0_1 );
-    Cursor_Set_XY( 0, 0 );
     _32x32_Cursor_Enable();
 // CHANGE LOCATION OF 32 X 32 HARDWARE CURSOR
 };

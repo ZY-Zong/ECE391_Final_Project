@@ -246,7 +246,7 @@ static void render_clock() {
 }
 
 static void render_term_button() {
-    draw_object(&gui_obj_terminal[gui_term_button_pressed], TERM_BUTTON_X, TERM_BUTTON_Y);
+    draw_object(&gui_obj_terminal[gui_term_button_pressed], TERMINAL_B_X, TERMINAL_B_Y);
 }
 
 void gui_render() {

@@ -261,7 +261,7 @@ gui_object_t gui_obj_terminal[2];
 #define START_GA_X_THREE    584
 #define START_GA_Y_THREE    468
 
-#define STARTUP_IMG_WAIT_COUNTER 70000000
+#define STARTUP_IMG_WAIT_COUNTER 100000000
 
 static void __sleep(int count) {
     int i;

@@ -491,8 +491,20 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
  * @param task
  * @note Wrap this function with a lock
  */
-static void tear_down_task(task_t* task) {
+static void tear_down_task(task_t *task) {
+
+
+    if (!task->valid) {
+        DEBUG_ERR("tear_down_task(): Invalid task.");
+        return;
+    }
+
+    task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
     task_t *parent = task->parent;
+
+    /** --------------- Phase 1. Remove current task from scheduler or wait list --------------- */
+
+    move_task_after_node_unsafe(task, &temp_list);
 
     /** --------------- Phase 2. Restore parent task to scheduler --------------- */
 
@@ -511,7 +523,11 @@ static void tear_down_task(task_t* task) {
 #endif
 
     // Deallocate file array
-    clear_file_array(&task->file_array);
+    if (task == running_task()) {
+        clear_file_array(&task->file_array);
+    }
+    // FIXME: clear_file_array() is designed for running_task(). Since actually we do nothing on all types of close()
+    //        we can skip this operation for now.
 
 #if TASK_ENABLE_CHECKPOINT
     checkpoint_task_closed_all_files();
@@ -536,13 +552,15 @@ static void tear_down_task(task_t* task) {
         terminal_vidmem_close(term_id);  // deallocate terminal video memory
         terminal_deallocate(task->terminal);  // deallocate terminal control block
     } else {
-        if (parent->terminal->terminal_id != term_id) {
-            DEBUG_ERR("system_halt(): task uses terminal %d but not own it, but its parent uses terminal %d",
-                      term_id, parent->terminal->terminal_id);
-        }
-        terminal_fg_task[parent->terminal->terminal_id] = parent;
-        if (focus_task_->terminal->terminal_id == parent->terminal->terminal_id) {
-            task_set_focus_task(parent);
+        if (parent) {
+            if (parent->terminal->terminal_id != term_id) {
+                DEBUG_ERR("system_halt(): task uses terminal %d but not own it, but its parent uses terminal %d",
+                          term_id, parent->terminal->terminal_id);
+            }
+            terminal_fg_task[parent->terminal->terminal_id] = parent;
+            if (focus_task_->terminal->terminal_id == parent->terminal->terminal_id) {
+                task_set_focus_task(parent);
+            }
         }
     }
 
@@ -560,7 +578,6 @@ int32_t system_halt(int32_t status) {
 
     // This whole function is wrapped in a lock
 
-    task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
     task_t *task = running_task();  // the task to halt
     task_t *parent = task->parent;
 
@@ -577,12 +594,7 @@ int32_t system_halt(int32_t status) {
     // Print an empty line at halt
     putc('\n');
 
-
-    /** --------------- Phase 1. Remove current task from scheduler --------------- */
-
-    sched_move_running_after_node_unsafe(&temp_list);
-
-    /** --------------- Phase 2 & 3 --------------- */
+    /** --------------- Phase 1, 2, 3 --------------- */
 
     tear_down_task(task);
 
@@ -645,7 +657,7 @@ static void init_task_main() {
         // It's OK to lock the whole function. New program will have flags with IF = 1.
         system_execute((uint8_t *) "idle", -1, 0, idle_task_main);
 
-        system_execute((uint8_t *) "shell", 0, 1, NULL);
+//        system_execute((uint8_t *) "shell", 0, 1, NULL);
 //        system_execute((uint8_t *) "shell", 0, 1, NULL);
 //        system_execute((uint8_t *) "shell", 0, 1, NULL);
 
@@ -653,20 +665,11 @@ static void init_task_main() {
     restore_flags(flags);
 
     while (1) {
-        if (task_count == 2) {
-            cli_and_save(flags);
-            {
-                system_execute((uint8_t *) "shell", 0, 1, NULL);
-//                terminal_focus_printf("<Last shell has halted. Restarted.>\n");  // put in newly started terminal
-            }
-            restore_flags(flags);
-        } else {
-            cli_and_save(flags);
-            {
-                sched_yield_unsafe();
-            }
-            restore_flags(flags);
+        cli_and_save(flags);
+        {
+            sched_yield_unsafe();
         }
+        restore_flags(flags);
     }
 
     cli_and_save(flags);

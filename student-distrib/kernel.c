@@ -161,10 +161,6 @@ void entry(unsigned long magic, unsigned long addr) {
     terminal_init();
     enable_irq(KEYBOARD_IRQ_NUM);
 
-    /* Init the mouse */
-    mouse_init();
-    enable_irq(MOUSE_IRQ_NUM);
-
     /* Init the RTC */
     rtc_init();
     enable_irq(RTC_IRQ_NUM);  // enable IRQ after setting up RTC
@@ -189,12 +185,17 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init signals */
     signal_init();
 
+    /* SVGA and GUI initialization */
     vga_init();
     vga_set_mode(G1024x768x32K);
     vga_clear();
-//    vga_accel_set_mode(BLITS_IN_BACKGROUND);
+    vga_accel_set_mode(BLITS_IN_BACKGROUND);
     gui_init();
     hardware_cursor_init();
+
+    /* Init the mouse */
+    mouse_init();
+    enable_irq(MOUSE_IRQ_NUM);
 
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close

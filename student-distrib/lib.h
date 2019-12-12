@@ -15,6 +15,14 @@ extern int screen_x;
 extern int screen_y;
 
 #define VIDEO       0xA0000
+
+/**
+ * putc() may directly output to physical video memory when focus terminal is NULL_TERMINAL_ID.
+ * But text must not write to SVGA video memory, or cached image in invisible part may get damaged.
+ * Also, it can't write to original 0xB8 since it's the MMIO address of Cirrus 5446.
+ *
+ * To change this, remember to change page table in x86_desc.S and constants in vidmem.c.
+ */
 #define VIDEO_TEXT  0xBF000
 
 /** System Calls */
@@ -82,10 +90,6 @@ int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 
 #define TERMINAL_TEXT_COLS    (TERMINAL_WIDTH_PIXEL / FONT_WIDTH)
 #define TERMINAL_TEXT_ROWS    (TERMINAL_HEIGHT_PIXEL / FONT_HEIGHT)
-
-// TODO: unify these two constants
-#define BLACK 0xFF000000
-#define WHITE 0xFFFFFFFF
 
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);
