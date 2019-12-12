@@ -83,7 +83,7 @@ union process_kernel_memory_t {
 
 /** ============== Task Managements ============== */
 
-#define TASK_MAX_COUNT    8  // maximum number of processes running at the same time
+#define TASK_MAX_COUNT    10  // maximum number of processes running at the same time
 extern volatile uint32_t task_count;
 
 task_t* running_task();
