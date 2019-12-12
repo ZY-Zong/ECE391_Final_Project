@@ -8,6 +8,8 @@
 
 #include "../lib.h"
 #include "../vga/vga.h"
+#include "gui_render.h"
+#include "gui_objs.h"
 
 gui_window_t *window_stack[GUI_MAX_WINDOW_NUM];
 static int mouse_pressed_on_title = 0;
@@ -103,11 +105,23 @@ int check_inside_window(int x, int y, const gui_window_t *win) {
     if (win == NULL) return NOT_IN_WINDOW;
     int term_x = win->term_x;
     int term_y = win->term_y;
-    if (x < term_x - GUI_WIN_LEFT_RIGHT_MARGIN || x > term_x + TERMINAL_WIDTH_PIXEL + GUI_WIN_LEFT_RIGHT_MARGIN ||
-        y < term_y - GUI_WIN_TITLE_BAR_HEIGHT || y > term_y + TERMINAL_HEIGHT_PIXEL + GUI_WIN_DOWN_MARGIN) {
+    if (x < term_x - GUI_WIN_LEFT_RIGHT_MARGIN || x >= term_x + TERMINAL_WIDTH_PIXEL + GUI_WIN_LEFT_RIGHT_MARGIN ||
+        y < term_y - GUI_WIN_TITLE_BAR_HEIGHT || y >= term_y + TERMINAL_HEIGHT_PIXEL + GUI_WIN_DOWN_MARGIN) {
         return NOT_IN_WINDOW;
     }
     if (y < term_y) {
+        if (x >= term_x + WIN_RED_B_LEFT_MARGIN && x < term_x + WIN_RED_B_LEFT_MARGIN + WIN_RED_B_WIDTH && 
+            y >= term_y - WIN_RED_B_UP_MARGIN && y < term_y + WIN_RED_B_UP_MARGIN + WIN_RED_B_HEIGHT) {
+            return IN_RED_BUTTON;
+        }
+        if (x >= term_x + WIN_YELLOW_B_LEFT_MARGIN && x < term_x + WIN_YELLOW_B_LEFT_MARGIN + WIN_YELLOW_B_WIDTH &&
+            y >= term_y - WIN_YELLOW_B_UP_MARGIN && y < term_y + WIN_YELLOW_B_UP_MARGIN + WIN_YELLOW_B_HEIGHT) {
+            return IN_YELLOW_BUTTON;
+        }
+        if (x >= term_x + WIN_GREEN_B_LEFT_MARGIN && x < term_x + WIN_GREEN_B_LEFT_MARGIN + WIN_GREEN_B_WIDTH &&
+            y >= term_y - WIN_GREEN_B_UP_MARGIN && y < term_y + WIN_GREEN_B_UP_MARGIN + WIN_GREEN_B_HEIGHT) {
+            return IN_GREEN_BUTTON;
+        }
         return IN_TITLE_BAR;
     }
     if (x >= term_x && x < term_x + TERMINAL_WIDTH_PIXEL &&
@@ -141,6 +155,10 @@ void gui_handle_mouse_press(int x, int y) {
 
 void gui_handle_mouse_release(int x, int y) {
     mouse_pressed_on_title = 0;
+    if (check_inside_window(x, y, window_stack[0]) == IN_RED_BUTTON) {
+        DEBUG_PRINT("GUI window close");
+        // TODO: close window
+    }
 }
 
 /**

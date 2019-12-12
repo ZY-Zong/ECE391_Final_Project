@@ -9,4 +9,17 @@
 
 void gui_render();
 
+#define WIN_UP_BORDER_LEFT_MARGIN       6
+#define WIN_UP_BORDER_UP_MARGIN         21
+#define WIN_LEFT_BORDER_LEFT_MARGIN     6
+#define WIN_DOWN_BORDER_LEFT_MARGIN     6
+#define WIN_DOWN_BORDER_UP_MARGIN       TERMINAL_HEIGHT_PIXEL
+#define WIN_RIGHT_BORDER_LEFT_MARGIN    TERMINAL_WIDTH_PIXEL
+#define WIN_RED_B_LEFT_MARGIN           4
+#define WIN_RED_B_UP_MARGIN             17
+#define WIN_YELLOW_B_LEFT_MARGIN        22
+#define WIN_YELLOW_B_UP_MARGIN          17
+#define WIN_GREEN_B_LEFT_MARGIN         41
+#define WIN_GREEN_B_UP_MARGIN           17
+
 #endif //_GUI_RENDER_H

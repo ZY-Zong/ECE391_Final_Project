@@ -40,7 +40,10 @@ enum cursor_position_t {
     NOT_IN_WINDOW,
     IN_BODY,
     IN_TITLE_BAR,
-    ON_BORDER
+    ON_BORDER,
+    IN_RED_BUTTON,
+    IN_YELLOW_BUTTON,
+    IN_GREEN_BUTTON
 };
 
 int check_inside_window(int x, int y, const gui_window_t *win);
