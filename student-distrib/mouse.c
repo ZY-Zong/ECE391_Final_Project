@@ -9,6 +9,7 @@
 #include "lib.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
+#include "vga/vga_hardware_cursor.h"
 
 // Local constants
 #define MOUSE_PORT_60 0x60
@@ -149,13 +150,13 @@ void mouse_interrupt_handler() {
             printf("right button pressed\n");
         }
         // Preserve the original color of pixels at old position of cursor
-        int i, j;
-        for (i = 0; i < CURSOR_WIDTH; i++) {
-            for (j = 0; j < CURSOR_HEIGHT; j++) {
-                vga_set_color_argb(origin_pixels[i][j] | 0xFF000000);
-                vga_draw_pixel(mouse_x + i, mouse_y + j);
-            }
-        }
+//        int i, j;
+//        for (i = 0; i < CURSOR_WIDTH; i++) {
+//            for (j = 0; j < CURSOR_HEIGHT; j++) {
+//                vga_set_color_argb(origin_pixels[i][j] | 0xFF000000);
+//                vga_draw_pixel(mouse_x + i, mouse_y + j);
+//            }
+//        }
         // Update mouse location
         if (flags & X_SIGN) {
             x_movement |= 0xFFFFFF00;
@@ -188,20 +189,22 @@ void mouse_interrupt_handler() {
         } else {
             mouse_y += y_movement;
         }
+        Cursor_Set_XY(mouse_x, mouse_y);
+
 
         // Record the current pixels covered by the cursor
-        for (i = 0; i < CURSOR_WIDTH; i++) {
-            for (j = 0; j < CURSOR_HEIGHT; j++) {
-                origin_pixels[i][j] = vga_get_pixel(mouse_x + i, mouse_y + j);
-            }
-        }
-
-        vga_set_color_argb(WHITE);
-        for (i = 0; i < CURSOR_WIDTH; i++) {
-            for (j = 0; j < CURSOR_HEIGHT; j++) {
-                vga_draw_pixel(mouse_x + i, mouse_y + j);
-            }
-        }
+//        for (i = 0; i < CURSOR_WIDTH; i++) {
+//            for (j = 0; j < CURSOR_HEIGHT; j++) {
+//                origin_pixels[i][j] = vga_get_pixel(mouse_x + i, mouse_y + j);
+//            }
+//        }
+//
+//        vga_set_color_argb(WHITE);
+//        for (i = 0; i < CURSOR_WIDTH; i++) {
+//            for (j = 0; j < CURSOR_HEIGHT; j++) {
+//                vga_draw_pixel(mouse_x + i, mouse_y + j);
+//            }
+//        }
 
         last_flags = flags;
     }

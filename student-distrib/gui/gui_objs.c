@@ -70,9 +70,9 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
 
     px_size = upng_get_pixelsize(&upng) / 8;
     buffer = upng_get_buffer(&upng);
-
-    for (int j = 0; j < height; j++) {
-        for (int i = 0; i < width; i++) {
+    int i, j;
+    for (j = 0; j < height; j++) {
+        for (i = 0; i < width; i++) {
             idx = (j * width + i) * px_size;
             if (px_size == 3) {
                 png_data[j * width + i] = 0xFF000000 | buffer[idx + 0] << 16 | buffer[idx + 1] << 8 | buffer[idx + 2];
@@ -95,8 +95,9 @@ int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
     gui_object->transparent_color = 0;
 
     vga_argb color;
-    for (int j = 0; j < height; j++) {
-        for (int i = 0; i < width; i++) {
+    int i, j;
+    for (j = 0; j < height; j++) {
+        for (i = 0; i < width; i++) {
             color = png_data[j * width + i];
             if (canvas == NULL) {
                 // Draw to video memory

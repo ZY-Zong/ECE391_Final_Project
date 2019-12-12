@@ -16,6 +16,7 @@
 #include "mouse.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
+#include "vga/vga_hardware_cursor.h"
 
 
 #define RUN_TESTS
@@ -190,6 +191,8 @@ void entry(unsigned long magic, unsigned long addr) {
     vga_clear();
     vga_accel_set_mode(BLITS_IN_BACKGROUND);
     gui_init();
+    hardware_cursor_init();
+
 
     /* Run tests */
 

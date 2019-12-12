@@ -109,8 +109,9 @@ static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int
 
 static inline void draw_terminal_content(const char *buf, int buf_start_x, int buf_start_y, int buf_cols, int buf_rows,
                                   int term_x, int term_y) {
-    for (int y = 0; y < buf_rows; y++) {
-        for (int x = 0; x < buf_cols; x++) {
+    int x, y;
+    for (y = 0; y < buf_rows; y++) {
+        for (x = 0; x < buf_cols; x++) {
             print_char(buf[(y + buf_start_y) * TERMINAL_TEXT_COLS + (x + buf_start_x)],
                        x * FONT_WIDTH + term_x, y * FONT_HEIGHT + term_y);
         }
@@ -125,7 +126,8 @@ static inline void draw_terminal_content(const char *buf, int buf_start_x, int b
  */
 static inline gui_window_t *find_visible_win_on(int x, int y) {
     // From top to bottom
-    for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+    int i;
+    for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
         if (check_inside_window(x, y, window_stack[i]) == IN_BODY) return window_stack[i];
     }
     return NULL;
@@ -158,7 +160,8 @@ void gui_render() {
         grid_y[0] = 0;
         grid_x[1] = VGA_WIDTH;
         grid_y[1] = VGA_HEIGHT;
-        for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+        int i;
+        for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
             win = window_stack[i];
             if (win != NULL) {
                 grid_x[grid_count + 1] = win->term_x;
@@ -172,8 +175,9 @@ void gui_render() {
         quick_sort(grid_y, 0, grid_count);
 
         // Fill grids
-        for (int idx = 0; idx < grid_count; idx++) {
-            for (int idy = 0; idy < grid_count; idy++) {
+        int idx, idy;
+        for (idx = 0; idx < grid_count; idx++) {
+            for (idy = 0; idy < grid_count; idy++) {
                 win = find_visible_win_on(grid_x[idx], grid_y[idy]);
                 grid[idx][idy] = win;
                 if (win != NULL) {
@@ -190,11 +194,11 @@ void gui_render() {
         }
 
         // Draw the inactive window, from bottom to top, except the top window
-        for (int i = GUI_MAX_WINDOW_NUM - 1; i >= 1; i--) {
+        for (i = GUI_MAX_WINDOW_NUM - 1; i >= 1; i--) {
             win = window_stack[i];
             if (win != NULL) {
-                for (int idx = 0; idx < grid_count; idx++) {
-                    for (int idy = 0; idy < grid_count; idy++) {
+                for (idx = 0; idx < grid_count; idx++) {
+                    for (idy = 0; idy < grid_count; idy++) {
                         if (grid[idx][idy] == win) {
                             int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
                             int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);

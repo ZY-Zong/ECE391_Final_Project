@@ -27,6 +27,12 @@ void vga_draw_pixel(int x, int y) {
 #endif
 }
 
+void vga_set_byte(unsigned long offset, unsigned char b) {
+    vga_set_page(offset >> 16);
+    offset &= 0xFFFF;
+    gr_writeb(b, offset);
+}
+
 /**
  * Get a pixel rgb
  * @param x    X coordinate of pixel
@@ -42,8 +48,9 @@ vga_rgb vga_get_pixel(int x, int y) {
 void vga_draw_img(const vga_argb *img_data, unsigned width, unsigned height, int start_x, int start_y) {
     unsigned long offset;
     vga_argb c;
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
+    int x, y;
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
 
             c = img_data[y * width + x];
 

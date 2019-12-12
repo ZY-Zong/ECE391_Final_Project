@@ -18,7 +18,8 @@ static int mouse_pressed_on_title = 0;
  * Initialize GUI window control
  */
 void gui_window_init() {
-    for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+    int i;
+    for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
         window_stack[i] = NULL;
     }
 }
@@ -29,7 +30,8 @@ void gui_window_init() {
  * @return Its index in window_stack, or -1 if it's not in the stack
  */
 static int find_window_idx(const gui_window_t *win) {
-    for (int i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+    int i;
+    for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
         if (window_stack[i] == win) return i;
     }
     return -1;
@@ -70,7 +72,8 @@ int gui_activate_window(gui_window_t *win) {
 #endif
 
     // Put the window to the top of the stack
-    for (int i = idx; i >= 1; i--) {
+    int i;
+    for (i = idx; i >= 1; i--) {
         window_stack[i] = window_stack[i - 1];
     }
     window_stack[0] = win;
@@ -86,7 +89,8 @@ int gui_destroy_window(gui_window_t *win) {
     }
 
     // Move all windows forward
-    for (int i = idx; i < GUI_MAX_WINDOW_NUM - 1; i++) {
+    int i;
+    for (i = idx; i < GUI_MAX_WINDOW_NUM - 1; i++) {
         window_stack[i] = window_stack[i + 1];
     }
     window_stack[GUI_MAX_WINDOW_NUM - 1] = NULL;

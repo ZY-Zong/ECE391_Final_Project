@@ -68,5 +68,6 @@ void vga_set_color_argb(vga_argb color);
 void vga_draw_pixel(int x, int y);
 vga_rgb vga_get_pixel(int x, int y);
 void vga_draw_img(const vga_argb *img_data, unsigned width, unsigned height, int start_x, int start_y);
+void vga_set_byte(unsigned long offset, unsigned char b);
 
 #endif //_VGA_DRAW_H
