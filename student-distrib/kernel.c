@@ -204,7 +204,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
 #ifdef RUN_TESTS
     /* Run tests */
-    launch_tests();
+//    launch_tests();
 #endif
     /* Execute the first program ("shell") ... */
     task_run_initial_task();  // run shell
