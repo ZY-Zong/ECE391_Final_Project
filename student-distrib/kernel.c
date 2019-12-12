@@ -193,19 +193,18 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init signals */
     signal_init();
 
+    vga_init();
+    vga_set_mode(G1024x768x32K);
+    vga_clear();
+//    vga_accel_set_mode(BLITS_IN_BACKGROUND);
+    gui_init();
+    hardware_cursor_init();
+
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
     printf("Enabling Interrupts\n");
     sti();
-
-
-    vga_init();
-    vga_set_mode(G1024x768x32K);
-    vga_clear();
-    vga_accel_set_mode(BLITS_IN_BACKGROUND);
-    gui_init();
-    hardware_cursor_init();
 
 #ifdef RUN_TESTS
     /* Run tests */

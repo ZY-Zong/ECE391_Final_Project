@@ -5,12 +5,14 @@
 #include "gui_render.h"
 
 #include "../vga/vga.h"
+#include "../terminal.h"
 
 #include "gui.h"
 #include "gui_font_data.h"
 #include "gui_window.h"
 #include "qsort.h"
 #include "gui_objs.h"
+#include "../vidmem.h"
 
 static int curr_y = 0;  // double buffering y coordinate
 
@@ -149,8 +151,10 @@ void gui_render() {
         /// Render desktop and status bar
         draw_desktop();
 
-
         /// Render Window
+
+        // Open all buffer
+        terminal_vidmem_set(NULL);
 
         gui_window_t *win;
 
@@ -223,8 +227,14 @@ void gui_render() {
             draw_window_border(win->term_x, win->term_y, 0, 0, 0);
         }
 
+        // Wait for BitBLT engine to complete
+        vga_accel_sync();
+
         // Switch view
         vga_set_start_addr(curr_y * VGA_BYTES_PER_LINE);
+
+        // Restore terminal mapping
+        terminal_vidmem_set(running_term()->terminal_id);
     }
     restore_flags(flags);
 }

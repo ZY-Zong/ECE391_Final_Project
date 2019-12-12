@@ -22,7 +22,7 @@ int screen_y;
 static char *video_mem = (char *) VIDEO;
 
 // Always keep the screen_char buffer its largest size (takes 2.4kB)
-uint8_t screen_char[TERMINAL_TEXT_COLS * TERMINAL_TEXT_ROWS];
+uint8_t *screen_char = (uint8_t *) VIDEO_TEXT;
 
 /**
  * Reset input point to the upper left corner of the screen

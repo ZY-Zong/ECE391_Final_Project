@@ -12,12 +12,12 @@
 #include "terminal.h"
 #include "file_system.h"
 
-#define     VIDMEM_PAGE_ENTRY         0xB8
+#define     VIDMEM_PAGE_ENTRY         0xA0
 
 #define     TASK_IMG_START            0x08000000  // 128MB
 #define     TASK_IMG_END              0x08400000  // 132MB
 #define     VIDMAP_PAGE_ENTRY         33          // 132MB / 4MB
-#define     VIDMAP_USER_START_ADDR    (TASK_IMG_END + VIDMEM_PAGE_ENTRY * SIZE_4K)  // 132MB + 0xB8 * 4K
+#define     VIDMAP_USER_START_ADDR    (TASK_IMG_END + VIDMEM_PAGE_ENTRY * SIZE_4K)  // 132MB + 0xA0 * 4K
 
 #define     USER_VRAM_PAGE_ENTRY        0xB9    // real VRAM is at 0xB8
 #define     VRAM_BUFFER_PD_ENTRY        (KERNEL_PAGE_OFFSET + 2)
@@ -71,12 +71,12 @@ void vidmem_init() {
         }
 
         // User video memory page
-        // Map the 0xB8 to corresponding page at (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (0xB9 + pid) * 4kB
+        // Map the 0xA0 to corresponding page at (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (0xB9 + pid) * 4kB
         set_PTE((PTE_t *) (&user_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY]),
                 (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (USER_VRAM_PAGE_ENTRY + i) * SIZE_4K, 1, 1, 1);
 
         // Kernel video memory page
-        // Map the 0xB8 to corresponding page at (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (0xB9 + pid) * 4kB
+        // Map the 0xA0 to corresponding page at (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (0xB9 + pid) * 4kB
         set_PTE((PTE_t *) (&kernel_video_memory_pt[i].entry[VIDMEM_PAGE_ENTRY]),
                 (VRAM_BUFFER_PD_ENTRY * ADDRESS_4MB) + (USER_VRAM_PAGE_ENTRY + i) * SIZE_4K, 1, 0, 1);
 

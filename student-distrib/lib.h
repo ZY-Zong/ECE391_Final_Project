@@ -15,6 +15,7 @@ extern int screen_x;
 extern int screen_y;
 
 #define VIDEO       0xA0000
+#define VIDEO_TEXT  0xA0000
 
 /** System Calls */
 
@@ -85,8 +86,6 @@ int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
 // TODO: unify these two constants
 #define BLACK 0xFF000000
 #define WHITE 0xFFFFFFFF
-
-extern uint8_t screen_char[TERMINAL_TEXT_COLS * TERMINAL_TEXT_ROWS];
 
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);
