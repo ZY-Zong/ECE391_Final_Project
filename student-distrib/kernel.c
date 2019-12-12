@@ -13,7 +13,6 @@
 #include "rtc.h"
 #include "terminal.h"
 #include "task.h"
-#include "modex.h"
 #include "mouse.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
@@ -31,10 +30,6 @@ extern void enable_paging();  // in boot.S
 void entry(unsigned long magic, unsigned long addr) {
 
     multiboot_info_t *mbi;
-
-    vga_init();
-    vga_set_mode(G1024x768x32K);
-    vga_clear();
 
     /* Am I booted by a Multiboot-compliant boot loader? */
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -190,7 +185,10 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Enabling Interrupts\n");
     sti();
 
-    gui_obj_load();
+    vga_init();
+    vga_set_mode(G1024x768x32K);
+    vga_clear();
+    gui_init();
 
     /* Run tests */
 

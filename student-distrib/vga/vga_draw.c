@@ -34,3 +34,20 @@ vga_rgb vga_get_pixel(int x, int y) {
     vga_set_page(offset >> 16);
     return color_revert(gr_readw(offset & 0xFFFF));
 }
+
+void vga_draw_img(const vga_argb *img_data, unsigned width, unsigned height, int start_x, int start_y) {
+    unsigned long offset;
+    vga_argb c;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+
+            c = img_data[y * width + x];
+
+            offset = (start_y + y) * vga_info.xbytes + (start_x + x) * VGA_BYTES_PER_PIXEL;
+            vga_set_page(offset >> 16);
+            offset &= 0xFFFF;
+
+            gr_writew(color_convert(rgb_blend(color_revert(gr_readw(offset)), c, alpha(c))), offset);
+        }
+    }
+}

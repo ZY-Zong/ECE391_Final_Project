@@ -162,11 +162,22 @@ void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height) {
     cirrus_accel_mmio_screen_copy(x1, y1, x2, y2, width, height);
 }
 
-void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
-//    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
-
-}
+// FIXME: This function is still broken
+/*void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height) {
+    cirrus_accel_mmio_buf_copy(srcaddr, x2, y2, width, height);
+}*/
 
 void vga_set_start_addr(int address) {
     cirrus_setdisplaystart(address);
+}
+
+void vga_set_transparent(int mode, int color) {
+    cirrus_accel_set_transparency(mode, color);
+}
+
+void vga_accel_sync() {
+    cirrus_accel_mmio_sync();
+}
+void vga_accel_set_mode(int m) {
+    cirrus_accel_set_mode(m);
 }

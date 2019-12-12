@@ -7,15 +7,16 @@
  */
 #include "mouse.h"
 #include "lib.h"
-#include "modex.h"
 #include "vga/vga.h"
+#include "gui/gui.h"
+
 // Local constants
 #define MOUSE_PORT_60 0x60
 #define PORT_64 0x64
 #define ACK 0xFA
 #define RESET 0xFF
-#define SVGA_WIDTH 1024
-#define SVGA_HEIGHT 768
+#define VGA_WIDTH 1024
+#define VGA_HEIGHT 768
 #define BLACK 0xFF000000
 #define WHITE 0xFFFFFFFF
 /**
@@ -42,6 +43,7 @@ static int16_t mouse_x = 0;
 static int16_t mouse_y = 0;
 static unsigned int origin_pixels[CURSOR_WIDTH][CURSOR_HEIGHT];
 
+static uint8_t last_flags = 0;
 
 /**
  *
@@ -132,8 +134,13 @@ void mouse_interrupt_handler() {
             return;
         }
         // Button press
-        if (flags & LEFT_BUTTON) {
+        if (!(last_flags & LEFT_BUTTON) && (flags & LEFT_BUTTON)) {
             printf("left button pressed\n");
+            gui_handle_mouse_press(mouse_x, mouse_y);
+        }
+        if ((last_flags & LEFT_BUTTON) && !(flags & LEFT_BUTTON)) {
+            printf("left button released\n");
+            gui_handle_mouse_release(mouse_x, mouse_y);
         }
         if (flags & MID_BUTTON) {
             printf("middle button pressed\n");
@@ -153,26 +160,35 @@ void mouse_interrupt_handler() {
         if (flags & X_SIGN) {
             x_movement |= 0xFFFFFF00;
         }
-        if (mouse_x + x_movement < 0) {
-            mouse_x = 0;
-        } else if (mouse_x + x_movement > SVGA_WIDTH - 1 - CURSOR_WIDTH) {
-            mouse_x = SVGA_WIDTH - 1- CURSOR_WIDTH;
-        } else {
-            mouse_x += x_movement;
-        }
         //printf("X movement = %d mouse_x = %d\n", x_movement, mouse_x);
         if (flags & Y_SIGN) {
             y_movement |= 0xFFFFFF00;
         }
+        //printf("Y movement = %d mouse_y = %d\n", y_movement, mouse_y);
+
         // TODO: For y_movement, should negate the result, don't know why.
-        if (mouse_y - y_movement < 0) {
-            mouse_y = 0;
-        } else if (mouse_y - y_movement > SVGA_HEIGHT - 1 - CURSOR_HEIGHT) {
-            mouse_y = SVGA_HEIGHT - 1 - CURSOR_HEIGHT;
-        } else {
-            mouse_y -= y_movement;
+        y_movement = -y_movement;
+
+        if (gui_handle_mouse_move(x_movement, y_movement) != 0) {  // movement that can drag window out of screen
+            x_movement = y_movement = 0;  // cancel the movement
         }
-        //printf("Y movement is %d mouse_y = %d\n", y_movement, mouse_y);
+
+        if (mouse_x + x_movement < 0) {
+            mouse_x = 0;
+        } else if (mouse_x + x_movement > VGA_WIDTH - 1 - CURSOR_WIDTH) {
+            mouse_x = VGA_WIDTH - 1- CURSOR_WIDTH;
+        } else {
+            mouse_x += x_movement;
+        }
+
+        if (mouse_y + y_movement < 0) {
+            mouse_y = 0;
+        } else if (mouse_y + y_movement > VGA_HEIGHT - 1 - CURSOR_HEIGHT) {
+            mouse_y = VGA_HEIGHT - 1 - CURSOR_HEIGHT;
+        } else {
+            mouse_y += y_movement;
+        }
+
         // Record the current pixels covered by the cursor
         for (i = 0; i < CURSOR_WIDTH; i++) {
             for (j = 0; j < CURSOR_HEIGHT; j++) {
@@ -186,5 +202,7 @@ void mouse_interrupt_handler() {
                 vga_draw_pixel(mouse_x + i, mouse_y + j);
             }
         }
+
+        last_flags = flags;
     }
 }

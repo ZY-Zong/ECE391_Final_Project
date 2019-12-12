@@ -22,6 +22,8 @@
 #define VGA_BYTES_PER_LINE     (VGA_WIDTH * VGA_BYTES_PER_PIXEL)
 #define VGA_SCREEN_BYTES       (VGA_WIDTH * VGA_HEIGHT * VGA_BYTES_PER_PIXEL)
 
+#define VGA_PAGE_SIZE    (0x10000)
+
 #define TEXT 	          0
 #define G1024x768x32K     23
 
@@ -44,7 +46,21 @@ void vga_screen_off();
 void vga_screen_on();
 
 void vga_screen_copy(int x1, int y1, int x2, int y2, int width, int height);
-void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height);
+//void vga_buf_copy(unsigned int* srcaddr, int x2, int y2, int width, int height);
+
+#define DISABLE_TRANSPARENCY_COLOR	0
+#define ENABLE_TRANSPARENCY_COLOR	1
+#define DISABLE_BITMAP_TRANSPARENCY	2
+#define ENABLE_BITMAP_TRANSPARENCY	3
+
+void vga_set_transparent(int mode, int color);
+
+void vga_accel_sync();
+
+#define BLITS_SYNC            0
+#define BLITS_IN_BACKGROUND   0x1
+
+void vga_accel_set_mode(int m);
 
 /* graphics mode information */
 typedef struct vga_info_t vga_info_t;
