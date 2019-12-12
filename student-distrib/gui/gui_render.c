@@ -13,6 +13,7 @@
 #include "qsort.h"
 #include "gui_objs.h"
 #include "../vidmem.h"
+#include "../rtc.h"
 
 static int curr_y = 0;  // double buffering y coordinate
 
@@ -42,7 +43,7 @@ static void inline print_char(char ch, int x, int y) {
     draw_object(&c, x, y);
 }
 
-static void draw_desktop() {
+static void render_desktop() {
 //    draw_object(&gui_obj_desktop, 0, 0);
     int page;
     for (page = 0; page < VGA_SCREEN_BYTES / VGA_PAGE_SIZE; page++) {
@@ -138,6 +139,93 @@ static inline gui_window_t *find_visible_win_on(int x, int y) {
 #define ceil_div(x, y)     (((x) + (y) - 1) / (y))
 #define floor_div(x, y)    ((x) / (y))
 
+static void render_windows() {
+    gui_window_t *win;
+
+    // Generate grids
+    grid_count = 1;
+    grid_x[0] = 0;
+    grid_y[0] = 0;
+    grid_x[1] = VGA_WIDTH;
+    grid_y[1] = VGA_HEIGHT;
+    int i;
+    for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
+        win = window_stack[i];
+        if (win != NULL) {
+            grid_x[grid_count + 1] = win->term_x;
+            grid_y[grid_count + 1] = win->term_y;
+            grid_x[grid_count + 2] = win->term_x + TERMINAL_WIDTH_PIXEL;
+            grid_y[grid_count + 2] = win->term_y + TERMINAL_HEIGHT_PIXEL;
+            grid_count += 2;
+        }
+    }
+    quick_sort(grid_x, 0, grid_count);
+    quick_sort(grid_y, 0, grid_count);
+
+    // Fill grids
+    int idx, idy;
+    for (idx = 0; idx < grid_count; idx++) {
+        for (idy = 0; idy < grid_count; idy++) {
+            win = find_visible_win_on(grid_x[idx], grid_y[idy]);
+            grid[idx][idy] = win;
+            if (win != NULL) {
+                int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
+                int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);
+                int buf_start_y = (grid_y[idy] - win->term_y) / FONT_HEIGHT;
+                int buf_rows = ceil_div(grid_y[idy + 1] - grid_y[idy], FONT_HEIGHT);
+                draw_terminal_content((const char *) win->screen_char, buf_start_x, buf_start_y,
+                                      buf_cols, buf_rows,
+                                      win->term_x + buf_start_x * FONT_WIDTH,
+                                      win->term_y + buf_start_y * FONT_HEIGHT);
+            }
+        }
+    }
+
+    // Draw the inactive window, from bottom to top, except the top window
+    for (i = GUI_MAX_WINDOW_NUM - 1; i >= 1; i--) {
+        win = window_stack[i];
+        if (win != NULL) {
+            for (idx = 0; idx < grid_count; idx++) {
+                for (idy = 0; idy < grid_count; idy++) {
+                    if (grid[idx][idy] == win) {
+                        int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
+                        int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);
+                        int buf_start_y = (grid_y[idy] - win->term_y) / FONT_HEIGHT;
+                        int buf_rows = ceil_div(grid_y[idy + 1] - grid_y[idy], FONT_HEIGHT);
+                        draw_terminal_content((const char *) win->screen_char, buf_start_x, buf_start_y,
+                                              buf_cols, buf_rows,
+                                              win->term_x + buf_start_x * FONT_WIDTH,
+                                              win->term_y + buf_start_y * FONT_HEIGHT);
+                    }
+                }
+            }
+            draw_window_border(win->term_x, win->term_y, -1, -1, -1);
+        }
+    }
+
+    // Draw the top window, which can't be covered by any window
+    if (window_stack[0] != NULL) {
+        win = window_stack[0];
+        draw_terminal_content((const char *) win->screen_char, 0, 0,
+                              TERMINAL_TEXT_COLS, TERMINAL_TEXT_ROWS, win->term_x, win->term_y);
+        draw_window_border(win->term_x, win->term_y, 0, 0, 0);
+    }
+}
+
+#define CLOCK_START_X    (VGA_WIDTH - FONT_WIDTH * 8 - 5)
+#define CLOCK_START_Y    (3)
+
+static void render_clock() {
+    print_char('0' + (rtc_hour / 10), CLOCK_START_X, CLOCK_START_Y);
+    print_char('0' + (rtc_hour % 10), CLOCK_START_X + FONT_WIDTH, CLOCK_START_Y);
+    print_char(':', CLOCK_START_X + FONT_WIDTH * 2, CLOCK_START_Y);
+    print_char('0' + (rtc_minute / 10), CLOCK_START_X + FONT_WIDTH * 3, CLOCK_START_Y);
+    print_char('0' + (rtc_minute % 10), CLOCK_START_X + FONT_WIDTH * 4, CLOCK_START_Y);
+    print_char(':', CLOCK_START_X + FONT_WIDTH * 5, CLOCK_START_Y);
+    print_char('0' + (rtc_second / 10), CLOCK_START_X + FONT_WIDTH * 6, CLOCK_START_Y);
+    print_char('0' + (rtc_second % 10), CLOCK_START_X + FONT_WIDTH * 7, CLOCK_START_Y);
+}
+
 void gui_render() {
 
     if (!gui_inited) return;
@@ -151,81 +239,14 @@ void gui_render() {
         // Open all buffer
         terminal_vidmem_set(NULL_TERMINAL_ID);
 
-        /// Render desktop and status bar
-        draw_desktop();
+        // Render desktop and status bar
+        render_desktop();
 
-        /// Render Window
+        // Render clock
+        render_clock();
 
-        gui_window_t *win;
-
-        // Generate grids
-        grid_count = 1;
-        grid_x[0] = 0;
-        grid_y[0] = 0;
-        grid_x[1] = VGA_WIDTH;
-        grid_y[1] = VGA_HEIGHT;
-        int i;
-        for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
-            win = window_stack[i];
-            if (win != NULL) {
-                grid_x[grid_count + 1] = win->term_x;
-                grid_y[grid_count + 1] = win->term_y;
-                grid_x[grid_count + 2] = win->term_x + TERMINAL_WIDTH_PIXEL;
-                grid_y[grid_count + 2] = win->term_y + TERMINAL_HEIGHT_PIXEL;
-                grid_count += 2;
-            }
-        }
-        quick_sort(grid_x, 0, grid_count);
-        quick_sort(grid_y, 0, grid_count);
-
-        // Fill grids
-        int idx, idy;
-        for (idx = 0; idx < grid_count; idx++) {
-            for (idy = 0; idy < grid_count; idy++) {
-                win = find_visible_win_on(grid_x[idx], grid_y[idy]);
-                grid[idx][idy] = win;
-                if (win != NULL) {
-                    int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
-                    int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);
-                    int buf_start_y = (grid_y[idy] - win->term_y) / FONT_HEIGHT;
-                    int buf_rows = ceil_div(grid_y[idy + 1] - grid_y[idy], FONT_HEIGHT);
-                    draw_terminal_content((const char *) win->screen_char, buf_start_x, buf_start_y,
-                                          buf_cols, buf_rows,
-                                          win->term_x + buf_start_x * FONT_WIDTH,
-                                          win->term_y + buf_start_y * FONT_HEIGHT);
-                }
-            }
-        }
-
-        // Draw the inactive window, from bottom to top, except the top window
-        for (i = GUI_MAX_WINDOW_NUM - 1; i >= 1; i--) {
-            win = window_stack[i];
-            if (win != NULL) {
-                for (idx = 0; idx < grid_count; idx++) {
-                    for (idy = 0; idy < grid_count; idy++) {
-                        if (grid[idx][idy] == win) {
-                            int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
-                            int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);
-                            int buf_start_y = (grid_y[idy] - win->term_y) / FONT_HEIGHT;
-                            int buf_rows = ceil_div(grid_y[idy + 1] - grid_y[idy], FONT_HEIGHT);
-                            draw_terminal_content((const char *) win->screen_char, buf_start_x, buf_start_y,
-                                                  buf_cols, buf_rows,
-                                                  win->term_x + buf_start_x * FONT_WIDTH,
-                                                  win->term_y + buf_start_y * FONT_HEIGHT);
-                        }
-                    }
-                }
-                draw_window_border(win->term_x, win->term_y, -1, -1, -1);
-            }
-        }
-
-        // Draw the top window, which can't be covered by any window
-        if (window_stack[0] != NULL) {
-            win = window_stack[0];
-            draw_terminal_content((const char *) win->screen_char, 0, 0,
-                                  TERMINAL_TEXT_COLS, TERMINAL_TEXT_ROWS, win->term_x, win->term_y);
-            draw_window_border(win->term_x, win->term_y, 0, 0, 0);
-        }
+        // Render Window
+        render_windows();
 
         // Wait for BitBLT engine to complete
         vga_accel_sync();

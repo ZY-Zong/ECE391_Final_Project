@@ -52,8 +52,8 @@ int gui_new_window(gui_window_t *win, char *screen_buf, int terminal_id) {
         return -1;
     }
 
-    win->term_x = GUI_WIN_INITIAL_TERM_X;
-    win->term_y = GUI_WIN_INITIAL_TERM_Y;
+    win->term_x = GUI_WIN_INITIAL_TERM_X + GUI_WIN_INITIAL_OFFSET_X * idx;
+    win->term_y = GUI_WIN_INITIAL_TERM_Y + GUI_WIN_INITIAL_OFFSET_Y * idx;
     win->screen_char = screen_buf;
     win->terminal_id = terminal_id;
 

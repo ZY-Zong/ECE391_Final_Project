@@ -35,6 +35,11 @@ int32_t system_rtc_close(int32_t fd);
 void update_system_time();
 int32_t get_system_time(uint8_t* second_p, uint8_t* minute_p, uint8_t* hour_p, uint8_t* day_p, uint8_t* month_p);
 
+extern unsigned char rtc_second;
+extern unsigned char rtc_minute;
+extern unsigned char rtc_hour;
+extern unsigned char rtc_day;
+extern unsigned char rtc_month;
 
 #endif // _RTC_H
 

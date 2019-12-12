@@ -19,6 +19,8 @@ struct gui_window_t {
 
 #define GUI_WIN_INITIAL_TERM_X  50
 #define GUI_WIN_INITIAL_TERM_Y  50
+#define GUI_WIN_INITIAL_OFFSET_X  50
+#define GUI_WIN_INITIAL_OFFSET_Y  50
 #define GUI_WIN_LEFT_RIGHT_MARGIN    6
 #define GUI_WIN_TITLE_BAR_HEIGHT    21
 #define GUI_WIN_DOWN_MARGIN    4
