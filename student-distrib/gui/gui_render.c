@@ -130,6 +130,19 @@ static inline void draw_terminal_content(const char *buf, int buf_start_x, int b
     }
 }
 
+
+
+/**
+ * Starting goose ui:
+ * |   name   |   size   |  position
+ *   goose.png  190 * 164  (417, 301)
+ *   GA!.png    104 * 59   (532,246),(308,393),(584,468)
+ *
+ */
+static void draw_start_ui() {
+
+}
+
 /**
  * Find the window that has (part of) its body (terminal) visible on the given point
  * @param x
