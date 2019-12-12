@@ -188,6 +188,7 @@ void entry(unsigned long magic, unsigned long addr) {
     vga_init();
     vga_set_mode(G1024x768x32K);
     vga_clear();
+    vga_accel_set_mode(BLITS_IN_BACKGROUND);
     gui_init();
 
     /* Run tests */

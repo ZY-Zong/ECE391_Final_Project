@@ -3,6 +3,7 @@
 //
 
 #include "gui.h"
+#include "gui_objs.h"
 
 int gui_inited = 0;
 

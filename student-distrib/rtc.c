@@ -49,7 +49,7 @@ void rtc_init() {
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // set index to register A, disable NMI
         char prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
-        outb((prev & 0xF0) | 8, RTC_RW_DATA_PORT);  // write rate to A
+        outb((prev & 0xF0) | 9, RTC_RW_DATA_PORT);  // write rate to A
     }
 //    sti();
 }

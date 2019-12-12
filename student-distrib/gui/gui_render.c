@@ -10,6 +10,7 @@
 #include "gui_font_data.h"
 #include "gui_window.h"
 #include "qsort.h"
+#include "gui_objs.h"
 
 static int curr_y = 0;  // double buffering y coordinate
 
@@ -98,13 +99,14 @@ static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int
     draw_object(&gui_obj_win_left, terminal_x - WIN_LEFT_BORDER_LEFT_MARGIN, terminal_y);
     draw_object(&gui_obj_win_down, terminal_x - WIN_DOWN_BORDER_LEFT_MARGIN, terminal_y + WIN_DOWN_BORDER_UP_MARGIN);
     draw_object(&gui_obj_win_right, terminal_x + WIN_RIGHT_BORDER_LEFT_MARGIN, terminal_y);
+
     draw_object(&gui_obj_red[r], terminal_x + WIN_RED_B_LEFT_MARGIN, terminal_y - WIN_RED_B_UP_MARGIN);
     draw_object(&gui_obj_yellow[y], terminal_x + WIN_YELLOW_B_LEFT_MARGIN, terminal_y - WIN_YELLOW_B_UP_MARGIN);
     draw_object(&gui_obj_green[g], terminal_x + WIN_GREEN_B_LEFT_MARGIN, terminal_y - WIN_GREEN_B_UP_MARGIN);
 #endif
 }
 
-static void draw_terminal_content(const char *buf, int buf_start_x, int buf_start_y, int buf_cols, int buf_rows,
+static inline void draw_terminal_content(const char *buf, int buf_start_x, int buf_start_y, int buf_cols, int buf_rows,
                                   int term_x, int term_y) {
     for (int y = 0; y < buf_rows; y++) {
         for (int x = 0; x < buf_cols; x++) {
@@ -186,13 +188,33 @@ void gui_render() {
             }
         }
 
-
-
-        /// Draw the buttom first
-        for (int i = GUI_MAX_WINDOW_NUM - 1; i >= 0; i--) {
-            if (window_stack[i] != NULL) {
-                draw_window_border(window_stack[i]->term_x, window_stack[i]->term_y, 0, 0, 0);
+        // Draw the buttom first
+        for (int i = GUI_MAX_WINDOW_NUM - 1; i >= 1; i--) {
+            win = window_stack[i];
+            if (win != NULL) {
+                for (int idx = 0; idx < grid_count; idx++) {
+                    for (int idy = 0; idy < grid_count; idy++) {
+                        if (grid[idx][idy] == win) {
+                            int buf_start_x = (grid_x[idx] - win->term_x) / FONT_WIDTH;
+                            int buf_cols = ceil_div(grid_x[idx + 1] - grid_x[idx],  FONT_WIDTH);
+                            int buf_start_y = (grid_y[idy] - win->term_y) / FONT_HEIGHT;
+                            int buf_rows = ceil_div(grid_y[idy + 1] - grid_y[idy], FONT_HEIGHT);
+                            draw_terminal_content((const char *) win->screen_char, buf_start_x, buf_start_y,
+                                                  buf_cols, buf_rows,
+                                                  win->term_x + buf_start_x * FONT_WIDTH,
+                                                  win->term_y + buf_start_y * FONT_HEIGHT);
+                        }
+                    }
+                }
+                draw_window_border(win->term_x, win->term_y, 0, 0, 0);
             }
+        }
+
+        if (window_stack[0] != NULL) {
+            win = window_stack[0];
+            draw_terminal_content((const char *) win->screen_char, 0, 0,
+                                  TERMINAL_TEXT_COLS, TERMINAL_TEXT_ROWS, win->term_x, win->term_y);
+            draw_window_border(win->term_x, win->term_y, 0, 0, 0);
         }
 
         // Switch view

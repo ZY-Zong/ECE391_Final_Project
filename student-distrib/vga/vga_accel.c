@@ -69,7 +69,7 @@
     port_outw(GRA_I, ((c) << 8) | 0x34);
 
 #define SETTRANSPARENCYCOLOR16(c) \
-    port_outw(GRA_I, ((c) << 8) | 0x34); \
+    port_outw(GRA_I, ((c & 0xFF) << 8) | 0x34); \
     port_outw(GRA_I, (c & 0xFF00) | 0x35);
 
 #define SETTRANSPARENCYCOLORMASK16(m) \
@@ -141,6 +141,7 @@
 #define MMIOBLTWRITEMASK    0x17
 #define MMIOBLTMODE        0x18
 #define MMIOROP            0x1A
+#define MMIOTRANSPARENTCOLOR  0x1C
 #define MMIOBLTSTATUS        0x40
 
 #define MMIOSETDESTADDR(addr) \
@@ -215,6 +216,9 @@
 #define MMIOFINISHBACKGROUNDBLITS() \
     if (__svgalib_accel_mode & BLITS_IN_BACKGROUND) \
         MMIOWAITUNTILFINISHED();
+
+#define MMIOSETRANSPARENT(color) \
+  *(unsigned short *)(MMIO_POINTER + MMIOTRANSPARENTCOLOR) = color;
 
 static int cirrus_pattern_address;    /* Pattern with 1's (8 bytes) */
 static int cirrus_bitblt_pixelwidth;
@@ -309,8 +313,8 @@ void cirrus_accel_mmio_screen_copy(int x1, int y1, int x2, int y2, int width, in
     MMIOSETDESTADDR(destaddr);
     MMIOSETWIDTH(width);
     MMIOSETHEIGHT(height);
-    if (__svgalib_accel_bitmaptransparency) {
-        MMIOSETBLTMODE(dir | TRANSPARENCYCOMPARE);
+    if (__svgalib_accel_bitmaptransparency == 1) {
+        MMIOSETBLTMODE(dir | TRANSPARENCYCOMPARE | PIXELWIDTH16);
     } else {
         MMIOSETBLTMODE(dir);
     }
@@ -427,12 +431,17 @@ void cirrus_accel_set_transparency(int mode, int color) {
         SETTRANSPARENCYCOLOR16(color);
         return;
     }
-    if (mode == DISABLE_BITMAP_TRANSPARENCY) {
+}
+
+// FIXME: this function is still broken
+void cirrus_accel_mmio_set_transparency(int mode, int color) {
+    FINISHBACKGROUNDBLITS();
+    if (mode == DISABLE_TRANSPARENCY_COLOR) {
         __svgalib_accel_bitmaptransparency = 0;
-        return;
+    } else if (mode == ENABLE_TRANSPARENCY_COLOR) {
+        MMIOSETRANSPARENT(color);
+        __svgalib_accel_bitmaptransparency = 1;
     }
-    /* mode == ENABLE_BITMAP_TRANSPARENCY */
-    __svgalib_accel_bitmaptransparency = 1;
 }
 
 void cirrus_accel_mmio_sync() {

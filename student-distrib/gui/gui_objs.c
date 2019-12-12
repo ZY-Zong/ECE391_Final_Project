@@ -224,6 +224,8 @@ gui_object_t gui_obj_grey;
 #define WIN_YELLOW_B_C_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
 #define WIN_GREEN_B_C_X     (16 * 41 + 16 + 16)
 #define WIN_GREEN_B_C_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
+#define WIN_GREY_B_X        (16 * 41)
+#define WIN_GREY_B_Y        (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
 
 static void init_window_obj() {
 
@@ -256,7 +258,7 @@ static void init_window_obj() {
     render_png_to_obj(_png_data, WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y,
                       &gui_obj_green[0]);
 
-    // FIXME: normal red button?
+    // Red button 0 and 1 are the same
     load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, NULL, WIN_RED_B_X, WIN_RED_B_Y,
                       &gui_obj_red[1]);
@@ -268,6 +270,10 @@ static void init_window_obj() {
     load_png("green_b_c.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, NULL, WIN_GREEN_B_C_X, WIN_GREEN_B_C_Y,
                       &gui_obj_green[1]);
+
+    load_png("grey_b.png", WIN_GREY_B_WIDTH, WIN_GREY_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_GREY_B_WIDTH, WIN_GREY_B_HEIGHT, NULL, WIN_GREY_B_X, WIN_GREY_B_Y,
+                      &gui_obj_grey);
 }
 
 #endif

@@ -5,7 +5,7 @@
 #ifndef _GUI_RENDER_H
 #define _GUI_RENDER_H
 
-#include "gui_objs.h"
+#define GUI_WINDOW_PNG_RENDER    0
 
 void gui_render();
 

@@ -6,8 +6,7 @@
 #define _GUI_OBJS_H
 
 #include "../vga/vga.h"
-
-#define GUI_WINDOW_PNG_RENDER    1
+#include "gui_render.h"
 
 typedef struct gui_object_t gui_object_t;
 struct gui_object_t {
@@ -76,7 +75,7 @@ extern gui_object_t gui_obj_win_right;
 extern gui_object_t gui_obj_red[2];
 extern gui_object_t gui_obj_yellow[2];
 extern gui_object_t gui_obj_green[2];
-extern gui_boject_t gui_obj_grey;
+extern gui_object_t gui_obj_grey;
 #endif
 
 #endif //_GUI_OBJS_H

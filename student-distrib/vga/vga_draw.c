@@ -20,7 +20,11 @@ void vga_draw_pixel(int x, int y) {
     unsigned long offset = y * vga_info.xbytes + x * VGA_BYTES_PER_PIXEL;
     vga_set_page(offset >> 16);
     offset &= 0xFFFF;
+#if VGA_DRAW_ALPHA_BLEND
     gr_writew(color_convert(rgb_blend(color_revert(gr_readw(offset)), curr_color, alpha(curr_color))), offset);
+#else
+    gr_writew(color_convert(curr_color), offset);
+#endif
 }
 
 /**
@@ -47,7 +51,11 @@ void vga_draw_img(const vga_argb *img_data, unsigned width, unsigned height, int
             vga_set_page(offset >> 16);
             offset &= 0xFFFF;
 
+#if VGA_DRAW_ALPHA_BLEND
             gr_writew(color_convert(rgb_blend(color_revert(gr_readw(offset)), c, alpha(c))), offset);
+#else
+            gr_writew(color_convert(c), offset);
+#endif
         }
     }
 }
