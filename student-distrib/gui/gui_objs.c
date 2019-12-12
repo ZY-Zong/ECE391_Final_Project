@@ -225,6 +225,7 @@ gui_object_t gui_obj_red[2];
 gui_object_t gui_obj_yellow[2];
 gui_object_t gui_obj_green[2];
 gui_object_t gui_obj_grey;
+gui_object_t gui_obj_terminal[2];
 
 #define WIN_UP_X       (0)
 #define WIN_UP_Y       (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
@@ -247,6 +248,10 @@ gui_object_t gui_obj_grey;
 #define WIN_GREEN_B_C_Y     (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
 #define WIN_GREY_B_X        (16 * 41)
 #define WIN_GREY_B_Y        (VGA_HEIGHT * 2 + FONT_HEIGHT * 2 + 16)
+#define WIN_TERMINAL_B_X    (16 * 41 + 16 + 16 + 16)
+#define WIN_TERMINAL_B_Y    (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
+#define WIN_TERMINAL_B_C_X  (16 * 41 + 16 + 16 + 16 + 32)
+#define WIN_TERMINAL_B_C_Y  (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
 
 static void init_window_obj() {
 
@@ -296,6 +301,13 @@ static void init_window_obj() {
     render_png_to_obj(_png_data, WIN_GREY_B_WIDTH, WIN_GREY_B_HEIGHT, NULL, WIN_GREY_B_X, WIN_GREY_B_Y,
                       &gui_obj_grey);
 
+    load_png("terminal_b.png", WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, NULL, WIN_TERMINAL_B_X, WIN_TERMINAL_B_Y,
+                      &gui_obj_terminal);
+
+    load_png("terminal_b_c.png", WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, _png_data);
+    render_png_to_obj(_png_data, WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, NULL, WIN_TERMINAL_B_C_X, WIN_TERMINAL_B_C_Y,
+                      &gui_obj_terminal[1]);
 }
 
 

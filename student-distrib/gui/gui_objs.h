@@ -55,6 +55,9 @@ extern gui_object_t gui_obj_desktop;
 #define WIN_GREY_B_WIDTH 12
 #define WIN_GREY_B_HEIGHT 12
 
+#define WIN_TERMINAL_B_WIDTH 22
+#define WIN_TERMINAL_B_HEIGHT 20
+
 
 #if GUI_WINDOW_PNG_RENDER
 extern vga_argb gui_win_up[WIN_UP_WIDTH * WIN_UP_HEIGHT];
@@ -74,6 +77,7 @@ extern gui_object_t gui_obj_red[2];
 extern gui_object_t gui_obj_yellow[2];
 extern gui_object_t gui_obj_green[2];
 extern gui_object_t gui_obj_grey;
+extern gui_object_t gui_obj_terminal[2];
 #endif
 
 #endif //_GUI_OBJS_H
