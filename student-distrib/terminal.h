@@ -43,6 +43,10 @@ terminal_t* running_term();
 void terminal_set_running(terminal_t *term);
 extern terminal_t null_terminal;
 
+/**
+ * Printf into focus terminal
+ * @note Since this is a macro and lock takes effect at the first line, it does not require lock outside
+ */
 #define terminal_focus_printf(fmt, ...) do {               \
     uint32_t _flags;                                       \
     cli_and_save(_flags);                                  \

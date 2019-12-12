@@ -242,6 +242,22 @@ asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
 }
 
 /**
+ * Give up remaining available time of current task and yield CPU to other task
+ * @note Use this function in a lock
+ * @note Do not use in interrupt context etc. Only use it in process body.
+ * @note If there is no more task in the run queue (only idle task), this function will return immediately. In this
+ *       case, the caller becomes the actual idle task. It's caller's responsibility to make sure interrupts can
+ *       still happen in this case (limited lock range, for example)
+ */
+void sched_yield_unsafe() {
+    if ((running_task()->flags & TASK_IDLE_TASK) == NULL) {
+        sched_refill_time(running_task());
+    }
+    sched_move_running_to_last();
+    sched_launch_to_current_head();  // return after this thread get running again
+}
+
+/**
  * Start PIT interrupt
  * @param hz    PIT clock frequency
  * @note Reference: http://www.osdever.net/bkerndev/Docs/pit.htm
