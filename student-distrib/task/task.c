@@ -646,8 +646,8 @@ static void init_task_main() {
         system_execute((uint8_t *) "idle", -1, 0, idle_task_main);
 
         system_execute((uint8_t *) "shell", 0, 1, NULL);
-        system_execute((uint8_t *) "shell", 0, 1, NULL);
-        system_execute((uint8_t *) "shell", 0, 1, NULL);
+//        system_execute((uint8_t *) "shell", 0, 1, NULL);
+//        system_execute((uint8_t *) "shell", 0, 1, NULL);
 
     }
     restore_flags(flags);

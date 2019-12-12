@@ -16,6 +16,7 @@
 #include "../rtc.h"
 
 static int curr_y = 0;  // double buffering y coordinate
+int gui_term_button_pressed = 0;
 
 // Drawing optimization related
 int grid_count;
@@ -216,7 +217,7 @@ static void render_windows() {
         win = window_stack[0];
         draw_terminal_content((const char *) win->screen_char, 0, 0,
                               TERMINAL_TEXT_COLS, TERMINAL_TEXT_ROWS, win->term_x, win->term_y);
-        draw_window_border(win->term_x, win->term_y, 0, 0, 0);
+        draw_window_border(win->term_x, win->term_y, 0, -1, -1);
     }
 }
 
@@ -229,6 +230,10 @@ static void render_clock() {
     print_char(':', CLOCK_START_X + FONT_WIDTH * 5, CLOCK_START_Y);
     print_char('0' + (rtc_second / 10), CLOCK_START_X + FONT_WIDTH * 6, CLOCK_START_Y);
     print_char('0' + (rtc_second % 10), CLOCK_START_X + FONT_WIDTH * 7, CLOCK_START_Y);
+}
+
+static void render_term_button() {
+    draw_object(&gui_obj_terminal[gui_term_button_pressed], TERM_BUTTON_X, TERM_BUTTON_Y);
 }
 
 void gui_render() {
@@ -246,6 +251,9 @@ void gui_render() {
 
         // Render desktop and status bar
         render_desktop();
+
+        // Render terminal button
+        render_term_button();
 
         // Render clock
         render_clock();

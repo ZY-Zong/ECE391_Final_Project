@@ -27,4 +27,9 @@ void gui_render();
 
 #define STATUS_BAR_HEIGHT    23
 
+#define TERM_BUTTON_X    (CLOCK_START_X - WIN_TERMINAL_B_WIDTH - 10)
+#define TERM_BUTTON_Y    (1)
+
+extern int gui_term_button_pressed;
+
 #endif //_GUI_RENDER_H

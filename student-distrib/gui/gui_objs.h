@@ -24,7 +24,6 @@ struct gui_object_t {
 #define GUI_TRANSPARENT_COLOR    0xFFE96F89
 
 void gui_obj_load();
-void draw_start_ui();
 
 gui_object_t gui_get_obj_font(char ch);
 

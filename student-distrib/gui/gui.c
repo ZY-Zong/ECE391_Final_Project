@@ -8,7 +8,6 @@
 int gui_inited = 0;
 
 void gui_init() {
-    draw_start_ui();
     gui_obj_load();
     gui_window_init();
     gui_inited = 1;

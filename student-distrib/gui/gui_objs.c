@@ -247,12 +247,42 @@ gui_object_t gui_obj_terminal[2];
 #define WIN_TERMINAL_B_C_X  (16 * 41 + 16 + 16 + 16 + 32)
 #define WIN_TERMINAL_B_C_Y  (VGA_HEIGHT * 2 + FONT_HEIGHT * 2)
 
+#define START_GOOSE_WIDTH   190
+#define START_GOOSE_HEIGHT  164
+#define START_GA_WIDTH      104
+#define START_GA_HEIGHT     59
+
+#define START_GOOSE_X       417
+#define START_GOOSE_Y       301
+#define START_GA_X_ONE      532
+#define START_GA_Y_ONE      246
+#define START_GA_X_TWO      308
+#define START_GA_Y_TWO      393
+#define START_GA_X_THREE    584
+#define START_GA_Y_THREE    468
+
+#define STARTUP_IMG_WAIT_COUNTER 70000000
+
+static void __sleep(int count) {
+    int i;
+    for (i = 0; i < count; i++) {}
+}
+
 static void init_window_obj() {
+
+    // Startup #1
+    load_png("goose.png", START_GOOSE_WIDTH, START_GOOSE_HEIGHT, _png_data);
+    draw_png_to_screen(_png_data, START_GOOSE_WIDTH, START_GOOSE_HEIGHT, START_GOOSE_X, START_GOOSE_Y);
 
     load_png("up_window.png", WIN_UP_WIDTH, WIN_UP_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_UP_WIDTH, WIN_UP_HEIGHT, NULL, WIN_UP_X, WIN_UP_Y,
                       &gui_obj_win_up);
 
+    __sleep(STARTUP_IMG_WAIT_COUNTER);
+
+    // Startup #2
+    load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
+    draw_png_to_screen(_png_data, START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_ONE, START_GA_Y_ONE);
 
     load_png("down_window.png", WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_DOWN_WIDTH, WIN_DOWN_HEIGHT, NULL, WIN_DOWN_X, WIN_DOWN_Y,
@@ -266,6 +296,12 @@ static void init_window_obj() {
     render_png_to_obj(_png_data, WIN_RIGHT_WIDTH, WIN_RIGHT_HEIGHT, NULL, WIN_RIGHT_X, WIN_RIGHT_Y,
                       &gui_obj_win_right);
 
+    __sleep(STARTUP_IMG_WAIT_COUNTER);
+
+    // Startup #3
+    load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
+    draw_png_to_screen(_png_data, START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_TWO, START_GA_Y_TWO);
+
     load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, NULL, WIN_RED_B_X, WIN_RED_B_Y,
                       &gui_obj_red[0]);
@@ -277,6 +313,12 @@ static void init_window_obj() {
     load_png("green_b.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, NULL, WIN_GREEN_B_X, WIN_GREEN_B_Y,
                       &gui_obj_green[0]);
+
+    __sleep(STARTUP_IMG_WAIT_COUNTER);
+
+    // Startup #4
+    load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
+    draw_png_to_screen(_png_data, START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_THREE, START_GA_Y_THREE);
 
     // Red button 0 and 1 are the same
     load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, _png_data);
@@ -297,42 +339,15 @@ static void init_window_obj() {
 
     load_png("terminal_b.png", WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, _png_data);
     render_png_to_obj(_png_data, WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, NULL, WIN_TERMINAL_B_X, WIN_TERMINAL_B_Y,
-                      &gui_obj_terminal);
+                      &gui_obj_terminal[0]);
 
     load_png("terminal_b_c.png", WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, _png_data);
-    render_png_to_obj(_png_data, WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, NULL, WIN_TERMINAL_B_C_X, WIN_TERMINAL_B_C_Y,
+    render_png_to_obj(_png_data, WIN_TERMINAL_B_WIDTH, WIN_TERMINAL_B_HEIGHT, NULL, WIN_TERMINAL_B_C_X,
+                      WIN_TERMINAL_B_C_Y,
                       &gui_obj_terminal[1]);
+
+    __sleep(STARTUP_IMG_WAIT_COUNTER);
 }
-
-
-#define START_GOOSE_WIDTH   190
-#define START_GOOSE_HEIGHT  164
-#define START_GA_WIDTH      104
-#define START_GA_HEIGHT     59
-
-#define START_GOOSE_X       417
-#define START_GOOSE_Y       301
-#define START_GA_X_ONE      532
-#define START_GA_Y_ONE      246
-#define START_GA_X_TWO      308
-#define START_GA_Y_TWO      393
-#define START_GA_X_THREE    584
-#define START_GA_Y_THREE    468
-
-void draw_start_ui() {
-    load_png("goose.png", START_GOOSE_WIDTH, START_GOOSE_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GOOSE_WIDTH, START_GOOSE_HEIGHT, START_GOOSE_X, START_GOOSE_Y);
-
-    load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_ONE, START_GA_Y_ONE);
-
-    load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_TWO, START_GA_Y_TWO);
-
-    load_png("GA!.png", START_GA_WIDTH, START_GA_HEIGHT, _png_data);
-    draw_png_to_screen(_png_data,  START_GA_WIDTH, START_GA_HEIGHT, START_GA_X_THREE, START_GA_Y_THREE);
-}
-
 
 #endif
 

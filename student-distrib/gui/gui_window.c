@@ -142,16 +142,26 @@ int check_inside_window(int x, int y, const gui_window_t *win) {
 }
 
 void gui_handle_mouse_press(int x, int y) {
+
     int i = 0;
     cursor_position_t state = NOT_IN_WINDOW;
     for (i = 0; i < GUI_MAX_WINDOW_NUM; i++) {
         if ((state = check_inside_window(x, y, window_stack[i])) != NOT_IN_WINDOW) break;
     }
-    if (i == GUI_MAX_WINDOW_NUM) return;  // not in any window
+
+    if (i == GUI_MAX_WINDOW_NUM) {  // not in any window
+        if (y < STATUS_BAR_HEIGHT && x >= TERM_BUTTON_X && x < TERM_BUTTON_X + WIN_TERMINAL_B_WIDTH) {
+            gui_term_button_pressed = 1;
+        }
+        return;
+    }
+
     if (i != 0) {
         gui_activate_window(window_stack[i]);
     }
+
     i = 0;  // now the window is at the top of the stack
+
     if (state == IN_TITLE_BAR) {
         mouse_pressed_on_title = 1;
 #if GUI_WIN_ENABLE_LOG
@@ -172,7 +182,9 @@ void gui_handle_mouse_release(int x, int y) {
         task_halt_terminal(window_stack[0]->terminal_id);
         return;
     }
-    if (y < STATUS_BAR_HEIGHT && x >= CLOCK_START_X - 25 && x < CLOCK_START_X) {
+
+    gui_term_button_pressed = 0;  // always
+    if (y < STATUS_BAR_HEIGHT && x >= TERM_BUTTON_X && x < TERM_BUTTON_X + WIN_TERMINAL_B_WIDTH) {
         system_execute((uint8_t *) "shell", 0, 1, NULL);
         return;
     }
