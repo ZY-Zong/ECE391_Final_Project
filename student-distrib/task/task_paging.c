@@ -1,12 +1,12 @@
 
 #include "task_paging.h"
 
-#include "lib.h"
-#include "paging.h"
-#include "x86_desc.h"
+#include "../lib.h"
+#include "../paging.h"
+#include "../x86_desc.h"
 
 #include "task.h"
-#include "file_system.h"
+#include "../file_system.h"
 
 #define     PAGE_ID_USED          666
 #define     PAGE_ID_FREE          0

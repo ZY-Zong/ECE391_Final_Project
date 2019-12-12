@@ -8,7 +8,7 @@
 #ifndef _VIDMEM_H
 #define _TERMINAL_VIDMEM_H
 
-#include "types.h"
+#include "../types.h"
 
 /*
  * Version 3.0 Tingkai Liu 2019.11.3

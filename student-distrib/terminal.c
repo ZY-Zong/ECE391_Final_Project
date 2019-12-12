@@ -4,9 +4,9 @@
 #include "terminal.h"
 
 #include "idt.h"
-#include "task.h"
-#include "task_sched.h"
-#include "task_paging.h"
+#include "task/task.h"
+#include "task/task_sched.h"
+#include "task/task_paging.h"
 #include "vidmem.h"
 #include "signal.h"
 

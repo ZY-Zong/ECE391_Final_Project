@@ -11,7 +11,7 @@
 #include "file_system.h"
 #include "rtc.h"
 #include "terminal.h"
-#include "task.h"
+#include "task/task.h"
 #include "vidmem.h"
 #include "signal.h"
 #include "mouse.h"

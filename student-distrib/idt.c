@@ -8,8 +8,8 @@
 #include "linkage.h"
 #include "i8259.h"
 #include "file_system.h"
-#include "task.h"
-#include "task_paging.h"
+#include "task/task.h"
+#include "task/task_paging.h"
 #include "vidmem.h"
 #include "signal.h"
 

@@ -4,13 +4,13 @@
 #include "rtc.h"
 
 #include "lib.h"
-#include "task_sched.h"
+#include "task/task_sched.h"
 #include "i8259.h"
 #include "gui/gui.h"
 
-#include "task.h"
+#include "task/task.h"
 #include "idt.h"
-#include "task_sched.h"
+#include "task/task_sched.h"
 
 #define RTC_HARDWARE_FREQUENCY   1024
 #define RTC_MAX_FREQUENCY        32768
@@ -68,18 +68,6 @@ void rtc_init() {
 
     }
     restore_flags(flags);
-
-//    sti();
-
-//FIXME:
-//    cli();  // disable interrupts
-    {
-        outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // set index to register A, disable NMI
-        char prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
-        outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
-        outb((prev & 0xF0) | 9, RTC_RW_DATA_PORT);  // write rate to A
-    }
-//    sti();
 }
 
 /**
@@ -117,8 +105,6 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
         sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.
     }
 
-    // FIXME: move to pit
-    gui_render();
 }
 
 /**

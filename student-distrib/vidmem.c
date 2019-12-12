@@ -8,7 +8,7 @@
 #include "paging.h"
 #include "x86_desc.h"
 
-#include "task.h"
+#include "task/task.h"
 #include "terminal.h"
 #include "file_system.h"
 

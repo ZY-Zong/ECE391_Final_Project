@@ -7,7 +7,7 @@
 
 #ifndef ASM
 
-#include "types.h"
+#include "../types.h"
 #include "task.h"
 
 /**

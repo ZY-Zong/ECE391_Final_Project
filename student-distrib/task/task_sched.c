@@ -4,13 +4,17 @@
 
 #include "task_sched.h"
 
-#include "lib.h"
-#include "idt.h"
+#include "../lib.h"
+#include "../idt.h"
 #include "task.h"
 #include "task_paging.h"
-#include "signal.h"
+#include "../signal.h"
+#include "../gui/gui_render.h"
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
+
+#define GUI_RENDER_INTERVAL    2
+int gui_render_counter = 0;
 
 #if SCHED_ENABLE_KESP_CHECK
 
@@ -191,6 +195,13 @@ asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
         DEBUG_ERR("sched_launch_to_current_head(): run queue should never be empty!");
         idt_send_eoi(hw_context.irq_exp_num);
         return;
+    }
+
+    // Render GUI
+    gui_render_counter++;
+    if (gui_render_counter >= GUI_RENDER_INTERVAL) {
+        gui_render();
+        gui_render_counter = 0;
     }
 
     // Handle signal ALARM

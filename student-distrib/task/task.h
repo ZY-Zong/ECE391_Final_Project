@@ -9,13 +9,13 @@
 #ifndef _TASK_H
 #define _TASK_H
 
-#include "types.h"
-#include "x86_desc.h"
+#include "../types.h"
+#include "../x86_desc.h"
 
-#include "rtc.h"
-#include "terminal.h"
-#include "file_system.h"
-#include "signal.h"
+#include "../rtc.h"
+#include "../terminal.h"
+#include "../file_system.h"
+#include "../signal.h"
 
 /** ============== Process Control Block (PCB) ============== */
 

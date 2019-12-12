@@ -2,7 +2,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "file_system.h"
-#include "task.h"
+#include "task/task.h"
 #include "vga/vga.h"
 #include "gui/gui.h"
 #include "gui/upng.h"

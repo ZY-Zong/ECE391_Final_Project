@@ -1,6 +1,6 @@
 
 #include "signal.h"
-#include "task.h"
+#include "task/task.h"
 #include "lib.h"
 
 extern void signal_set_up_stack_helper(signal_handler handler, int32_t signum, hw_context_t *hw_context_addr);

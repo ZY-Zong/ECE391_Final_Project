@@ -3,12 +3,12 @@
 //
 
 #include "task.h"
-#include "lib.h"
-#include "file_system.h"
+#include "../lib.h"
+#include "../file_system.h"
 #include "task_paging.h"
 #include "task_sched.h"
-#include "vidmem.h"
-#include "signal.h"
+#include "../vidmem.h"
+#include "../signal.h"
 
 #define TASK_ENABLE_CHECKPOINT    0
 #if TASK_ENABLE_CHECKPOINT

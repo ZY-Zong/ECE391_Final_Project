@@ -4,7 +4,7 @@
 
 #include "terminal.h"
 #include "rtc.h"
-#include "task.h"
+#include "task/task.h"
 
 // Global variables for file system
 static module_t file_system;       // the module for file system
