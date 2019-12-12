@@ -2,6 +2,7 @@
 #include "beep.h"
 #include "lib.h"
 #include "rtc.h"
+#include "file_system.h"
 
 // reference: https://wiki.osdev.org/PC_Speaker
 /* down from here */
@@ -43,8 +44,9 @@ void beep(uint32_t frequency, uint32_t time_in_ms){
 
     // TODO: keep the beep for time_in_ms by sleeping 
     // for test: just use current rtc frequency
-    system_rtc_open(0);
-    system_rtc_read(0,0,0);
+    uint8_t buf[]="rtc";
+    int fd=system_open(buf);
+    system_read(fd, 0, 0);
 
     nosound();
 }

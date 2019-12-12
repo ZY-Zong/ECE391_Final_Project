@@ -157,7 +157,7 @@ void handle_scan_code(uint8_t scan_code) {
 
     } else {
 
-        beep(5000,0); // beep test 
+        beep(5000, 0); // beep test 
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
 
