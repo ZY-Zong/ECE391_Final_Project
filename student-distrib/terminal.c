@@ -153,11 +153,11 @@ void handle_scan_code(uint8_t scan_code) {
     if (scan_code >= SCANCODE_PRESSED) {
         // If the scan_code is a release code, just reset the flags
         key_flags[scan_code - SCANCODE_PRESSED] = 0;
-        nosound(); // beep test 
+        // nosound(); // beep test 
 
     } else {
 
-        play_sound(5000); // beep test 
+        // play_sound(5000); // beep test 
         // If the scan_code is a press code, set the flags
         key_flags[scan_code] = 1;
 
