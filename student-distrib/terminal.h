@@ -7,6 +7,8 @@
 
 #include "lib.h"
 
+#include "gui/gui_window.h"
+
 int32_t system_terminal_read(int32_t fd, void* buf, int32_t nbytes);
 int32_t system_terminal_write(int32_t fd, const void* buf, int32_t nbytes);
 int32_t system_terminal_open(const uint8_t* filename);
@@ -29,7 +31,9 @@ struct terminal_t {
     int32_t screen_height;
     int32_t screen_x;  // not valid for focus_task. Update when switching focus_task
     int32_t screen_y;  // not valid for focus_task. Update when switching focus_task
-    char* char_on_screen;
+    char* screen_char;
+
+    gui_window_t win;
 };
 
 #define TERMINAL_MAX_COUNT    3

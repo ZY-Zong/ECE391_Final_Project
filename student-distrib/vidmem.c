@@ -146,68 +146,6 @@ int terminal_vidmem_close(const int term_id) {
 }
 
 /**
- * Set a opened terminal video memory to be active, i.e. change the screen
- * and store the old one to its buffer
- * @param new_active_id    the terminal to be set active, or NULL_TERMINAL_ID
- * @param pre_active_id    the terminal to be stored, or NULL_TERMINAL_ID
- * @return          0 for success, -1 for fail
- * @effect          PDE will be changed, the screen will be changed
- */
-int terminal_vidmem_switch_active(const int new_active_id, const int pre_active_id) {
-
-    // Error checking
-    // Check new_ter_id
-    if ((new_active_id < 0 || new_active_id >= TERMINAL_MAX_COUNT) && new_active_id != NULL_TERMINAL_ID) {
-        DEBUG_ERR("terminal_vidmem_switch_active(): bad new_ter_id: %d", new_active_id);
-        return -1;
-    }
-    if (new_active_id != NULL_TERMINAL_ID && terminal_opened[new_active_id] == TERMINAL_VID_NOT_OPENED) {
-        DEBUG_ERR("terminal_vidmem_switch_active(): not opened new_ter_id: %d", new_active_id);
-        return -1;
-    }
-    // Check pre_ter_id
-    if ((pre_active_id < 0 || pre_active_id >= TERMINAL_MAX_COUNT) && pre_active_id != NULL_TERMINAL_ID) {
-        DEBUG_ERR("terminal_vidmem_switch_active(): bad pre_ter_id: %d", pre_active_id);
-        return -1;
-    }
-    if (pre_active_id != NULL_TERMINAL_ID && terminal_opened[pre_active_id] == TERMINAL_VID_NOT_OPENED) {
-        DEBUG_ERR("terminal_vidmem_switch_active(): not opened pre_ter_id: %d", new_active_id);
-        return -1;
-    }
-
-    if (new_active_id == pre_active_id) return 0;
-
-    /* no longer needed for svga */
-    // Turn on the kernel page for copy
-    // if (-1 == set_PDE_4kB((PDE_4kB_t *) (&kernel_page_directory.entry[0]),
-    //                       (uint32_t) &kernel_page_table_0, 1, 0, 1)) {
-    //     return -1;
-    // }
-    // FLUSH_TLB();
-
-
-    // if (pre_active_id != NULL_TERMINAL_ID) {
-    //     // Copy the previous terminal VRAM from physical VRAM to its buffer
-    //     memcpy((uint8_t *) ((VIDMEM_PAGE_ENTRY + pre_active_id + 1) * SIZE_4K),
-    //            (uint8_t *) (VIDMEM_PAGE_ENTRY * SIZE_4K), SIZE_4K);
-    // }
-
-    // if (new_active_id != NULL_TERMINAL_ID) {
-    //     // Copy the current terminal VRAM from its buffer to physical VRAM
-    //     memcpy((uint8_t *) (VIDMEM_PAGE_ENTRY * SIZE_4K),
-    //            (uint8_t *) ((VIDMEM_PAGE_ENTRY + new_active_id + 1) * SIZE_4K), SIZE_4K);
-    // }
-
-    // Update active terminal. Must before terminal_vidmem_set()
-    terminal_active = new_active_id;
-
-    // Map the vram for the new terminal 
-    terminal_vidmem_set(terminal_running);
-
-    return 0;
-}
-
-/**
  * Set current paging pointing VRAM to buffer for running terminal
  * @param term_id   The terminal to be set
  * @return          0 for success, -1 for fail

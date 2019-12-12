@@ -130,7 +130,7 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes);
  * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
  *       are still those BEFORE extracting the task.
  */
-inline void move_task_to_list_unsafe(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next);
+void move_task_to_list_unsafe(task_t* task, task_list_node_t* new_prev, task_list_node_t* new_next);
 
 /**
  * Move a task to the list after the given node (lock needed)
@@ -141,7 +141,7 @@ inline void move_task_to_list_unsafe(task_t* task, task_list_node_t* new_prev, t
  * @note Be VERY careful when using this function to move a task in the same list. Pointers of new_prev and new_next
  *       are still those BEFORE extracting the task.
  */
-inline void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
+void move_task_after_node_unsafe(task_t* task, task_list_node_t* node);
 
 /**
  * Iterate through a task_list

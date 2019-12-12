@@ -197,24 +197,13 @@ kernel_page_table_0:
     .rept KERNEL_PAGE_TABLE_SIZE - 0xA0 - 32   # modex
     .long 0
     .endr
-kernel_page_table_1:
-    # Fill index 0-0xB7
-    .rept VIDEO_MEMORY_START_PAGE   # 0xB8
-    .long 0
-    .endr
 
-    # 0xB8: video memory
-    .long   0x000B8003  # the 3 is for present and W/R flag
-
-    # Fill the rest to 1024
-    .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1
-    .long 0
-    .endr
 kernel_page_table_1: # the page that can access all buffer, for PDE VRAM_BUFFER_PD_ENTRY * 4MB ~ +1
     # Filled in vidmem.c init
     .rept SIZE_K
     .long 0
     .endr
+
 user_page_table_0:
     # Fill index 0-0xB7
     .rept VIDEO_MEMORY_START_PAGE   # 0xB8

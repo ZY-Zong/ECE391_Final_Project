@@ -346,19 +346,33 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
     } else {
         if (new_terminal) {  // allocate a new terminal
             task->flags |= TASK_TERMINAL_OWNER;
+
+            // Allocate terminal control structure
             if ((task->terminal = terminal_allocate()) == NULL) {
                 DEBUG_ERR("system_execute(): fail to allocate new terminal");
                 task_deallocate(task);
                 return -1;
             }
             // Clean up #2 starts: terminal_deallocate(task->terminal)
-            if (terminal_vidmem_open(task->terminal->terminal_id) != 0) {
+
+            // Allocate video memory
+            if (terminal_vidmem_open(task->terminal->terminal_id, &task->terminal->screen_char) != 0) {
                 DEBUG_ERR("system_execute(): fail to allocate video memory new terminal");
                 terminal_deallocate(task->terminal);
                 task_deallocate(task);
                 return -1;
             }
             // Clean up #3: terminal_vidmem_close(task->terminal->terminal_id)
+
+            // Create new window
+            if (gui_new_window(&task->terminal->win, task->terminal->screen_char) != 0) {
+                DEBUG_ERR("system_execute(): fail to create new window");
+                terminal_vidmem_close(task->terminal->terminal_id);
+                terminal_deallocate(task->terminal);
+                task_deallocate(task);
+            }
+            // Clean up #4: gui_destroy_window(&task->terminal->win)
+
         } else {  // inherit terminal from its parent or no terminal if it's the init task
             if (task->flags & TASK_INIT_TASK) {
                 task->terminal = &null_terminal;
@@ -371,13 +385,14 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
         // NOTICE: after setting up paging for new program, arg command become useless
         if ((task->page_id = task_paging_allocate_and_set(command, &start_eip)) < 0) {
             if (task->flags & TASK_TERMINAL_OWNER) {
+                gui_destroy_window(&task->terminal->win);
                 terminal_vidmem_close(task->terminal->terminal_id);
                 terminal_deallocate(task->terminal);
             }
             task_deallocate(task);
             return -1;
         }
-        // Clean up #4 starts: task_reset_paging(running_task()->page_id, task->page_id);
+        // Clean up #5 starts: task_reset_paging(running_task()->page_id, task->page_id);
 
         if (task->terminal->terminal_id != NULL_TERMINAL_ID) {
             terminal_fg_task[task->terminal->terminal_id] = task;  // become the user task of the terminal
@@ -395,7 +410,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
             printf("<Terminal %d>\n", task->terminal->terminal_id);  // apply to new terminal
         }
 
-        // Clean up #5 starts: set back focus_task and running terminal
+        // Clean up #6 starts: set back focus_task and running terminal
     }
 
     // Init RTC control info
@@ -538,6 +553,7 @@ int32_t system_halt(int32_t status) {
                 DEBUG_ERR("system_halt(): error when finding another another available terminal");
             }
         }
+        gui_destroy_window(&task->terminal->win);  // destroy window
         terminal_vidmem_close(term_id);  // deallocate terminal video memory
         terminal_deallocate(task->terminal);  // deallocate terminal control block
     } else {
@@ -607,7 +623,6 @@ int32_t system_getargs(uint8_t *buf, int32_t nbytes) {
  */
 static void init_task_main() {
 
-    int32_t ret;
     uint32_t flags;
     cli_and_save(flags);
     {
@@ -626,7 +641,7 @@ static void init_task_main() {
             cli_and_save(flags);
             {
                 system_execute((uint8_t *) "shell", 0, 1, NULL);
-                terminal_focus_printf("<Last shell has halted. Restarted.>\n", ret);  // put in newly started terminal
+                terminal_focus_printf("<Last shell has halted. Restarted.>\n");  // put in newly started terminal
             }
             restore_flags(flags);
         } else {
@@ -705,29 +720,14 @@ static void task_set_focus_task(task_t *task) {
     }
 
     uint32_t flags;
-    int old_term_id;
-    int new_term_id;
 
     cli_and_save(flags);
     {
-        if (focus_task_ != NULL) {
-            old_term_id = focus_task_->terminal->terminal_id;
-        } else {
-            old_term_id = NULL_TERMINAL_ID;
-        }
-
-        if (task != NULL) {
-            new_term_id = task->terminal->terminal_id;
-        } else {
-            new_term_id = NULL_TERMINAL_ID;
-        }
-
-        terminal_vidmem_switch_active(new_term_id, old_term_id);  // won't change running terminal
+        // Don't need to switch physical memory anymore with SVGA
 
         focus_task_ = task;
 
-        // Now active video memory has changed, user vidmap may need to update
-        task_apply_user_vidmap(running_task());
+        // User vidmap won't change since they all maps to buffer
     }
     restore_flags(flags);
 }
@@ -748,7 +748,7 @@ void task_apply_user_vidmap(task_t *task) {
     }
 }
 
-inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
+void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, task_list_node_t *new_next) {
     task_list_node_t *n = &task->list_node;
     n->next->prev = n->prev;
     n->prev->next = n->next;
@@ -758,7 +758,7 @@ inline void move_task_to_list_unsafe(task_t *task, task_list_node_t *new_prev, t
     new_next->prev = n;
 }
 
-inline void move_task_after_node_unsafe(task_t *task, task_list_node_t *node) {
+void move_task_after_node_unsafe(task_t *task, task_list_node_t *node) {
     move_task_to_list_unsafe(task, node, node->next);
 }
 
