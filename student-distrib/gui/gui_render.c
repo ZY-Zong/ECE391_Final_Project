@@ -148,13 +148,13 @@ void gui_render() {
         // Switch place to draw (double buffering)
         curr_y = VGA_HEIGHT - curr_y;
 
+        // Open all buffer
+        terminal_vidmem_set(NULL_TERMINAL_ID);
+
         /// Render desktop and status bar
         draw_desktop();
 
         /// Render Window
-
-        // Open all buffer
-        terminal_vidmem_set(NULL);
 
         gui_window_t *win;
 

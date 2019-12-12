@@ -365,7 +365,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
             // Clean up #3: terminal_vidmem_close(task->terminal->terminal_id)
 
             // Create new window
-            if (gui_new_window(&task->terminal->win, task->terminal->screen_char) != 0) {
+            if (gui_new_window(&task->terminal->win, task->terminal->screen_char, task->terminal->terminal_id) != 0) {
                 DEBUG_ERR("system_execute(): fail to create new window");
                 terminal_vidmem_close(task->terminal->terminal_id);
                 terminal_deallocate(task->terminal);
@@ -630,8 +630,8 @@ static void init_task_main() {
         system_execute((uint8_t *) "idle", -1, 0, idle_task_main);
 
         system_execute((uint8_t *) "shell", 0, 1, NULL);
-//        system_execute((uint8_t *) "shell", 0, 1, NULL);
-//        system_execute((uint8_t *) "shell", 0, 1, NULL);
+        system_execute((uint8_t *) "shell", 0, 1, NULL);
+        system_execute((uint8_t *) "shell", 0, 1, NULL);
 
     }
     restore_flags(flags);
@@ -641,7 +641,7 @@ static void init_task_main() {
             cli_and_save(flags);
             {
                 system_execute((uint8_t *) "shell", 0, 1, NULL);
-                terminal_focus_printf("<Last shell has halted. Restarted.>\n");  // put in newly started terminal
+//                terminal_focus_printf("<Last shell has halted. Restarted.>\n");  // put in newly started terminal
             }
             restore_flags(flags);
         } else {

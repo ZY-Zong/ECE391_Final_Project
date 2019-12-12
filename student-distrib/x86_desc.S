@@ -205,16 +205,16 @@ kernel_page_table_1: # the page that can access all buffer, for PDE VRAM_BUFFER_
     .endr
 
 user_page_table_0:
-    # Fill index 0-0xB7
-    .rept VIDEO_MEMORY_START_PAGE   # 0xB8
+
+    .rept VIDEO_MEMORY_START_PAGE   # 0xBF
     .long 0
     .endr
 
-    # 0xB8: video memory
-    .long   0x000B8007  # the 7 is for U, present and W/R flag
+    # 0xBF: video memory
+    .long   0x000BF007  # the 7 is for U, present and W/R flag
 
     # Fill the rest to 1024
-    .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xB8 -1
+    .rept KERNEL_PAGE_TABLE_SIZE - VIDEO_MEMORY_START_PAGE - 1   # 1024 - 0xBF -1
     .long 0
     .endr
 

@@ -10,6 +10,7 @@
 #include "vga/vga.h"
 #include "gui/gui.h"
 #include "vga/vga_hardware_cursor.h"
+#include "idt.h"
 
 // Local constants
 #define MOUSE_PORT_60 0x60
@@ -108,7 +109,10 @@ void mouse_init() {
         }
     }
 }
-void mouse_interrupt_handler() {
+asmlinkage void mouse_interrupt_handler(hw_context_t hw_context) {
+
+    idt_send_eoi(hw_context.irq_exp_num);
+
     /**
      * Firstly, we need to check two things:
      * 1. Whether port 60 is ready for read (check bit 1 of port 64)

@@ -12,6 +12,7 @@ struct gui_window_t {
     int term_x;
     int term_y;
     char* screen_char;
+    int terminal_id;
 };
 
 #define GUI_MAX_WINDOW_NUM    3
@@ -27,7 +28,7 @@ extern gui_window_t* window_stack[GUI_MAX_WINDOW_NUM];  // 0 window is on the to
 
 void gui_window_init();
 
-int gui_new_window(gui_window_t *win, char *screen_buf);
+int gui_new_window(gui_window_t *win, char *screen_buf, int terminal_id);
 int gui_activate_window(gui_window_t* win);
 int gui_destroy_window(gui_window_t* win);
 

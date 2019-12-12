@@ -12,14 +12,14 @@
 #include "terminal.h"
 #include "file_system.h"
 
-#define     VIDMEM_PAGE_ENTRY         0xA0
+#define     VIDMEM_PAGE_ENTRY         0xBF
 
 #define     TASK_IMG_START            0x08000000  // 128MB
 #define     TASK_IMG_END              0x08400000  // 132MB
 #define     VIDMAP_PAGE_ENTRY         33          // 132MB / 4MB
 #define     VIDMAP_USER_START_ADDR    (TASK_IMG_END + VIDMEM_PAGE_ENTRY * SIZE_4K)  // 132MB + 0xA0 * 4K
 
-#define     USER_VRAM_PAGE_ENTRY        0xB9    // real VRAM is at 0xB8
+#define     USER_VRAM_PAGE_ENTRY        0x0
 #define     VRAM_BUFFER_PD_ENTRY        (KERNEL_PAGE_OFFSET + 2)
 
 #define     TERMINAL_VID_OPENED         777     // funny number

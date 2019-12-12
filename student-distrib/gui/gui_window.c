@@ -10,6 +10,7 @@
 #include "../vga/vga.h"
 #include "gui_render.h"
 #include "gui_objs.h"
+#include "../task/task.h"
 
 gui_window_t *window_stack[GUI_MAX_WINDOW_NUM];
 static int mouse_pressed_on_title = 0;
@@ -37,7 +38,7 @@ static int find_window_idx(const gui_window_t *win) {
     return -1;
 }
 
-int gui_new_window(gui_window_t *win, char *screen_buf) {
+int gui_new_window(gui_window_t *win, char *screen_buf, int terminal_id) {
 
     if (find_window_idx(win) != -1) {
         DEBUG_ERR("gui_new_window(): window already exists");
@@ -54,6 +55,7 @@ int gui_new_window(gui_window_t *win, char *screen_buf) {
     win->term_x = GUI_WIN_INITIAL_TERM_X;
     win->term_y = GUI_WIN_INITIAL_TERM_Y;
     win->screen_char = screen_buf;
+    win->terminal_id = terminal_id;
 
     window_stack[idx] = win;
 
@@ -67,6 +69,8 @@ int gui_activate_window(gui_window_t *win) {
         return -1;
     }
 
+    if (window_stack[0] == win) return 0;
+
 #if GUI_WIN_ENABLE_LOG
     DEBUG_PRINT("GUI window %d gets activated", idx);
 #endif
@@ -77,6 +81,8 @@ int gui_activate_window(gui_window_t *win) {
         window_stack[i] = window_stack[i - 1];
     }
     window_stack[0] = win;
+
+    task_change_focus(win->terminal_id);
 
     return 0;
 }

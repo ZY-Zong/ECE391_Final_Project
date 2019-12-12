@@ -160,14 +160,10 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the terminal and keyboard */
     terminal_init();
     enable_irq(KEYBOARD_IRQ_NUM);
-    // Disable the cursor
-    outb(0x0A, 0x3D4);
-    outb(0x20, 0x3D5);
 
     /* Init the mouse */
     mouse_init();
     enable_irq(MOUSE_IRQ_NUM);
-    printf("mouse initialized!!!!!!!!");
 
     /* Init the RTC */
     rtc_init();

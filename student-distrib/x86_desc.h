@@ -31,7 +31,7 @@
 
 #define KERNEL_PAGE_DIRECTORY_SIZE      1024
 #define KERNEL_PAGE_TABLE_SIZE          1024
-#define VIDEO_MEMORY_START_PAGE         0xB8
+#define VIDEO_MEMORY_START_PAGE         0xBF
 #define PAGE_4KB_ALIGN_TEST             0x00FFF
 #define KERNEL_PAGE_OFFSET              5  // beside 4-8MB, the number of 4MB page that the kernel need
                                             // need to change x86_desc.S when change!

@@ -15,7 +15,7 @@ extern int screen_x;
 extern int screen_y;
 
 #define VIDEO       0xA0000
-#define VIDEO_TEXT  0xA0000
+#define VIDEO_TEXT  0xBF000
 
 /** System Calls */
 
