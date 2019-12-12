@@ -200,7 +200,7 @@ void handle_scan_code(uint8_t scan_code) {
             reset_cursor(); // reset the cursor to up-left corner
 
             // Keep the last typed line
-            printf("391OS>");
+            printf("391OS> ");
             int i;
             for (i = 0; i < focus_term->key_buf_cnt; i++) {
                 putc(focus_term->key_buf[i]);

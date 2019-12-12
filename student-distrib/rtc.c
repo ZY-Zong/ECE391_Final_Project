@@ -84,7 +84,7 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
     task_list_node_t *temp;
     task_t *task;
 
-    update_system_time();
+//    update_system_time();
 
     task_list_for_each_safe(node, &rtc_wait_list, temp) {
         task = task_from_node(node);
@@ -191,7 +191,8 @@ int32_t system_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
     {
         // Restore required frequency and count for this task
         running_task()->rtc.target_freq = frequency;
-        running_task()->rtc.counter = RTC_HARDWARE_FREQUENCY / frequency;
+        // FIXME: for actual effects
+        running_task()->rtc.counter = RTC_HARDWARE_FREQUENCY / frequency / 4;
     }
     restore_flags(flags);
 

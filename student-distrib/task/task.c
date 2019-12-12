@@ -398,6 +398,7 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
             terminal_fg_task[task->terminal->terminal_id] = task;  // become the user task of the terminal
             // Always set this new task as focus, even it inherits terminal from its parent that is at background
             task_set_focus_task(task);
+            gui_activate_window(&task->terminal->win);
         }
         terminal_set_running(task->terminal);  // always, because task is about to run
 
@@ -486,36 +487,14 @@ int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_ter
 }
 
 /**
- * Actual implementation of halt() system call
- * @param status    Exit code of current task (size are enlarged to support 256 return from exception)
- * @note Wrap this function with a lock (although it will not return)
- * @return This function should never return
+ * Tear down a task from system_halt() or external window closing
+ * @param task
+ * @note Wrap this function with a lock
  */
-int32_t system_halt(int32_t status) {
-
-    // This whole function is wrapped in a lock
-
-    task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
-    task_t *task = running_task();  // the task to halt
+static void tear_down_task(task_t* task) {
     task_t *parent = task->parent;
 
-    if (task_count == 0) {   // pure kernel state
-        DEBUG_ERR("Can't halt pure kernel state!");
-        return -1;
-    }
-
-    if (task->flags & TASK_INIT_TASK) {
-        printf("Init task halt with status %d. OS halt.", status);
-        while (1) {}
-    }
-
-    // Print an empty line at halt
-    putc('\n');
-
-    /** --------------- Phase 1. Remove current task from scheduler --------------- */
-
-
-    sched_move_running_after_node_unsafe(&temp_list);
+    /** --------------- Phase 2. Restore parent task to scheduler --------------- */
 
     if (parent) {
         // Re-activate parent
@@ -525,7 +504,7 @@ int32_t system_halt(int32_t status) {
         sched_insert_to_head_unsafe(parent);
     }
 
-    /** --------------- Phase 2. Tear down kernel data structure --------------- */
+    /** --------------- Phase 3. Tear down kernel data structure --------------- */
 
 #if TASK_ENABLE_CHECKPOINT
     checkpoint_task_paging_consistent();  // check paging is consistent
@@ -569,8 +548,45 @@ int32_t system_halt(int32_t status) {
 
     // Deallocate task
     task_deallocate(task);
+}
 
-    /** --------------- Phase 3. Ready to go. Do low level switch --------------- */
+/**
+ * Actual implementation of halt() system call
+ * @param status    Exit code of current task (size are enlarged to support 256 return from exception)
+ * @note Wrap this function with a lock (although it will not return)
+ * @return This function should never return
+ */
+int32_t system_halt(int32_t status) {
+
+    // This whole function is wrapped in a lock
+
+    task_list_node_t temp_list = TASK_LIST_SENTINEL(temp_list);
+    task_t *task = running_task();  // the task to halt
+    task_t *parent = task->parent;
+
+    if (task_count == 0) {   // pure kernel state
+        DEBUG_ERR("Can't halt pure kernel state!");
+        return -1;
+    }
+
+    if (task->flags & TASK_INIT_TASK) {
+        printf("Init task halt with status %d. OS halt.", status);
+        while (1) {}
+    }
+
+    // Print an empty line at halt
+    putc('\n');
+
+
+    /** --------------- Phase 1. Remove current task from scheduler --------------- */
+
+    sched_move_running_after_node_unsafe(&temp_list);
+
+    /** --------------- Phase 2 & 3 --------------- */
+
+    tear_down_task(task);
+
+    /** --------------- Phase 4. Ready to go. Do low level switch --------------- */
 
     if (parent) {
 
@@ -706,6 +722,24 @@ void task_change_focus(int32_t terminal_id) {
     task_set_focus_task(terminal_fg_task[terminal_id]);
 
 //    terminal_focus_printf("<Now in terminal %d>\n", terminal_id);
+}
+
+void task_halt_terminal(int32_t terminal_id) {
+    if (terminal_id < 0 || terminal_id >= TERMINAL_MAX_COUNT) {
+        DEBUG_ERR("task_change_focus(): invalid terminal_id");
+        return;
+    }
+
+    if (terminal_fg_task[terminal_id] == NULL) {
+        terminal_focus_printf("<No terminal %d>\n", terminal_id);
+        return;
+    }
+
+    if (terminal_fg_task[terminal_id] == running_task()) {
+        system_halt(255);
+    } else {
+        tear_down_task(terminal_fg_task[terminal_id]);
+    }
 }
 
 /**

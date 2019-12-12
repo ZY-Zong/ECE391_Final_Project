@@ -90,6 +90,7 @@ task_t* running_task();
 task_t* focus_task();
 
 void task_change_focus(int32_t terminal_id);
+void task_halt_terminal(int32_t terminal_id);
 void task_apply_user_vidmap(task_t* task);
 
 /** ============== Interface for Pure Kernel State ============== */
@@ -102,7 +103,6 @@ void task_run_initial_task();
 int32_t system_execute(uint8_t *command, int8_t wait_for_return, uint8_t new_terminal, void (*kernel_task_eip)());
 int32_t system_halt(int32_t status);
 int32_t system_getargs(uint8_t *buf, int32_t nbytes);
-
 
 /** ============== Task List Related Helpers  ============== */
 

@@ -11,7 +11,7 @@
 #include "types.h"
 #include "linkage.h"
 
-#define EXCEPTION_HANDLING_TYPE  0  // 0 for simply loop, 1 for halting user program, 2 for sending signals
+#define EXCEPTION_HANDLING_TYPE    2  // 0 for simply loop, 1 for halting user program, 2 for sending signals
 
 #define IDT_ENTRY_INTEL            0x20  // number of vectors used by intel
 #define IDT_ENTRY_PIT              0x20  // the vector number of PIT

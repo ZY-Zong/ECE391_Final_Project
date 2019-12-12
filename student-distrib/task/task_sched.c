@@ -13,7 +13,7 @@
 
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
-#define GUI_RENDER_INTERVAL    2
+#define GUI_RENDER_INTERVAL    3
 int gui_render_counter = 0;
 
 #if SCHED_ENABLE_KESP_CHECK

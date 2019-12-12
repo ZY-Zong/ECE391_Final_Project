@@ -27,7 +27,7 @@ void gui_window_init() {
 
 /**
  * Find a window in window stack
- * @param win    The window to find
+ * @param win    The window to find, or NULL
  * @return Its index in window_stack, or -1 if it's not in the stack
  */
 static int find_window_idx(const gui_window_t *win) {
@@ -121,15 +121,15 @@ int check_inside_window(int x, int y, const gui_window_t *win) {
     }
     if (y < term_y) {
         if (x >= term_x + WIN_RED_B_LEFT_MARGIN && x < term_x + WIN_RED_B_LEFT_MARGIN + WIN_RED_B_WIDTH && 
-            y >= term_y - WIN_RED_B_UP_MARGIN && y < term_y + WIN_RED_B_UP_MARGIN + WIN_RED_B_HEIGHT) {
+            y >= term_y - WIN_RED_B_UP_MARGIN && y < term_y - WIN_RED_B_UP_MARGIN + WIN_RED_B_HEIGHT) {
             return IN_RED_BUTTON;
         }
         if (x >= term_x + WIN_YELLOW_B_LEFT_MARGIN && x < term_x + WIN_YELLOW_B_LEFT_MARGIN + WIN_YELLOW_B_WIDTH &&
-            y >= term_y - WIN_YELLOW_B_UP_MARGIN && y < term_y + WIN_YELLOW_B_UP_MARGIN + WIN_YELLOW_B_HEIGHT) {
+            y >= term_y - WIN_YELLOW_B_UP_MARGIN && y < term_y - WIN_YELLOW_B_UP_MARGIN + WIN_YELLOW_B_HEIGHT) {
             return IN_YELLOW_BUTTON;
         }
         if (x >= term_x + WIN_GREEN_B_LEFT_MARGIN && x < term_x + WIN_GREEN_B_LEFT_MARGIN + WIN_GREEN_B_WIDTH &&
-            y >= term_y - WIN_GREEN_B_UP_MARGIN && y < term_y + WIN_GREEN_B_UP_MARGIN + WIN_GREEN_B_HEIGHT) {
+            y >= term_y - WIN_GREEN_B_UP_MARGIN && y < term_y - WIN_GREEN_B_UP_MARGIN + WIN_GREEN_B_HEIGHT) {
             return IN_GREEN_BUTTON;
         }
         return IN_TITLE_BAR;
@@ -166,8 +166,10 @@ void gui_handle_mouse_press(int x, int y) {
 void gui_handle_mouse_release(int x, int y) {
     mouse_pressed_on_title = 0;
     if (check_inside_window(x, y, window_stack[0]) == IN_RED_BUTTON) {
+#if GUI_WIN_ENABLE_LOG
         DEBUG_PRINT("GUI window close");
-        // TODO: close window
+#endif
+        task_halt_terminal(window_stack[0]->terminal_id);
     }
 }
 
