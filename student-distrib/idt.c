@@ -54,7 +54,7 @@ void idt_init() {
         idt[i].dpl = 0;
         idt[i].present = 0;
         idt[i].reserved0 = 0;
-        idt[i].size = 0;  // trap gate
+        idt[i].size = 1;  // interrupt gate
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
         idt[i].reserved3 = 0;
@@ -102,8 +102,8 @@ void idt_init() {
 
     // Set system calls handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_SYSTEM_CALL], system_call_entry);
-    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
     idt[IDT_ENTRY_SYSTEM_CALL].dpl = 3;
+    idt[IDT_ENTRY_SYSTEM_CALL].present = 1;
 
     // Load IDT into IDTR
     lidt(idt_desc_ptr);
@@ -128,24 +128,24 @@ void unified_exception_handler(hw_context_t hw_context) {
         while (inf_loop) {}   // put kernel into infinite loop
     } else {
         DEBUG_WARN("EXCEPTION %u OCCUR!", hw_context.irq_exp_num);
-#if (EXCEPTION_HANLDING_TYPE == 0)
+#if (EXCEPTION_HANDLING_TYPE == 0)
         DEBUG_WARN("Start infinity loop");
         volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
         while (inf_loop) {}   // put kernel into infinite loop
-#elif (EXCEPTION_HANLDING_TYPE == 1)
+#elif (EXCEPTION_HANDLING_TYPE == 1)
         DEBUG_WARN("Try to halt user program");
         system_halt(256);
         // If failed to halt
         DEBUG_ERR("Start infinity loop\n");
         volatile int inf_loop = 1;  // set it to 0 in gdb to return to exception content
         while (inf_loop) {}   // put kernel into infinite loop
-#elif (EXCEPTION_HANLDING_TYPE == 2)
+#elif (EXCEPTION_HANDLING_TYPE == 2)
         DEBUG_WARN("Hand it to signal handler");
         if (hw_context.irq_exp_num == 0) signal_send(SIGNAL_DIV_ZERO);
         else signal_send(SIGNAL_SEGFAULT);
         // Continue backtracking exception handler
 #else
-#error "Invalid EXCEPTION_HANLDING_TYPE"
+#error "Invalid EXCEPTION_HANDLING_TYPE"
 #endif
     }
 }
