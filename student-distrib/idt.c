@@ -25,12 +25,12 @@ void idt_init() {
     for (i = 0; i < IDT_ENTRY_INTEL; i++) {
         idt[i].seg_selector = KERNEL_CS;
         idt[i].dpl = 0;
-        idt[i].present = 1;
+        idt[i].present = 0;
         idt[i].reserved0 = 0;
         idt[i].size = 1;
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
-        idt[i].reserved3 = 1;
+        idt[i].reserved3 = 0;
         idt[i].reserved4 = 0;
     }
 
@@ -40,10 +40,10 @@ void idt_init() {
         idt[i].dpl = 0;
         idt[i].present = 0;
         idt[i].reserved0 = 0;
-        idt[i].size = 0;  // interrupt gate
+        idt[i].size = 1;  // interrupt gate
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
-        idt[i].reserved3 = 1;
+        idt[i].reserved3 = 0;
         idt[i].reserved4 = 0;
 
     }
@@ -54,10 +54,10 @@ void idt_init() {
         idt[i].dpl = 0;
         idt[i].present = 0;
         idt[i].reserved0 = 0;
-        idt[i].size = 1;  // trap gate
+        idt[i].size = 0;  // trap gate
         idt[i].reserved1 = 1;
         idt[i].reserved2 = 1;
-        idt[i].reserved3 = 1;
+        idt[i].reserved3 = 0;
         idt[i].reserved4 = 0;
 
     }
@@ -84,6 +84,9 @@ void idt_init() {
     SET_IDT_ENTRY(idt[19], exception_entry_19);
     SET_IDT_ENTRY(idt[20], exception_entry_20);
     SET_IDT_ENTRY(idt[30], exception_entry_30);
+    for (i = 0; i <= 30; i++) {
+        idt[i].present = 1;
+    }
 
     // Set PIT handler (defined in idt_asm.S)
     SET_IDT_ENTRY(idt[IDT_ENTRY_PIT], interrupt_entry_0);
