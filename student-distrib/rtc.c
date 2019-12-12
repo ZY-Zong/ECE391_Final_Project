@@ -12,7 +12,7 @@
 #include "idt.h"
 #include "task/task_sched.h"
 
-#define RTC_HARDWARE_FREQUENCY   1024
+#define RTC_HARDWARE_FREQUENCY   256
 #define RTC_MAX_FREQUENCY        32768
 #define RTC_MIN_RATE    6   // rate for 1024 Hz
 #define RTC_MAX_RATE    15  // rate for 2 Hz
@@ -64,7 +64,7 @@ void rtc_init() {
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // set index to register A, disable NMI
         prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
-        outb((prev & 0xF0) | RTC_MIN_RATE, RTC_RW_DATA_PORT);   // write rate 1024 Hz to A
+        outb((prev & 0xF0) | 8, RTC_RW_DATA_PORT);   // write rate 256 Hz to A
 
     }
     restore_flags(flags);
@@ -84,7 +84,7 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
     task_list_node_t *temp;
     task_t *task;
 
-//    update_system_time();
+    update_system_time();
 
     task_list_for_each_safe(node, &rtc_wait_list, temp) {
         task = task_from_node(node);
@@ -153,7 +153,7 @@ int32_t system_rtc_read(int32_t fd, void *buf, int32_t nbytes) {
         running_task()->flags |= TASK_WAITING_RTC;
 
         // Refill the counter
-        running_task()->rtc.counter = RTC_HARDWARE_FREQUENCY / running_task()->rtc.target_freq;
+        running_task()->rtc.counter = RTC_HARDWARE_FREQUENCY / running_task()->rtc.target_freq / 4;
 
         // Move running task out to wait list
         // Already in lock
@@ -235,11 +235,11 @@ int32_t system_rtc_close(int32_t fd) {
 // source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
 /* down from here */
 
-static unsigned char second = 0;
-static unsigned char minute = 0;
-static unsigned char hour = 0;
-static unsigned char day = 0;
-static unsigned char month = 0;
+unsigned char rtc_second = 0;
+unsigned char rtc_minute = 0;
+unsigned char rtc_hour = 0;
+unsigned char rtc_day = 0;
+unsigned char rtc_month = 0;
 
 enum {
     cmos_address = 0x70,
@@ -265,27 +265,27 @@ void update_system_time() {
 
     if (get_update_in_progress_flag()) return;                // Make sure an update isn't in progress
 
-    second = get_RTC_register(0x00);
-    minute = get_RTC_register(0x02);
-    hour = get_RTC_register(0x04);
-    day = get_RTC_register(0x07);
-    month = get_RTC_register(0x08);
+    rtc_second = get_RTC_register(0x00);
+    rtc_minute = get_RTC_register(0x02);
+    rtc_hour = get_RTC_register(0x04);
+    rtc_day = get_RTC_register(0x07);
+    rtc_month = get_RTC_register(0x08);
 
     registerB = get_RTC_register(0x0B);
 
     // Convert BCD to binary values if necessary
     if (!(registerB & 0x04)) {
-        second = (second & 0x0F) + ((second / 16) * 10);
-        minute = (minute & 0x0F) + ((minute / 16) * 10);
-        hour = ((hour & 0x0F) + (((hour & 0x70) / 16) * 10)) | (hour & 0x80);
-        day = (day & 0x0F) + ((day / 16) * 10);
-        month = (month & 0x0F) + ((month / 16) * 10);
+        rtc_second = (rtc_second & 0x0F) + ((rtc_second / 16) * 10);
+        rtc_minute = (rtc_minute & 0x0F) + ((rtc_minute / 16) * 10);
+        rtc_hour = ((rtc_hour & 0x0F) + (((rtc_hour & 0x70) / 16) * 10)) | (rtc_hour & 0x80);
+        rtc_day = (rtc_day & 0x0F) + ((rtc_day / 16) * 10);
+        rtc_month = (rtc_month & 0x0F) + ((rtc_month / 16) * 10);
 
     }
 
     // Convert 12 hour clock to 24 hour clock if necessary
-    if (!(registerB & 0x02) && (hour & 0x80)) {
-        hour = ((hour & 0x7F) + 12) % 24;
+    if (!(registerB & 0x02) && (rtc_hour & 0x80)) {
+        rtc_hour = ((rtc_hour & 0x7F) + 12) % 24;
     }
 
 }
@@ -300,11 +300,11 @@ void update_system_time() {
 int32_t get_system_time(uint8_t *second_p, uint8_t *minute_p, uint8_t *hour_p, uint8_t *day_p, uint8_t *month_p) {
     if (second_p == NULL || minute_p == NULL || hour_p == NULL || day_p == NULL || month_p == NULL) return -1;
 
-    *second_p = second;
-    *minute_p = minute;
-    *hour_p = hour;
-    *day_p = day;
-    *month_p = month;
+    *second_p = rtc_second;
+    *minute_p = rtc_minute;
+    *hour_p = rtc_hour;
+    *day_p = rtc_day;
+    *month_p = rtc_month;
 
     return 0;
 }

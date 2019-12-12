@@ -12,6 +12,7 @@
 #include "task/task_paging.h"
 #include "vidmem.h"
 #include "signal.h"
+#include "beep.h"
 
 /**
  * This function is used to initialize IDT table and called in kernel.c. Uses subroutine provided in x86_desc.h.
@@ -293,4 +294,12 @@ asmlinkage int32_t lowlevel_sys_vidmap(uint8_t ** screen_start) {
 
 asmlinkage int32_t lowlevel_sys_set_handler(int32_t signum, void* handler_address){
     return system_set_handler(signum, handler_address);
+}
+
+asmlinkage int32_t lowlevel_sys_play_sound(uint32_t nFrequence){
+    return system_play_sound(nFrequence);
+}
+
+asmlinkage int32_t lowlevel_sys_nosound(){
+    return system_nosound();
 }
