@@ -196,7 +196,7 @@ void beep(uint32_t frequency, uint32_t time_in_ms){
 void play_music_with_pu(song_interval_t* pu, int32_t length){
     int i=0; // loop counter 
     for (i=0; i<length; i++){
-        beep(pu[i].frequency, pu[i].time_in_half_sec / 10);
+        beep(pu[i].frequency, pu[i].time_in_half_sec / 2);
     }
 }
 
