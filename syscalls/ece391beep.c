@@ -16,7 +16,9 @@ void beep(uint32_t frequency, uint32_t time_in_half_sec){
     // Open a rtc and set frequency
     int i; // loop counter
     uint8_t buf[]="rtc";
+    uint32_t t = 32;
     int rtc_fd=ece391_open(buf); // default frequency 2Hz
+    ece391_write(rtc_fd, &t, 4);
     
     if (rtc_fd == -1) return;
     
