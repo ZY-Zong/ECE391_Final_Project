@@ -51,7 +51,7 @@ static void draw_desktop() {
     }
 }
 
-/*
+/**
  * Assume the terminal is printed at (x, y). Window status bar should start at (x-6, y-21).
  * Window block consists of:
  *   |  name       |   size   |    position    |
@@ -66,7 +66,6 @@ static void draw_desktop() {
  *      green_b_c    11 *  12    (x+41, y-17)
  *      grey_b       12 *  12    (x+4,  y-17) & (x+22, y-17) & (x+41, y-17)
  */
-
 static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int g) {
 #if GUI_WINDOW_PNG_RENDER
     vga_draw_img(gui_win_up, WIN_UP_WIDTH, WIN_UP_HEIGHT, terminal_x - WIN_UP_BORDER_LEFT_MARGIN,
@@ -108,6 +107,15 @@ static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int
     }
 #endif
 }
+
+/**
+ * Starting goose ui:
+ * |   name   |   size   |  position
+ *   goose.png  190 * 164  (417, 301)
+ *   GA!.png    104 * 59   (532,246),(308,393),(584,468)
+ *
+ */
+
 
 static inline void draw_terminal_content(const char *buf, int buf_start_x, int buf_start_y, int buf_cols, int buf_rows,
                                   int term_x, int term_y) {
