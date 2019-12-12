@@ -17,6 +17,7 @@
 #define IDT_ENTRY_PIT              0x20  // the vector number of PIT
 #define IDT_ENTRY_KEYBOARD         0x21  // the vector number of keyboard
 #define IDT_ENTRY_RTC              0x28  // the vector number of RTC
+#define IDT_ENTRY_MOUSE          0x2C  // the vector number of mouse
 #define IDT_ENTRY_SYSTEM_CALL      0x80  // the vector number of system calls
 
 typedef struct hw_context_t hw_context_t;
@@ -69,6 +70,7 @@ extern void exception_entry_30();
 extern void interrupt_entry_0();
 extern void interrupt_entry_1();
 extern void interrupt_entry_8();
+extern void interrupt_entry_12();
 
 // Defined in idt_asm.S
 extern void system_call_entry();

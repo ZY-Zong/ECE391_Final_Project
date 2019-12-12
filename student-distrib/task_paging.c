@@ -54,7 +54,7 @@ int task_paging_allocate_and_set(const uint8_t *task_name, uint32_t *eip) {
     int i;  // loop counter and temp use 
     dentry_t task;  // the dentry of the tasks in the file system
 
-    // Check the input 
+    // Check the input
     if (eip == NULL) {
         DEBUG_ERR("task_paging_allocate_and_set(): NULL eip!");
         return -1;
@@ -93,7 +93,7 @@ int task_paging_allocate_and_set(const uint8_t *task_name, uint32_t *eip) {
     // Load the file
     task_load(&task);
 
-    // Update the page_id 
+    // Update the page_id
     page_id_running[page_id] = PAGE_ID_USED;
     page_id_count++;
 
@@ -119,7 +119,7 @@ int task_paging_deallocate(const int page_id) {
 
     // Does not close user img page
 
-    // Release the page id 
+    // Release the page id
     page_id_running[page_id] = PAGE_ID_FREE;
     page_id_count--;
 
@@ -127,10 +127,10 @@ int task_paging_deallocate(const int page_id) {
 }
 
 /**
- * Reset the 128-132MB paging for a running task 
+ * Reset the 128-132MB paging for a running task
  * @param       page_id: the task id
  * @return      0 for success, 1 for failure
- * @effect      the PDE will be changed 
+ * @effect      the PDE will be changed
  */
 int task_paging_set(const int page_id) {
     if (page_id < 0 || page_id > TASK_MAX_COUNT) {
@@ -161,8 +161,9 @@ static int task_set_img_paging(const int page_id) {
     // The PDE to be set 
     uint32_t pde = 0;
 
-    // Calculate the physical memory address, set at bit 22 
-    pde |= (((uint32_t) page_id + 2) << 22U);  // +2 for 8MB
+    // Calculate the physical memory address, set at bit 22
+    // TODO: note down
+    pde |= (((uint32_t) page_id + 8) << 22U);  // +2 for 8MB
 
     // Set the flags of PDE 
     pde |= TASK_IMG_PAGE_FLAG;

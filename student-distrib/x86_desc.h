@@ -34,6 +34,8 @@
 #define VIDEO_MEMORY_START_PAGE         0xB8
 #define PAGE_4KB_ALIGN_TEST           0x00FFF
 
+#define KERNEL_ESP_START 0x01800000
+
 #ifndef ASM
 
 /* This structure is used to load descriptor base registers

@@ -6,6 +6,7 @@
 #include "lib.h"
 #include "task_sched.h"
 #include "i8259.h"
+#include "gui/gui.h"
 
 #include "task.h"
 #include "idt.h"
@@ -67,6 +68,18 @@ void rtc_init() {
 
     }
     restore_flags(flags);
+
+//    sti();
+
+//FIXME:
+//    cli();  // disable interrupts
+    {
+        outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // set index to register A, disable NMI
+        char prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
+        outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
+        outb((prev & 0xF0) | 9, RTC_RW_DATA_PORT);  // write rate to A
+    }
+//    sti();
 }
 
 /**
@@ -104,6 +117,8 @@ asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
         sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.
     }
 
+    // FIXME: move to pit
+    gui_render();
 }
 
 /**
@@ -228,7 +243,7 @@ int32_t system_rtc_close(int32_t fd) {
 }
 
 
-// The followings are for system time 
+// The followings are for system time
 // Tingkai Liu 2019.12.10
 // source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
 /* down from here */
@@ -293,7 +308,7 @@ void update_system_time() {
 
 /**
  * Get the current system time by filling the pointers
- * Should update before call 
+ * Should update before call
  */
 int32_t get_system_time(uint8_t *second_p, uint8_t *minute_p, uint8_t *hour_p, uint8_t *day_p, uint8_t *month_p) {
     if (second_p == NULL || minute_p == NULL || hour_p == NULL || day_p == NULL || month_p == NULL) return -1;

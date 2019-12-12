@@ -132,9 +132,14 @@ kernel_page_directory:
 
     # Index 1: 4-8MB, map to physical memory 4-8MB
     .long   0x00400083  # the 3 is for present and W/R flag, 8 is for PS flag, 4 for 4MB place
+    .long   0x00800083
+    .long   0x00C00083
+    .long   0x01000083
+    .long   0x01400083
+    .long   0x01800083
 
-    # Index 2-1023: not presented
-    .rept KERNEL_PAGE_DIRECTORY_SIZE - 2  # 1024 - 2
+    # Index 3-1023: not presented
+    .rept KERNEL_PAGE_DIRECTORY_SIZE - 7  # 1024 - 3
     .long 0
     .endr
 
@@ -142,6 +147,51 @@ kernel_page_directory:
 .align SIZE_4K  # Align to 4 kB
 kernel_page_table:
 kernel_page_table_0:
+    # Fill index 0-0xB7
+    .rept 0xA0   # modex
+    .long 0
+    .endr
+
+    # video memory, modex
+    .long   0x000A0003
+    .long   0x000A1003
+    .long   0x000A2003
+    .long   0x000A3003
+    .long   0x000A4003
+    .long   0x000A5003
+    .long   0x000A6003
+    .long   0x000A7003
+    .long   0x000A8003
+    .long   0x000A9003
+    .long   0x000AA003
+    .long   0x000AB003
+    .long   0x000AC003
+    .long   0x000AD003
+    .long   0x000AE003
+    .long   0x000AF003
+    .long   0x000B0003
+    .long   0x000B1003
+    .long   0x000B2003
+    .long   0x000B3003
+    .long   0x000B4003
+    .long   0x000B5003
+    .long   0x000B6003
+    .long   0x000B7003
+    .long   0x000B8003
+    .long   0x000B9003
+    .long   0x000BA003
+    .long   0x000BB003
+    .long   0x000BC003
+    .long   0x000BD003
+    .long   0x000BE003
+    .long   0x000BF003
+
+
+    # Fill the rest to 1024
+    .rept KERNEL_PAGE_TABLE_SIZE - 0xA0 - 32   # modex
+    .long 0
+    .endr
+kernel_page_table_1:
     # Fill index 0-0xB7
     .rept VIDEO_MEMORY_START_PAGE   # 0xB8
     .long 0

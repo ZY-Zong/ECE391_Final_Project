@@ -14,6 +14,11 @@
 #include "task.h"
 #include "vidmem.h"
 #include "signal.h"
+#include "mouse.h"
+#include "vga/vga.h"
+#include "gui/gui.h"
+#include "vga/vga_hardware_cursor.h"
+
 
 #define RUN_TESTS
 
@@ -27,9 +32,6 @@ extern void enable_paging();  // in boot.S
 void entry(unsigned long magic, unsigned long addr) {
 
     multiboot_info_t *mbi;
-
-    /* Clear the screen. */
-    clear();
 
     /* Am I booted by a Multiboot-compliant boot loader? */
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -139,7 +141,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
         tss.ldt_segment_selector = KERNEL_LDT;
         tss.ss0 = KERNEL_DS;
-        tss.esp0 = 0x800000;
+        tss.esp0 = KERNEL_ESP_START;
         ltr(KERNEL_TSS);
     }
 
@@ -161,6 +163,11 @@ void entry(unsigned long magic, unsigned long addr) {
     // Disable the cursor
     outb(0x0A, 0x3D4);
     outb(0x20, 0x3D5);
+
+    /* Init the mouse */
+    mouse_init();
+    enable_irq(MOUSE_IRQ_NUM);
+    printf("mouse initialized!!!!!!!!");
 
     /* Init the RTC */
     rtc_init();
@@ -192,6 +199,13 @@ void entry(unsigned long magic, unsigned long addr) {
     printf("Enabling Interrupts\n");
     sti();
 
+
+    vga_init();
+    vga_set_mode(G1024x768x32K);
+    vga_clear();
+    vga_accel_set_mode(BLITS_IN_BACKGROUND);
+    gui_init();
+    hardware_cursor_init();
 
 #ifdef RUN_TESTS
     /* Run tests */
