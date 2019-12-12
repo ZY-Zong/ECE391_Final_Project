@@ -148,3 +148,5 @@ system_call_table:
     .long lowlevel_sys_vidmap
     .long lowlevel_sys_set_handler
     .long system_sigreturn  /* 10 */
+    .long lowlevel_sys_play_sound
+    .long lowlevel_sys_nosound

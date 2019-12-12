@@ -7,8 +7,10 @@
 // reference: https://wiki.osdev.org/PC_Speaker
 /* down from here */
 //Play sound using built in speaker
-void play_sound(uint32_t nFrequence) {
- 	uint32_t Div;
+int32_t system_play_sound(uint32_t nFrequence) {
+ 	if (nFrequence == 0 ) return -1;
+     
+    uint32_t Div;
  	uint8_t tmp;
     uint32_t flag;
  
@@ -26,10 +28,12 @@ void play_sound(uint32_t nFrequence) {
  	    }
     }
     restore_flags(flag);
+
+    return 0;
  }
  
  //make it shutup
-void nosound() {
+int32_t system_nosound() {
  	uint32_t flag;
     
     cli_and_save(flag); {
@@ -37,26 +41,11 @@ void nosound() {
  	    outb(tmp, 0x61);
     }
     restore_flags(flag);
+
+    return 0;
     
  }
 
 // reference: https://wiki.osdev.org/PC_Speaker
 /* up from here */
 
-/**
- * Beep
- * @param   frequency: the frequency of beep 
- * @param   time_in_ms: the duration of the beep 
- * @effect: the frequency of PIT channel 2 will be changed!
- */
-void beep(uint32_t frequency, uint32_t time_in_ms){
-    play_sound(frequency);
-
-    // TODO: keep the beep for time_in_ms by sleeping 
-    // for test: just use current rtc frequency
-    uint8_t buf[]="rtc";
-    int fd=system_open(buf);
-    system_read(fd, 0, 0);
-
-    nosound();
-}

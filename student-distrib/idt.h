@@ -4,7 +4,7 @@
 #ifndef _IDT_HANDLER_H
 #define _IDT_HANDLER_H
 
-#define SYSTEM_CALL_TABLE_SIZE   11
+#define SYSTEM_CALL_TABLE_SIZE   13
 
 #ifndef ASM
 
