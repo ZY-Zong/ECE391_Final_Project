@@ -96,7 +96,7 @@ terminal_t *running_term() {
     return running_term_;
 }
 
-terminal_t null_terminal ={
+terminal_t null_terminal = {
         .valid = 1,
         .terminal_id = NULL_TERMINAL_ID,
         .key_buf_cnt = 0,
@@ -114,30 +114,26 @@ terminal_t null_terminal ={
  */
 asmlinkage void keyboard_interrupt_handler(hw_context_t hw_context) {
 
-    uint32_t flags = 0;
+    // We are using interrupt gate now, so we don't need a lock
 
-    cli_and_save(flags);  // handle_scan_code requires to be placed in a lock
-    {
-        // Get scan code from port 0x60
-        uint8_t scancode = inb(KEYBOARD_PORT);
+    // Get scan code from port 0x60
+    uint8_t scancode = inb(KEYBOARD_PORT);
 
-        // After read from keyboard, send EOI
-        idt_send_eoi(hw_context.irq_exp_num);
+    // After read from keyboard, send EOI
+    idt_send_eoi(hw_context.irq_exp_num);
 
-        // Set video memory to focus task to allow echo
+    // Set video memory to focus task to allow echo
 
-        if (focus_task()) {
-            terminal_set_running(focus_task()->terminal);
-        } else {
-            DEBUG_WARN("keyboard_interrupt_handler(): no focus task but there is key to be handled");
-        }
-
-        handle_scan_code(scancode);  // output the char to the console
-
-        // Revert video memory
-        terminal_set_running(running_task()->terminal);
+    if (focus_task()) {
+        terminal_set_running(focus_task()->terminal);
+    } else {
+        DEBUG_WARN("keyboard_interrupt_handler(): no focus task but there is key to be handled");
     }
-    restore_flags(flags);
+
+    handle_scan_code(scancode);  // output the char to the console
+
+    // Revert video memory
+    terminal_set_running(running_task()->terminal);
 }
 
 /**

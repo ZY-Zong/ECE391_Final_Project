@@ -64,7 +64,7 @@ void rtc_init() {
         prev = inb(RTC_RW_DATA_PORT);  // get initial value of register A
         outb(RTC_STATUS_REGISTER_A, RTC_REGISTER_PORT);  // reset index to A
         outb((prev & 0xF0) | RTC_MIN_RATE, RTC_RW_DATA_PORT);   // write rate 1024 Hz to A
-    
+
     }
     restore_flags(flags);
 }
@@ -74,40 +74,35 @@ void rtc_init() {
  * @reference https://wiki.osdev.org/RTC
  */
 asmlinkage void rtc_interrupt_handler(hw_context_t hw_context) {
-    uint32_t flags;
+
+    // We are using interrupt gate now, so we don't need a lock
+
     int32_t wake_count = 0;
 
-    task_list_node_t* node;
-    task_list_node_t* temp;
-    task_t* task;
+    task_list_node_t *node;
+    task_list_node_t *temp;
+    task_t *task;
 
-    cli_and_save(flags);
-    {
-        
-        // for test 
-        update_system_time();
-        
-        task_list_for_each_safe(node, &rtc_wait_list, temp) {
-            task = task_from_node(node);
-            task->rtc.counter--;
-            if (task->rtc.counter == 0) {
-                task->parent->flags &= ~TASK_WAITING_RTC;
-                sched_refill_time(task);
-                // Already in lock
-                sched_insert_to_head_unsafe(task);
-                wake_count++;
-            }
+    update_system_time();
+
+    task_list_for_each_safe(node, &rtc_wait_list, temp) {
+        task = task_from_node(node);
+        task->rtc.counter--;
+        if (task->rtc.counter == 0) {
+            task->parent->flags &= ~TASK_WAITING_RTC;
+            sched_refill_time(task);
+            // Already in lock
+            sched_insert_to_head_unsafe(task);
+            wake_count++;
         }
-
-        rtc_restart_interrupt();  // to get another interrupt
-        idt_send_eoi(hw_context.irq_exp_num);
-
-        if (wake_count > 0) {
-            sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.
-        }
-
     }
-    restore_flags(flags);
+
+    rtc_restart_interrupt();  // to get another interrupt
+    idt_send_eoi(hw_context.irq_exp_num);
+
+    if (wake_count > 0) {
+        sched_launch_to_current_head();  // insert multiple task to scheduler list head, but launch only once.
+    }
 
 }
 
@@ -238,87 +233,58 @@ int32_t system_rtc_close(int32_t fd) {
 // source: https://wiki.osdev.org/CMOS#Getting_Current_Date_and_Time_from_RTC
 /* down from here */
 
-#define CURRENT_YEAR        2019                            // Change this each year!
- 
 static unsigned char second = 0;
 static unsigned char minute = 0;
 static unsigned char hour = 0;
 static unsigned char day = 0;
 static unsigned char month = 0;
-// unsigned int year;
 
 enum {
-      cmos_address = 0x70,
-      cmos_data    = 0x71
+    cmos_address = 0x70,
+    cmos_data = 0x71
 };
- 
+
 int get_update_in_progress_flag() {
-      outb(0x0A, cmos_address);
-      return (inb(cmos_data) & 0x80);
+    outb(0x0A, cmos_address);
+    return (inb(cmos_data) & 0x80);
 }
- 
+
 unsigned char get_RTC_register(int reg) {
-      outb(reg, cmos_address);
-      return inb(cmos_data);
+    outb(reg, cmos_address);
+    return inb(cmos_data);
 }
- 
+
 void update_system_time() {
 
-      unsigned char last_second;
-      unsigned char last_minute;
-      unsigned char last_hour;
-      unsigned char last_day;
-      unsigned char last_month;
-      unsigned char registerB;
- 
-      // Note: This uses the "read registers until you get the same values twice in a row" technique
-      //       to avoid getting dodgy/inconsistent values due to RTC updates
- 
-      if (get_update_in_progress_flag()) return;                // Make sure an update isn't in progress
-      second = get_RTC_register(0x00);
-      minute = get_RTC_register(0x02);
-      hour = get_RTC_register(0x04);
-      day = get_RTC_register(0x07);
-      month = get_RTC_register(0x08);
- 
-      /*do {
-            last_second = second;
-            last_minute = minute;
-            last_hour = hour;
-            last_day = day;
-            last_month = month;
- 
-            while (get_update_in_progress_flag());           // Make sure an update isn't in progress
-            second = get_RTC_register(0x00);
-            minute = get_RTC_register(0x02);
-            hour = get_RTC_register(0x04);
-            day = get_RTC_register(0x07);
-            month = get_RTC_register(0x08);
-            
-      } while( (last_second != second) || (last_minute != minute) || (last_hour != hour) ||
-               (last_day != day) || (last_month != month) );*/
- 
-      registerB = get_RTC_register(0x0B);
-      
- 
-      // Convert BCD to binary values if necessary
- 
-      if (!(registerB & 0x04)) {
-            second = (second & 0x0F) + ((second / 16) * 10);
-            minute = (minute & 0x0F) + ((minute / 16) * 10);
-            hour = ( (hour & 0x0F) + (((hour & 0x70) / 16) * 10) ) | (hour & 0x80);
-            day = (day & 0x0F) + ((day / 16) * 10);
-            month = (month & 0x0F) + ((month / 16) * 10);
-            
-      }
- 
-      // Convert 12 hour clock to 24 hour clock if necessary
- 
-      if (!(registerB & 0x02) && (hour & 0x80)) {
-            hour = ((hour & 0x7F) + 12) % 24;
-      }
+    unsigned char registerB;
 
-    terminal_focus_printf("second:%d, minute:%d, hour:%d\n", second, minute, hour);
+    // Note: This uses the "read registers until you get the same values twice in a row" technique
+    //       to avoid getting dodgy/inconsistent values due to RTC updates
+
+    if (get_update_in_progress_flag()) return;                // Make sure an update isn't in progress
+
+    second = get_RTC_register(0x00);
+    minute = get_RTC_register(0x02);
+    hour = get_RTC_register(0x04);
+    day = get_RTC_register(0x07);
+    month = get_RTC_register(0x08);
+
+    registerB = get_RTC_register(0x0B);
+
+    // Convert BCD to binary values if necessary
+    if (!(registerB & 0x04)) {
+        second = (second & 0x0F) + ((second / 16) * 10);
+        minute = (minute & 0x0F) + ((minute / 16) * 10);
+        hour = ((hour & 0x0F) + (((hour & 0x70) / 16) * 10)) | (hour & 0x80);
+        day = (day & 0x0F) + ((day / 16) * 10);
+        month = (month & 0x0F) + ((month / 16) * 10);
+
+    }
+
+    // Convert 12 hour clock to 24 hour clock if necessary
+    if (!(registerB & 0x02) && (hour & 0x80)) {
+        hour = ((hour & 0x7F) + 12) % 24;
+    }
 
 }
 
@@ -329,7 +295,7 @@ void update_system_time() {
  * Get the current system time by filling the pointers
  * Should update before call 
  */
-int32_t get_system_time(uint8_t* second_p, uint8_t* minute_p, uint8_t* hour_p, uint8_t* day_p, uint8_t* month_p){
+int32_t get_system_time(uint8_t *second_p, uint8_t *minute_p, uint8_t *hour_p, uint8_t *day_p, uint8_t *month_p) {
     if (second_p == NULL || minute_p == NULL || hour_p == NULL || day_p == NULL || month_p == NULL) return -1;
 
     *second_p = second;
@@ -337,7 +303,7 @@ int32_t get_system_time(uint8_t* second_p, uint8_t* minute_p, uint8_t* hour_p, u
     *hour_p = hour;
     *day_p = day;
     *month_p = month;
-    
+
     return 0;
 }
 

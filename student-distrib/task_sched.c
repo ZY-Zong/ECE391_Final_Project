@@ -13,6 +13,7 @@
 task_list_node_t run_queue = TASK_LIST_SENTINEL(run_queue);
 
 #if SCHED_ENABLE_KESP_CHECK
+
 static void _sched_kesp_panic() {
     DEBUG_ERR("Scheduler: kernel stack panic!");
 }
@@ -28,6 +29,7 @@ static void _sched_check_kesp() {
     }
     restore_flags(flags);
 }
+
 #else
 #define _sched_check_kesp()    do { } while(0)
 #endif
@@ -183,62 +185,59 @@ void sched_move_running_to_last() {
  */
 asmlinkage void sched_pit_interrupt_handler(hw_context_t hw_context) {
 
+    // We are using interrupt gate now, so we don't need a lock
+
     if (run_queue.next == &run_queue) {  // no runnable task
         DEBUG_ERR("sched_launch_to_current_head(): run queue should never be empty!");
         idt_send_eoi(hw_context.irq_exp_num);
         return;
     }
 
-    uint32_t flags;
-
-    cli_and_save(flags);
-    {
-        // Handle signal ALARM
-        if (focus_task()) {
-            focus_task()->signals.alarm_time += SCHED_PIT_INTERVAL;
-            if (focus_task()->signals.alarm_time > SIGNAL_ALARM_INTERVAL_MS) {
-                signal_send(SIGNAL_ALARM);
-                focus_task()->signals.alarm_time = 0;
-            }
-        }
-
-
-        // Handle scheduling
-
-        task_t *running = running_task();
-
-        _sched_check_kesp();
-
-        if (running->flags & TASK_IDLE_TASK) {
-
-            sched_move_running_to_last();
-
-            idt_send_eoi(hw_context.irq_exp_num); // must send EOI before context switch, or PIT won't work in new task
-            sched_launch_to_current_head();  // return after this thread get running again
-
-        } else {
-
-            // Decrease available time of current running task
-            running->sched_ctrl.remain_time -= SCHED_PIT_INTERVAL;
-
-            if (running->sched_ctrl.remain_time <= 0) {  // running_task runs out of its time
-                /*
-                 *  Re-fill remain time when putting a task to the end, instead of when getting it to running.
-                 *  For example, task A have 30 ms left, but task B was inserted to the head of run queue because of
-                 *  rtc read() complete, etc. After B runs out of its time, A should have 30ms, rather than re-filling
-                 *  it with 50 ms.
-                 */
-                sched_refill_time(running);
-                sched_move_running_to_last();
-
-                idt_send_eoi(hw_context.irq_exp_num); // must send EOI before context switch, or PIT won't work then
-                sched_launch_to_current_head();  // return after this thread get running again
-            } else {
-                idt_send_eoi(hw_context.irq_exp_num);
-            }
+    // Handle signal ALARM
+    if (focus_task()) {
+        focus_task()->signals.alarm_time += SCHED_PIT_INTERVAL;
+        if (focus_task()->signals.alarm_time > SIGNAL_ALARM_INTERVAL_MS) {
+            signal_send(SIGNAL_ALARM);
+            focus_task()->signals.alarm_time = 0;
         }
     }
-    restore_flags(flags);
+
+
+    // Handle scheduling
+
+    task_t *running = running_task();
+
+    _sched_check_kesp();
+
+    if (running->flags & TASK_IDLE_TASK) {
+
+        sched_move_running_to_last();
+
+        idt_send_eoi(hw_context.irq_exp_num); // must send EOI before context switch, or PIT won't work in new task
+        sched_launch_to_current_head();  // return after this thread get running again
+
+    } else {
+
+        // Decrease available time of current running task
+        running->sched_ctrl.remain_time -= SCHED_PIT_INTERVAL;
+
+        if (running->sched_ctrl.remain_time <= 0) {  // running_task runs out of its time
+            /*
+             *  Re-fill remain time when putting a task to the end, instead of when getting it to running.
+             *  For example, task A have 30 ms left, but task B was inserted to the head of run queue because of
+             *  rtc read() complete, etc. After B runs out of its time, A should have 30ms, rather than re-filling
+             *  it with 50 ms.
+             */
+            sched_refill_time(running);
+            sched_move_running_to_last();
+
+            idt_send_eoi(hw_context.irq_exp_num); // must send EOI before context switch, or PIT won't work then
+            sched_launch_to_current_head();  // return after this thread get running again
+        } else {
+            idt_send_eoi(hw_context.irq_exp_num);
+        }
+    }
+
 }
 
 /**
