@@ -33,6 +33,8 @@
 #define KERNEL_PAGE_TABLE_SIZE          1024
 #define VIDEO_MEMORY_START_PAGE         0xB8
 #define PAGE_4KB_ALIGN_TEST           0x00FFF
+#define KERNEL_PAGE_OFFSET              1  // beside 4-8MB, the number of 4MB page that the kernel need 
+                                            // need to change x86_desc.S when change!
 
 #define KERNEL_ESP_START 0x01800000
 

@@ -17,10 +17,15 @@
  *
  * Version 5.0 Tingkai Liu 2019.11.27
  * Support multi-terminal and scheduling
+ * 
+ * Version 6.0 Tingkai Liu 2019.12.4
+ * Support sVGA by mapping all vidmem to buffer and other offset stuff
+ * see LTK_note.txt 2019.12.4 for detail 
+ * note: no longer support text mode
  */
 
 void vidmem_init();
-int terminal_vidmem_open(const int term_id);
+int terminal_vidmem_open(const int term_id, char** char_on_screen);
 int terminal_vidmem_close(const int term_id);
 int terminal_vidmem_switch_active(const int new_active_id, const int pre_active_id);
 int terminal_vidmem_set(const int term_id);

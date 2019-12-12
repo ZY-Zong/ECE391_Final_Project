@@ -190,3 +190,32 @@
     the stack is very complicated, need to carefully review whether the offset is correct
     return address to the function directly: won't set up stack frame?
         desire: should set up
+
+2019.12.4
+    improve the paging to support UI 
+        1. move the first task (shell) memory down by KERNEL_PAGE_OFFSET + 1
+            e.g. if KERNEL_PAGE_OFFSET=1, then shell should be at 16-20MB (origin: 8-12MB)
+        2. move the terminal video memory buffers to the next page of kernel 
+            e.g. if KERNEL_PAGE_OFFSET=1, the buffers should be at 12-16MB
+            on longer map vidmem directly to physical VRAM now, only to buffer 
+            There will be process responsible for drawing all buffers to VRAM 
+        3. the kernel stack for the tasks at the buttom of the kernel page 
+            e.g. if if KERNEL_PAGE_OFFSET=1, the kernel stacks grows from 12MB up 
+        4. change the 0-4MB physical VRAM to modeX size. (done in other branch)
+    To avoid missing, the things needed to be changed:
+        1. task_paging.c: the space for task 
+        2. vidmem.c: the place to put the buffer
+                    user and kernel vidmap 
+    change task_paging.c 
+        Done. only one function changes pde. (How clever I was!)
+    change vidmem.c
+        Check all the places that used pte and pde 
+            disconect all that map directly to physical VRAM 
+            change the entry of PD 
+                no need to change, since for each terminal, 
+                they still think their vram is at 0xb8 (putc)
+            change PTs 
+    change x86_desc.S and boot.S
+        change the initial page setting 
+    Done. maybe..
+        

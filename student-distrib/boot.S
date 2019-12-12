@@ -74,12 +74,18 @@ enable_paging:
 
     enter $0, $0
 
-    # Write the table for first 4K into entry 0 of page directory
+    # Write the table for first 4M into entry 0 of page directory
     movl    $kernel_page_table_0, %eax   # get the address of label 0
     # andl    $0xFFFFF000, %eax          # get high 20 bits, not needed since it is 4kB align.
     movl    kernel_page_directory, %ecx  # index 0 of PD
     orl     %eax, %ecx
     movl    %ecx, kernel_page_directory
+
+    # Write the table for vidmem buffer 
+    movl    $kernel_page_table_1, %eax 
+    movl    kernel_vidmem_buffer, %ecx 
+    orl     %eax, %ecx 
+    movl    %ecx, kernel_vidmem_buffer
 
     # Enable paging by setting registers
 

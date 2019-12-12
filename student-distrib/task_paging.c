@@ -3,6 +3,7 @@
 
 #include "lib.h"
 #include "paging.h"
+#include "x86_desc.h"
 
 #include "task.h"
 #include "file_system.h"
@@ -161,9 +162,8 @@ static int task_set_img_paging(const int page_id) {
     // The PDE to be set 
     uint32_t pde = 0;
 
-    // Calculate the physical memory address, set at bit 22
-    // TODO: note down
-    pde |= (((uint32_t) page_id + 8) << 22U);  // +2 for 8MB
+    // Calculate the physical memory address, set at bit 22 
+    pde |= (((uint32_t) page_id + 2 + KERNEL_PAGE_OFFSET + 1) << 22U);  // +2 for 8MB
 
     // Set the flags of PDE 
     pde |= TASK_IMG_PAGE_FLAG;
