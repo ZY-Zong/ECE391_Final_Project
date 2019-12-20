@@ -38,6 +38,13 @@ static int find_window_idx(const gui_window_t *win) {
     return -1;
 }
 
+/**
+ * Initialize a new window
+ * @param win           The window to be initialized
+ * @param screen_buf    Character buffer (on screen content) of the terminal of the window
+ * @param terminal_id   ID of the terminal of the window
+ * @return 0 for success, -1 for failure
+ */
 int gui_new_window(gui_window_t *win, char *screen_buf, int terminal_id) {
 
     if (find_window_idx(win) != -1) {
@@ -62,6 +69,11 @@ int gui_new_window(gui_window_t *win, char *screen_buf, int terminal_id) {
     return 0;
 }
 
+/**
+ * Activate a window
+ * @param win    The window to be activated
+ * @return 0 on success, -1 on failure
+ */
 int gui_activate_window(gui_window_t *win) {
     int idx = find_window_idx(win);
     if (idx == -1) {
@@ -87,6 +99,11 @@ int gui_activate_window(gui_window_t *win) {
     return 0;
 }
 
+/**
+ * Destroy a window
+ * @param win    The window to be destroyed
+ * @return 0 on success, -1 on failure
+ */
 int gui_destroy_window(gui_window_t *win) {
     int idx = find_window_idx(win);
     if (idx == -1) {
@@ -141,6 +158,11 @@ int check_inside_window(int x, int y, const gui_window_t *win) {
     return ON_BORDER;
 }
 
+/**
+ * Handle mouse press event
+ * @param x    X coordinate of cursor when mouse is pressed
+ * @param y    Y coordinate of cursor when mouse is pressed
+ */
 void gui_handle_mouse_press(int x, int y) {
 
     int i = 0;
@@ -173,6 +195,11 @@ void gui_handle_mouse_press(int x, int y) {
 #endif
 }
 
+/**
+ * Handle mouse release event
+ * @param x    X coordinate of cursor when mouse is released
+ * @param y    Y coordinate of cursor when mouse is released
+ */
 void gui_handle_mouse_release(int x, int y) {
     mouse_pressed_on_title = 0;
     if (check_inside_window(x, y, window_stack[0]) == IN_RED_BUTTON) {
@@ -191,9 +218,9 @@ void gui_handle_mouse_release(int x, int y) {
 }
 
 /**
- * Check whether a position is valid
- * @param term_x
- * @param term_y
+ * Check whether a window position is valid
+ * @param term_x    X coordinate of upper-left corner of terminal (window body, not window border)
+ * @param term_y    Y coordinate of upper-left corner of terminal (window body, not window border)
  * @return 1 if valid, 0 if not
  */
 int is_valid_position(int term_x, int term_y) {

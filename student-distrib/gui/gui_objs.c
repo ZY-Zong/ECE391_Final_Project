@@ -9,16 +9,38 @@
 #include "../file_system.h"
 #include "upng.h"
 
-static unsigned char _png_buf[MAX_PNG_SIZE];  // use as png channel buffer
-static vga_argb _png_data[VGA_WIDTH * VGA_HEIGHT];  // use as png file buffer and final png buffer
+/**
+ * GUI objects: to accelerate rendering of GUI components, each of them is rendered in advance to invisible part of
+ *              video memory or a canvas (see below) and represented by a corresponding GUI object. Every time to use
+ *              this component, the whole block of memory is copied with BitBLT engine or memcpy, which is much faster
+ *              than drawing each pixel one by one. But on the other hand alpha blending can't be applied.
+ * PNG data buffer: ARGB data encoded in 2D array
+ * PNG raw buffer: channel data (ordered RGBA for depth-4 PNG, RGB for depth-3 PNG)
+ * Canvas: a buffer holding data just like video memory (2 bytes for each pixel)
+ */
 
-static unsigned char desktop_canvas[VGA_SCREEN_BYTES];
-gui_object_t gui_obj_desktop;
+static unsigned char _png_buf[MAX_PNG_SIZE];  // common PNG raw buffer
+static vga_argb _png_data[VGA_WIDTH * VGA_HEIGHT];  // use as PNG file buffer and final PNG data buffer
 
+static unsigned char desktop_canvas[VGA_SCREEN_BYTES];  // canvas to store desktop image
+gui_object_t gui_obj_desktop;  // desktop object
+
+/**
+ * Clear a canvas
+ * @param canvas    The canvas to be cleared
+ * @param size      The size of the canvas
+ */
 void ca_clear(unsigned char *canvas, unsigned int size) {
     memset(canvas, 0, size);
 }
 
+/**
+ * Draw a pixel to canvas, in the format just like drawing to video memory
+ * @param canvas    The canvas to draw to
+ * @param x         X coordinate of the pixel
+ * @param y         Y coordinate of the pixel
+ * @param argb      ARGB color of the pixel
+ */
 void ca_draw_pixel(unsigned char *canvas, int x, int y, vga_argb argb) {
     unsigned long offset = y * vga_info.xbytes + x * VGA_BYTES_PER_PIXEL;
     *(unsigned short *) (canvas + offset) =
@@ -27,6 +49,14 @@ void ca_draw_pixel(unsigned char *canvas, int x, int y, vga_argb argb) {
                                     alpha(argb)));
 }
 
+/**
+ * Load a png file into a png data buffer
+ * @param fname              PNG filename
+ * @param expected_width     Expected image width. Warning will be given if the png file does not meet expected width
+ * @param expected_height    Expected image height. Warning will be given if the png file does not meet expected height
+ * @param png_data           Output array of png data. Caller should make sure there are enough space
+ * @return 0 on success, -1 on failure
+ */
 int load_png(const char *fname, int expected_width, int expected_height, vga_argb *png_data) {
     dentry_t test_png;
     int32_t readin_size;
@@ -89,6 +119,17 @@ int load_png(const char *fname, int expected_width, int expected_height, vga_arg
     return 0;
 }
 
+/**
+ * Render a PNG data buffer to video memory or canvas and create an gui object
+ * @param png_data      PNG data buffer to draw
+ * @param width         Width of PNG image
+ * @param height        Height of PNG image
+ * @param canvas        The canvas to draw to. If NULL, image is drawn to video memory.
+ * @param x_offset      X coordinate to place the image on the canvas
+ * @param y_offset      Y coordinate to place the image on the canvas
+ * @param gui_object    GUI object to fill
+ * @return 0 on success
+ */
 int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
                       unsigned char *canvas, int x_offset, int y_offset, gui_object_t *gui_object) {
 
@@ -134,6 +175,15 @@ int render_png_to_obj(vga_argb *png_data, unsigned width, unsigned height,
     return 0;
 }
 
+/**
+ * Draw a png to screen
+ * @param png_data    PNG data to be drawn
+ * @param width       Width of png
+ * @param height      Height of png
+ * @param x_offset    X coordinate to draw the png
+ * @param y_offset    Y coordinate to draw the png
+ * @return 0 on success
+ */
 int draw_png_to_screen(vga_argb *png_data, unsigned width, unsigned height, int x_offset, int y_offset) {
     vga_argb color;
     int i, j;
@@ -148,6 +198,11 @@ int draw_png_to_screen(vga_argb *png_data, unsigned width, unsigned height, int 
     return 0;
 }
 
+/**
+ * Initialize font objects
+ * @param fg    RGB foreground color of characters
+ * @param bg    RGB background color of characters
+ */
 static void init_font_obj(vga_rgb fg, vga_rgb bg) {
     int ch;
     int i, j;
@@ -167,12 +222,20 @@ static void init_font_obj(vga_rgb fg, vga_rgb bg) {
     }
 }
 
+/**
+ * Get the GUI object of the given character
+ * @param ch    The character
+ * @return The GUI object
+ */
 gui_object_t gui_get_obj_font(char ch) {
     return (gui_object_t) {NULL,
                            (ch & 0x7F) * FONT_WIDTH, VGA_HEIGHT * 2 + (ch / 128) * FONT_HEIGHT,
                            FONT_WIDTH, FONT_HEIGHT, GUI_FONT_BACKCOLOR_ARGB};
 }
 
+/**
+ * Initialize the desktop object
+ */
 static void init_desktop_obj() {
     ca_clear(desktop_canvas, sizeof(desktop_canvas));
     load_png("background_a.png", VGA_WIDTH, VGA_HEIGHT, _png_data);
@@ -201,7 +264,6 @@ static void init_window_obj() {
     load_png("yellow_b.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, gui_win_yellow[0]);
     load_png("green_b.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, gui_win_green[0]);
 
-    // FIXME: normal red button?
     load_png("red_b.png", WIN_RED_B_WIDTH, WIN_RED_B_HEIGHT, gui_win_red[1]);
     load_png("yellow_b_c.png", WIN_YELLOW_B_WIDTH, WIN_YELLOW_B_HEIGHT, gui_win_yellow[1]);
     load_png("green_b_c.png", WIN_GREEN_B_WIDTH, WIN_GREEN_B_HEIGHT, gui_win_green[1]);
@@ -211,6 +273,9 @@ static void init_window_obj() {
 
 #else
 
+/**
+ * GUI objects for drawing windows
+ */
 gui_object_t gui_obj_win_up;
 gui_object_t gui_obj_win_down;
 gui_object_t gui_obj_win_left;
@@ -268,6 +333,18 @@ static void __sleep(int count) {
     for (i = 0; i < count; i++) {}
 }
 
+/**
+ * Initialize GUI objects for windows
+ * @note Startup animation is loaded and drawn in this period to make the OS starting looks more fluent and responsive
+ */
+
+/**
+ * Starting goose ui:
+ * |   name   |   size   |  position
+ *   goose.png  190 * 164  (417, 301)
+ *   GA!.png    104 * 59   (532,246),(308,393),(584,468)
+ *
+ */
 static void init_window_obj() {
 
     // Startup #1
@@ -351,6 +428,9 @@ static void init_window_obj() {
 
 #endif
 
+/**
+ * Load all GUI objects
+ */
 void gui_obj_load() {
     init_desktop_obj();
     init_font_obj(GUI_FONT_FORECOLOR_ARGB, GUI_FONT_BACKCOLOR_ARGB);

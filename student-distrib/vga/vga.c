@@ -1,7 +1,7 @@
 //
 // Created by liuzikai on 12/3/19.
 // This file is adaptation of various files from SVGAlib 1.4.3. See SVGALIB_LICENSE for license.
-// Code here is the instantiation for CIRRUS 5436 (QEMU), 1024×768, 16M (24-bit) color, 60Hz. Much code is eliminated.
+// Code here is the instantiation for CIRRUS 5436 (QEMU), 1024×768, 32K (15-bit) color, 60Hz. Much code is eliminated.
 //
 
 #include "vga.h"
@@ -27,7 +27,7 @@ static void set_color_emulation(void);
 
 /**
  * Set VGA mode
- * @param mode   Only support G1280x1024x16M (28)
+ * @param mode   Only support G1024x768x32K
  * @return 0 for success, other values for failure
  */
 int vga_set_mode(int mode) {
@@ -54,7 +54,7 @@ int vga_set_mode(int mode) {
             cirrus_setlogicalwidth(VGA_BYTES_PER_LINE);
             cirrus_setlinear(0);
 
-            /* clear screen (sets current color to 15) */
+            /* clear screen (sets current color to 0) */
             vga_clear();
             vga_set_page(0);
         }
@@ -87,6 +87,10 @@ int vga_clear(void) {
     return 0;
 }
 
+/**
+ * Set video memory page
+ * @param page    Page index
+ */
 void vga_set_page(int page) {
     if (page == curr_page) return;
     curr_page = page;
@@ -103,20 +107,6 @@ static void set_color_emulation(void) {
     __svgalib_IS1_R = IS1_RC;
     outb(inb(MIS_R) | 0x01, MIS_W);
 }
-
-/**
- * Set VGA paging
- * @param page
- */
-//void vga_set_page(int page) {
-//#if VGA_CHECK_CURRENT_PAGE
-//    if (page == curr_page) return;
-//#endif
-//    cirrus_setpage_64k(page);
-//#if VGA_CHECK_CURRENT_PAGE
-//    curr_page = page;
-//#endif
-//}
 
 /**
  * Turn off screen for faster VGA memory access

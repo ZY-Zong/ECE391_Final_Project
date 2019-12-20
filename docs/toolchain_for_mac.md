@@ -1,7 +1,8 @@
 # Cross Compile Toolchain for macOS
 
 ## Revision History
-* Initial version.  --liuzikai 2019/12/05
+* Initial version.  --liuzikai Dec. 5, 2019
+* Update a known issue.  --liuzikai Dec. 16, 2019
 
 ## Cross Compile Toolchain
 
@@ -12,6 +13,9 @@ to allow compiling the i386 kernel in macOS.
 Notice that we can't guarantee that the OS behaves the same using
 this toolchain as compiling in the devel VM. Use it at your own risk.
 And it's highly recommended to have test with original configuration.
+
+### Known Issues
+* Latest version of i386-elf-gcc allows declaring variable in for, while the original toolchain does not.
 
 ### Overview
 

@@ -6,9 +6,6 @@
 #define _LIB_H
 
 #include "types.h"
-// External variables that will be changed when switching terminals
-extern int screen_x;
-extern int screen_y;
 
 // External variables that will be changed when switching terminals
 extern int screen_x;
@@ -25,7 +22,17 @@ extern int screen_y;
  */
 #define VIDEO_TEXT  0xBF000
 
-/** System Calls */
+#define TERMINAL_WIDTH_PIXEL     640
+#define TERMINAL_HEIGHT_PIXEL    480
+
+#define ATTRIB      0x7
+#define FONT_WIDTH  8
+#define FONT_HEIGHT 16
+
+#define TERMINAL_TEXT_COLS    (TERMINAL_WIDTH_PIXEL / FONT_WIDTH)
+#define TERMINAL_TEXT_ROWS    (TERMINAL_HEIGHT_PIXEL / FONT_HEIGHT)
+
+/** System Calls within Kernel */
 
 int32_t halt(uint8_t status);
 int32_t execute(const uint8_t* command);
@@ -79,17 +86,6 @@ void* memmove(void* dest, const void* src, uint32_t n);
 int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n);
 int8_t* strcpy(int8_t* dest, const int8_t*src);
 int8_t* strncpy(int8_t* dest, const int8_t*src, uint32_t n);
-
-
-#define TERMINAL_WIDTH_PIXEL     640
-#define TERMINAL_HEIGHT_PIXEL    480
-
-#define ATTRIB      0x7
-#define FONT_WIDTH  8
-#define FONT_HEIGHT 16
-
-#define TERMINAL_TEXT_COLS    (TERMINAL_WIDTH_PIXEL / FONT_WIDTH)
-#define TERMINAL_TEXT_ROWS    (TERMINAL_HEIGHT_PIXEL / FONT_HEIGHT)
 
 /* Userspace address-check functions */
 int32_t bad_userspace_addr(const void* addr, int32_t len);

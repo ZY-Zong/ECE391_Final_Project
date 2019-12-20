@@ -2,6 +2,17 @@
 // Created by liuzikai on 12/7/19.
 //
 
+/**
+ * GUI objects: to accelerate rendering of GUI components, each of them is rendered in advance to invisible part of
+ *              video memory or a canvas (see below) and represented by a corresponding GUI object. Every time to use
+ *              this component, the whole block of memory is copied with BitBLT engine or memcpy, which is much faster
+ *              than drawing each pixel one by one. But on the other hand alpha blending can't be applied.
+ * PNG data buffer: ARGB data encoded in 2D array
+ * PNG raw buffer: channel data (ordered RGBA for depth-4 PNG, RGB for depth-3 PNG)
+ * Canvas: a buffer holding data just like video memory (2 bytes for each pixel)
+ */
+
+
 #ifndef _GUI_OBJS_H
 #define _GUI_OBJS_H
 

@@ -2,17 +2,22 @@
 // Created by liuzikai on 12/10/19.
 //
 
+/**
+ * Currently we only have one type of windows: terminals
+ */
+
 #ifndef _GUI_WINDOW_H
 #define _GUI_WINDOW_H
 
 #define GUI_WIN_ENABLE_LOG    0
 
+// Data structure of a window
 typedef struct gui_window_t gui_window_t;
 struct gui_window_t {
-    int term_x;
-    int term_y;
-    char* screen_char;
-    int terminal_id;
+    int term_x;         // X coordinate of upper-left corner of terminal (window body, not window border)
+    int term_y;         // Y coordinate of upper-left corner of terminal (window body, not window border)
+    char* screen_char;  // text buffer (on-screen content) of terminal
+    int terminal_id;    // ID of terminal
 };
 
 #define GUI_MAX_WINDOW_NUM    5
@@ -26,7 +31,7 @@ struct gui_window_t {
 #define GUI_WIN_DOWN_MARGIN    4
 
 
-extern gui_window_t* window_stack[GUI_MAX_WINDOW_NUM];  // 0 window is on the top
+extern gui_window_t* window_stack[GUI_MAX_WINDOW_NUM];  // index 0 is on the top
 
 void gui_window_init();
 

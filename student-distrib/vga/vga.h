@@ -1,12 +1,11 @@
 //
 // Created by liuzikai on 12/3/19.
 // This file is adaptation of various files from SVGAlib 1.4.3. See SVGALIB_LICENSE for license.
-// Code here is the instantiation for CIRRUS 5436 (QEMU), 1024×768, 16M (24-bit) color, 60Hz. Much code is eliminated.
 //
 
 /**
  * QEMU uses chip set of Cirrus 5446 (treated as CLGD5436)
- * We only support entering mode 1024×768, 64K, 60Hz from text mode
+ * We only support entering mode 1024×768, 32K, 60Hz from text mode, which will be performed at startup
  */
 
 #ifndef _VGA_H

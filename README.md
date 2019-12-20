@@ -1,17 +1,93 @@
-LOGISTICS
+AuroraOS is an i386 operating system designed in ECE 391 MP3 Fall 2019 at UIUC.
+
+NOTICE
 -----
-ECE 391 MP3 
+If you are working on your own ECE 391 project, **MAKE SURE** you follow the academic integrity regulations. **DO NOT**
+copy code here without proper citation.
 
-Checkpoint 1 due Monday 10/21/2019, 6pm in GitLab
+Authors
+-----
+Members of group 30:
+* Zikai Liu (zikail2@illinois.edu)
+* Tingkai Liu (tingkai2@illinois.edu)
+* Qi Gao (qig2@illinois.edu)
+* Zhenyu Zong (zhenyuz2@illinois.edu)
 
-Checkpoint 2 due Monday 10/28/2019, 6pm in GitLab
+See commit history for contributions of each members.
 
-Checkpoint 3 due Monday 11/11/2019, 6pm in GitLab
+FEATURES
+-----
+* Required by course
+    * Setting up GDT, LDT and IDT
+    * PIC i8259 driver
+    * Keyboard
+    * RTC
+    * Memory Paging
+    * Terminal Driver
+    * MP3 read-only file system
+    * Run user program
+    * vidmap() system call
+    * Round-robin scheduler based on PIT, 3 Terminals
+* Extra
+    * SVGA 1024 x 768 16-bit high color
+        * Hardware acceleration
+        * Support alpha blending
+    * GUI with multiple terminals
+        * Efficient rendering
+            * Use hardware acceleration
+            * Don’t render the invisible part
+        * Double buffering
+        * Support PNG resource
+        * Startup animation
+    * SVGA Hardware mouse
+    * CMOS Datetime and GUI Clock
+    * Music and beep using PIT
+    * Interactive scheduling
+        * Wait lists for terminal and RTC read()
+    * Signals
+    * Virtualized RTC
+    * Cross compile toolchain for macOS
 
-Checkpoint 4 due Monday 11/18/2019, 6pm in GitLab
+![](docs/resources/ScreenShot.png)
 
-Checkpoint 5 due Sunday 12/8/2019, 11:59pm in GitLab
+See project wiki for some detailed documents.
 
+KNOWN ISSUES
+-----
+- Exception handlers blame user programs for all exceptions, even the exceptions happen in kernel.
+- RTC is not really "real time." It restarts the timer every time read(). The frequency has been manually modified for demonstration. See FIXMEs in rtc.c.
+- Keyboard failed to handle cases that left and right function keys are pressed at the same time.
+- Now all tasks in wait queues are somewhat similar to Linux’s uninterpretable. For example, a shell in terminal read won’t respond to Ctrl+C until user presses enter.
+- Now all tasks that use system calls are somewhat similar to Linux’s interactive. For example, when user presses enter, terminal read will return immediately, leaving the interrupt context unfinished.
+- Now sigreturn() copies the whole HW context back without checking, which may lea to security problems.
+
+REFERENCE
+-----
+* [SVGAlib](https://www.svgalib.org/) 1.4.3 source for SVGA driver. See [student-distrib/vga/SVGALIB_LICENSE](student-distrib/vga/SVGALIB_LICENSE) for original license.
+* [elanthis/upng: very small PNG decoding library](https://github.com/elanthis/upng) for PNG loader. See [student-distrib/gui/UPNG_README.txt](student-distrib/gui/UPNG_README.txt) for original readme.
+* [Cirrus Logic CL-GD5446 Technical Reference Manual](docs/SVGA-gd5446trm.pdf) for hardware cursor.
+* Font data from MP2 by Prof. Lumetta.
+For a few other reference, see comments in the code.
+
+DIRECTORY LAYOUT AND SOME FILES
+-----
+```
+.
+├── docs                   Data sheets, documents and notes
+├── fish                   Source code of fish user program
+├── fsdir                  Things to be packed into file system
+├── student-distrib        Main part of OS
+│   ├── gui                    GUI related code
+│   ├── task                   Program executing and scheduler related code
+│   └── vga                    SVGA related code
+├── syscalls               Source code of user programs
+├── tools                  Tools and scripts
+├── CMakeLists.txt         CMake configuration for cross compiling and CLion
+├── README                 Original description of directory layout.
+├── README.md              This file
+├── README_ORIGINAL.md     Original cover README
+└── debug_mac.sh           Helper script for cross compiling on macOS
+```
 
 ACADEMIC INTEGRITY
 -----

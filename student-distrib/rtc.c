@@ -12,7 +12,7 @@
 #include "idt.h"
 #include "task/task_sched.h"
 
-#define RTC_HARDWARE_FREQUENCY   256
+#define RTC_HARDWARE_FREQUENCY   256  // FIXME: compensate for low speed RTC under GUI
 #define RTC_MAX_FREQUENCY        32768
 #define RTC_MIN_RATE    6   // rate for 1024 Hz
 #define RTC_MAX_RATE    15  // rate for 2 Hz
@@ -191,7 +191,7 @@ int32_t system_rtc_write(int32_t fd, const void *buf, int32_t nbytes) {
     {
         // Restore required frequency and count for this task
         running_task()->rtc.target_freq = frequency;
-        // FIXME: for actual effects
+        // FIXME: compensate for low speed RTC under GUI
         running_task()->rtc.counter = RTC_HARDWARE_FREQUENCY / frequency / 4;
     }
     restore_flags(flags);

@@ -34,7 +34,7 @@ static void inline draw_object(gui_object_t *obj, int x, int y) {
         }
         vga_screen_copy(obj->x, obj->y, x, y, obj->width, obj->height);
     } else {
-        DEBUG_ERR("draw_object(): system-to-screen bitblt is still broken.");
+        DEBUG_ERR("draw_object(): system-to-screen BitBLT is still broken.");
 //        vga_buf_copy((unsigned int *) obj->canvas, x, y, obj->width, obj->height);
     }
 }
@@ -110,15 +110,6 @@ static void draw_window_border(int terminal_x, int terminal_y, int r, int y, int
 #endif
 }
 
-/**
- * Starting goose ui:
- * |   name   |   size   |  position
- *   goose.png  190 * 164  (417, 301)
- *   GA!.png    104 * 59   (532,246),(308,393),(584,468)
- *
- */
-
-
 static inline void draw_terminal_content(const char *buf, int buf_start_x, int buf_start_y, int buf_cols, int buf_rows,
                                   int term_x, int term_y) {
     int x, y;
@@ -128,19 +119,6 @@ static inline void draw_terminal_content(const char *buf, int buf_start_x, int b
                        x * FONT_WIDTH + term_x, y * FONT_HEIGHT + term_y);
         }
     }
-}
-
-
-
-/**
- * Starting goose ui:
- * |   name   |   size   |  position
- *   goose.png  190 * 164  (417, 301)
- *   GA!.png    104 * 59   (532,246),(308,393),(584,468)
- *
- */
-static void draw_start_ui() {
-
 }
 
 /**

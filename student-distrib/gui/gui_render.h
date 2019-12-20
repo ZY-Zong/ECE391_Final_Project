@@ -5,6 +5,8 @@
 #ifndef _GUI_RENDER_H
 #define _GUI_RENDER_H
 
+// If enabled, window components are not pre-rendered into GUI objects, but only pre-loaded as png data,
+// which allow alpha blending, but it's proven to be too slow on QEMU
 #define GUI_WINDOW_PNG_RENDER    0
 
 void gui_render();

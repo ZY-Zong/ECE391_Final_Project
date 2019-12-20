@@ -32,7 +32,7 @@
 
 #define     FILE_NAME_LENGTH    32
 
-/************************* File System (Abtraction) Structs *********************/
+/************************* File System (Abstraction) Structs *********************/
 
 // Function pointers for system calls
 typedef int32_t(*func_open)(const uint8_t*);
